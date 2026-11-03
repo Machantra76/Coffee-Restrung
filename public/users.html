@@ -47,6 +47,7 @@
                                 <option value="Admin">Admin (ប្រធានហាង)</option>
                                 <option value="Cashier">Cashier (អ្នកគិតលុយ)</option>
                                 <option value="Kitchen">Kitchen (ផ្នែកផ្ទះបាយ)</option>
+                                <option value="Stock">Stock (អ្នកគ្រប់គ្រងស្តុក)</option>
                             </select>
                         </div>
                         <button type="submit" class="btn btn-primary w-100 fw-bold py-2">
@@ -63,7 +64,6 @@
                     <div class="table-responsive">
                         <table class="table table-hover align-middle">
                             <thead class="table-dark">
-                                ID
                                 <tr>
                                     <th>#</th>
                                     <th>Username</th>
@@ -102,12 +102,18 @@
                     const tbody = document.getElementById('userTableBody');
                     tbody.innerHTML = '';
                     result.data.forEach((u, index) => {
+                        let badgeColor = 'bg-secondary';
+                        if (u.role === 'Admin') badgeColor = 'bg-danger';
+                        else if (u.role === 'Cashier') badgeColor = 'bg-primary';
+                        else if (u.role === 'Kitchen') badgeColor = 'bg-warning text-dark';
+                        else if (u.role === 'Stock') badgeColor = 'bg-info text-dark';
+
                         tbody.innerHTML += `
                             <tr>
                                 <td>${index + 1}</td>
                                 <td class="fw-bold">${u.username}</td>
                                 <td>${u.full_name}</td>
-                                <td><span class="badge bg-secondary">${u.role}</span></td>
+                                <td><span class="badge ${badgeColor}">${u.role}</span></td>
                                 <td>${new Date(u.created_at).toLocaleString()}</td>
                             </tr>
                         `;
