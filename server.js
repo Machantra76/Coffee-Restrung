@@ -41,7 +41,6 @@ async function initDB() {
             );
         `);
         
-        // បម្រុងទុកกรณีតារាង users មានរួចហើយ ប៉ុន្តែអត់ទាន់មាន column is_active
         await pool.query(`
             ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
         `);
@@ -58,35 +57,6 @@ initDB();
 const userRoutes = require('./routes/users');
 app.use('/api/users', userRoutes);
 
-// ==========================================
-// API សម្រាប់ទាញយករបាយការណ៍សកម្មភាពលក់របស់ Cashier ម្នាក់ៗ
-// ==========================================
-app.get('/api/orders/cashier-activity/:cashierId', async (req, res) => {
-    const { cashierId } = req.params;
-    try {
-        // 1. ទាញយកបញ្ជីវិក្កយបត្រដែល Cashier នេះបានលក់
-        const ordersResult = await pool.query(
-            'SELECT id, total_amount, payment_method, created_at FROM orders WHERE cashier_id = $1 ORDER BY id DESC',
-            [cashierId]
-        );
-
-        // 2. គណនាសរុបទឹកប្រាក់ដែលលក់បានទាំងអស់
-        const sumResult = await pool.query(
-            'SELECT COUNT(id) as total_bills, SUM(total_amount) as grand_total FROM orders WHERE cashier_id = $1',
-            [cashierId]
-        );
-
-        res.json({
-            success: true,
-            total_bills: sumResult.rows[0].total_bills || 0,
-            grand_total: sumResult.rows[0].grand_total || 0,
-            orders: ordersResult.rows
-        });
-    } catch (err) {
-        console.error('Cashier Activity Error:', err);
-        res.status(500).json({ success: false, error: 'Database error' });
-    }
-});
 // API សម្រាប់ទាញយកបញ្ជី Cashier ទាំងអស់ (សម្រាប់ Admin ជ្រើសរើសមើល)
 app.get('/api/users/cashiers-list', async (req, res) => {
     try {
@@ -98,7 +68,7 @@ app.get('/api/users/cashiers-list', async (req, res) => {
     }
 });
 
-// API សម្រាប់ទាញយករបាយការណ៍សកម្មភាពលក់តាម Cashier ID
+// API សម្រាប់ទាញយករបាយការណ៍សកម្មភាពលក់របស់ Cashier ម្នាក់ៗ
 app.get('/api/orders/cashier-activity/:cashierId', async (req, res) => {
     const { cashierId } = req.params;
     try {
