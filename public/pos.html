@@ -38,8 +38,8 @@
         </div>
 
         <div class="row g-3 g-md-4 justify-content-center">
-            <!-- 1. POS / Sales Terminal (គ្រប់គ្នាឃើញ) -->
-            <div class="col-12 col-sm-6 col-lg-4">
+            <!-- 1. POS / Sales Terminal -->
+            <div class="col-12 col-sm-6 col-lg-4" id="posMenu" style="display: none;">
                 <div class="card menu-card p-3 p-md-4 text-center bg-white" style="cursor: pointer;" onclick="checkShiftAndSell()">
                     <div class="card-body">
                         <i class="fa-solid fa-cart-shopping text-primary card-icon"></i>
@@ -49,8 +49,8 @@
                 </div>
             </div>
 
-            <!-- 2. Cashier Activity (Cashier & Admin) -->
-            <div class="col-12 col-sm-6 col-lg-4" id="cashierActivityMenu">
+            <!-- 2. Cashier Activity -->
+            <div class="col-12 col-sm-6 col-lg-4" id="cashierActivityMenu" style="display: none;">
                 <div class="card menu-card p-3 p-md-4 text-center bg-white" style="cursor: pointer;" onclick="location.href='cashier-activity.html'">
                     <div class="card-body">
                         <i class="fa-solid fa-chart-pie text-success card-icon"></i>
@@ -60,8 +60,8 @@
                 </div>
             </div>
 
-            <!-- 3. Products Management (Admin & Stock) -->
-            <div class="col-12 col-sm-6 col-lg-4 restricted-menu" id="productsMenu">
+            <!-- 3. Products Management -->
+            <div class="col-12 col-sm-6 col-lg-4" id="productsMenu" style="display: none;">
                 <div class="card menu-card p-3 p-md-4 text-center bg-white" style="cursor: pointer;" onclick="location.href='products.html'">
                     <div class="card-body">
                         <i class="fa-solid fa-boxes-stacked text-success card-icon"></i>
@@ -71,8 +71,8 @@
                 </div>
             </div>
 
-            <!-- 4. Inventory / Stock (Admin & Stock) -->
-            <div class="col-12 col-sm-6 col-lg-4 restricted-menu" id="inventoryMenu">
+            <!-- 4. Inventory / Stock -->
+            <div class="col-12 col-sm-6 col-lg-4" id="inventoryMenu" style="display: none;">
                 <div class="card menu-card p-3 p-md-4 text-center bg-white" style="cursor: pointer;" onclick="location.href='inventory.html'">
                     <div class="card-body">
                         <i class="fa-solid fa-warehouse text-info card-icon"></i>
@@ -82,8 +82,8 @@
                 </div>
             </div>
 
-            <!-- 5. Kitchen Display System (Admin & Kitchen) -->
-            <div class="col-12 col-sm-6 col-lg-4" id="kitchenMenu">
+            <!-- 5. Kitchen Display System -->
+            <div class="col-12 col-sm-6 col-lg-4" id="kitchenMenu" style="display: none;">
                 <div class="card menu-card p-3 p-md-4 text-center bg-white" style="cursor: pointer;" onclick="location.href='kitchen.html'">
                     <div class="card-body">
                         <i class="fa-solid fa-utensils text-warning card-icon"></i>
@@ -94,7 +94,7 @@
             </div>
 
             <!-- 6. Sales History / Orders -->
-            <div class="col-12 col-sm-6 col-lg-4" id="ordersMenu">
+            <div class="col-12 col-sm-6 col-lg-4" id="ordersMenu" style="display: none;">
                 <div class="card menu-card p-3 p-md-4 text-center bg-white" style="cursor: pointer;" onclick="location.href='orders.html'">
                     <div class="card-body">
                         <i class="fa-solid fa-receipt text-secondary card-icon"></i>
@@ -117,7 +117,7 @@
         </div>
     </div>
 
-    <!-- Modal សម្រាប់ Cashier បើកវេនលក់ (Shift) -->
+    <!-- Modal សម្រាប់ Cashier បើកវេនលក់ -->
     <div class="modal fade" id="shiftModal" tabindex="-1" data-bs-backdrop="static">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
@@ -151,17 +151,38 @@
             
             document.getElementById('userDisplay').innerText = `${user.role}: ${user.full_name}`;
 
+            // លាក់ Menu ទាំងអស់ជាមុន
+            document.getElementById('posMenu').style.display = 'none';
+            document.getElementById('cashierActivityMenu').style.display = 'none';
+            document.getElementById('productsMenu').style.display = 'none';
+            document.getElementById('inventoryMenu').style.display = 'none';
+            document.getElementById('kitchenMenu').style.display = 'none';
+            document.getElementById('ordersMenu').style.display = 'none';
+            document.getElementById('adminMenu').style.display = 'none';
+
+            // បង្ហាញតាម Role
             if (user.role === 'Admin') {
+                document.getElementById('posMenu').style.display = 'block';
+                document.getElementById('cashierActivityMenu').style.display = 'block';
+                document.getElementById('productsMenu').style.display = 'block';
+                document.getElementById('inventoryMenu').style.display = 'block';
+                document.getElementById('kitchenMenu').style.display = 'block';
+                document.getElementById('ordersMenu').style.display = 'block';
                 document.getElementById('adminMenu').style.display = 'block';
+
                 document.getElementById('activityTitle').innerText = "ត្រួតពិនិត្យការលក់ Cashier";
                 document.getElementById('activityDesc').innerHTML = "ពិនិត្យមើលទឹកប្រាក់ និងវិក្កយបត្របុគ្គលិក<br><i>Monitor cashier sales activity</i>";
             } 
             else if (user.role === 'Cashier') {
-                // ប្រសិនបើជា Cashier គឺលាក់ផ្ទាំងគ្រប់គ្រងផលិតផល និងស្តុកចេញ
-                document.getElementById('productsMenu').style.display = 'none';
-                document.getElementById('inventoryMenu').style.display = 'none';
-                document.getElementById('kitchenMenu').style.display = 'none';
-                document.getElementById('ordersMenu').style.display = 'none';
+                document.getElementById('posMenu').style.display = 'block';
+                document.getElementById('cashierActivityMenu').style.display = 'block';
+            } 
+            else if (user.role === 'Kitchen') {
+                document.getElementById('kitchenMenu').style.display = 'block';
+            } 
+            else if (user.role === 'Stock') {
+                document.getElementById('productsMenu').style.display = 'block';
+                document.getElementById('inventoryMenu').style.display = 'block';
             }
         });
 
