@@ -15,9 +15,11 @@ app.use(express.static('public')); // សម្រាប់អាន Folder publ
 // ២. ហៅ Routes មកដាក់ពីក្រោម app
 const productRoutes = require('./routes/productRoutes');
 const orderRoutes = require('./routes/orderRoutes');
+const userRoutes = require('./routes/users'); // ⬅️ បន្ថែម User Routes ទីនេះ
 
 app.use('/api', productRoutes);
 app.use('/api', orderRoutes);
+app.use('/api/users', userRoutes); // ⬅️ កំណត់ Endpoint សម្រាប់ Users (/api/users)
 
 // Test Route
 app.get('/', (req, res) => {
@@ -26,5 +28,5 @@ app.get('/', (req, res) => {
 
 // Start Server
 app.listen(PORT, () => {
-    console.log(`🚀 Server is running on http://localhost:${PORT}`);
+    console.log(`🚀 Server is running on port ${PORT}`);
 });
