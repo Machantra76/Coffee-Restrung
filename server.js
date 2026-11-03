@@ -13,7 +13,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public')); // សម្រាប់អាន Folder public (pos.html, login.html)
 
-// 💡 មុខងារស្វ័យប្រវត្តិបង្កើត Table ក្នុង Database ពេល Server ចាប់ផ្ដើមដំណើរការ
+// 💡 មុខងារស្វ័យប្រវត្តិបង្កើត Table និង Column ក្នុង Database ពេល Server ចាប់ផ្ដើមដំណើរการ
 async function initDB() {
     try {
         await pool.query(`
@@ -21,14 +21,19 @@ async function initDB() {
                 id SERIAL PRIMARY KEY,
                 username VARCHAR(100) UNIQUE NOT NULL,
                 password VARCHAR(255),
+                password_hash VARCHAR(255),
                 full_name VARCHAR(150) NOT NULL,
                 role VARCHAR(50) NOT NULL DEFAULT 'Cashier',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         `);
-        // ធានាថាមាន column password ស្រាប់ ទោះតារាងមានមុនក៏ដោយ
+        
+        // ធានាថាមាន columns ទាំងពីរ និងដកហូតកម្រិត NOT-Null ដ៏តឹងរ៉ឹងលើ password_hash ចោលបើមាន
         await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS password VARCHAR(255);`);
-        console.log('✅ Users table initialized successfully!');
+        await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);`);
+        await pool.query(`ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL;`).catch(() => {});
+        
+        console.log('✅ Users table initialized & updated successfully!');
     } catch (err) {
         console.error('❌ Error initializing database table:', err);
     }
@@ -55,3 +60,11 @@ app.get('/', (req, res) => {
 app.listen(PORT, () => {
     console.log(`🚀 Server is running on port ${PORT}`);
 });
+```[cite: 6]
+
+---
+
+### 📌 ជំហានបន្ទាប់៖
+1. យកកូដខាងលើទៅដាក់ជំនួសក្នុង File **`server.js`** របស់អ្នក[cite: 6]។
+2. ทำការ **Git Commit & Push** ឡើងទៅកាន់ GitHub ជាការស្រេច[cite: 3]។ 
+3. ពេល Render Deploy រួចរាល់ ឥឡូវនេះបងអាចសាកល្បងចុចបង្កើត User ថ្មីនៅលើ Website របស់អ្នកបានធម្មតា វានឹងមិនចេញ Error 500 ទៀតទេ[cite: 3, 5]!
