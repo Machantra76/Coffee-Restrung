@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ទំព័រលក់ (POS Sales Terminal)</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Kantumruy Pro', sans-serif; background-color: #f1f5f9; }
+        .product-card { cursor: pointer; transition: all 0.2s ease; border: none; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .product-card:hover { transform: translateY(-3px); box-shadow: 0 6px 12px rgba(0,0,0,0.1); background-color: #f8fafc; }
+        
+        /* សម្រាប់ Computer និង iPad: កំណត់ឱ្យផ្ទាំងកន្រ្តកផ្នែកខាងស្តាំមានកម្ពស់ល្មម និង scroll បាន */
+        @media (min-width: 992px) {
+            .cart-container { height: calc(100vh - 90px); position: sticky; top: 15px; }
+            .products-container { height: calc(100vh - 90px); overflow-y: auto; }
+        }
+        /* សម្រាប់ Phone: កន្រ្តកនឹងនៅពីក្រោម ឬតាមលំដាប់ Responsive */
+        @media (max-width: 991.98px) {
+            .cart-container { margin-top: 20px; margin-bottom: 30px; }
+        }
+        .cart-items-box { max-height: 350px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+    <!-- Navbar (Responsive for all screens) -->
+    <nav class="navbar navbar-dark bg-dark px-3 py-2 shadow-sm">
+        <div class="container-fluid d-flex flex-wrap justify-content-between align-items-center">
+            <span class="navbar-brand fw-bold fs-6 fs-md-5">
+                <i class="fa-solid fa-cash-register me-2 text-primary"></i> POS Terminal
+            </span>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <span id="cashierDisplay" class="text-white small fw-bold bg-secondary px-3 py-1 rounded-pill"></span>
+                <a href="pos.html" class="btn btn-outline-light btn-sm"><i class="fa-solid fa-house me-1"></i> ម៉ឺនុយមេ</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="container-fluid py-3 px-2 px-md-3">
+        <div class="row g-3">
+            
+            <!-- ខាងឆ្វេង៖ បញ្ជីផលិតផល (Products Grid) - Auto scale for Phone (col-12), iPad (col-md-7), PC (col-lg-8) -->
+            <div class="col-12 col-md-7 col-lg-8 products-container">
+                <div class="mb-3">
+                    <h4 class="fw-bold text-dark fs-5 fs-md-4"><i class="fa-solid fa-boxes-stacked me-2"></i> មុខទំនិញ / Menu Items</h4>
+                    <p class="text-muted small">ចុចលើទំនិញដើម្បីបន្ថែមចូលកន្រ្តកគិតលុយ</p>
+                </div>
+                <div class="row g-2 g-md-3" id="productsGrid">
+                    <!-- Load dynamically -->
+                </div>
+            </div>
+
+            <!-- ខាងស្តាំ៖ កន្រ្តកទំនិញ និងទូទាត់ប្រាក់ (Cart & Checkout) -->
+            <div class="col-12 col-md-5 col-lg-4">
+                <div class="card shadow-sm border-0 rounded-4 p-3 cart-container bg-white d-flex flex-column justify-content-between">
+                    <div>
+                        <h4 class="fw-bold text-dark mb-3 fs-5 fs-md-4"><i class="fa-solid fa-cart-shopping me-2"></i> កន្រ្តកវិក្កយបត្រ (Cart)</h4>
+                        
+                        <!-- Cart Table / List -->
+                        <div class="cart-items-box border rounded p-2 mb-3 bg-light">
+                            <table class="table table-sm align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>មុខទំនិញ</th>
+                                        <th class="text-center">ចំនួន</th>
+                                        <th class="text-end">តម្លៃ</th>
+                                        <th class="text-end">សរុប</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="cartTableBody">
+                                    <tr><td colspan="5" class="text-center text-muted py-3 small">មិនទាន់មានទំនិញក្នុងកន្រ្តក</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Summary & Checkout Section -->
+                    <div class="border-top pt-3">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="fw-bold text-muted small">ទឹកប្រាក់សរុប (Grand Total):</span>
+                            <span id="grandTotalDisplay" class="fw-bold fs-4 text-success">$0.00</span>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">ទម្រង់បង់ប្រាក់ (Payment Method):</label>
+                            <select class="form-select form-select-sm" id="paymentMethod">
+                                <option value="Cash">សាច់ប្រាក់ (Cash)</option>
+                                <option value="KHQR">វីង/បាគង (KHQR / ABA)</option>
+                                <option value="Credit Card">កាតធនាគារ (Credit Card)</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-success w-100 py-2 fw-bold fs-6 shadow-sm" onclick="checkout()">
+                            <i class="fa-solid fa-check-circle me-1"></i> បង់ប្រាក់ និងចេញវិក្កយបត្រ
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        let cart = [];
+        let products = [];
+        let currentUser = null;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
+            if (!currentUser) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            document.getElementById('cashierDisplay').innerText = `Cashier: ${currentUser.full_name}`;
+
+            if (currentUser.role === 'Cashier') {
+                const currentShift = sessionStorage.getItem('currentShift');
+                if (!currentShift) {
+                    alert('សូមបើកវេនលក់ (Start Shift) ជាមុនសិន!');
+                    window.location.href = 'pos.html';
+                    return;
+                }
+            }
+
+            await loadProducts();
+        });
+
+        async function loadProducts() {
+            try {
+                const res = await fetch('/api/products');
+                const result = await res.json();
+                if (result.success) {
+                    products = result.data;
+                    const grid = document.getElementById('productsGrid');
+                    grid.innerHTML = '';
+
+                    if (products.length === 0) {
+                        grid.innerHTML = `<div class="col-12 text-center text-muted py-5">មិនទាន់មានទំនិញក្នុង Database ទេ។</div>`;
+                        return;
+                    }
+
+                    products.forEach(p => {
+                        grid.innerHTML += `
+                            <div class="col-6 col-sm-4 col-md-6 col-lg-4">
+                                <div class="card product-card p-2 p-md-3 h-100 bg-white" onclick="addToCart(${p.id})">
+                                    <div class="card-body text-center p-1 p-md-2">
+                                        <h5 class="fw-bold text-dark fs-6 fs-md-5 mb-1">${p.name}</h5>
+                                        <p class="text-success fw-bold mb-0 fs-6">$${Number(p.price).toFixed(2)}</p>
+                                        <span class="badge bg-light text-secondary mt-1 small">${p.category || 'General'}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                }
+            } catch (err) {
+                console.error('Error loading products:', err);
+            }
+        }
+
+        function addToCart(productId) {
+            const product = products.find(p => p.id === productId);
+            if (!product) return;
+
+            const existingItem = cart.find(item => item.id === productId);
+            if (existingItem) {
+                existingItem.quantity += 1;
+            } else {
+                cart.push({
+                    id: product.id,
+                    name: product.name,
+                    price: Number(product.price),
+                    quantity: 1
+                });
+            }
+            renderCart();
+        }
+
+        function renderCart() {
+            const tbody = document.getElementById('cartTableBody');
+            tbody.innerHTML = '';
+
+            if (cart.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-3 small">មិនទាន់មានទំនិញក្នុងកន្រ្តក</td></tr>`;
+                document.getElementById('grandTotalDisplay').innerText = '$0.00';
+                return;
+            }
+
+            let grandTotal = 0;
+            cart.forEach((item, index) => {
+                let totalItemPrice = item.price * item.quantity;
+                grandTotal += totalItemPrice;
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td class="small fw-bold">${item.name}</td>
+                        <td class="text-center" style="white-space: nowrap;">
+                            <button class="btn btn-sm btn-outline-secondary py-0 px-1" onclick="updateQty(${index}, -1)">-</button>
+                            <span class="mx-1 small">${item.quantity}</span>
+                            <button class="btn btn-sm btn-outline-secondary py-0 px-1" onclick="updateQty(${index}, 1)">+</button>
+                        </td>
+                        <td class="text-end small">$${item.price.toFixed(2)}</td>
+                        <td class="text-end small fw-bold">$${totalItemPrice.toFixed(2)}</td>
+                        <td class="text-end">
+                            <button class="btn btn-sm text-danger p-0" onclick="removeItem(${index})"><i class="fa-solid fa-trash"></i></button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            document.getElementById('grandTotalDisplay').innerText = `$${grandTotal.toFixed(2)}`;
+        }
+
+        function updateQty(index, change) {
+            cart[index].quantity += change;
+            if (cart[index].quantity <= 0) {
+                cart.splice(index, 1);
+            }
+            renderCart();
+        }
+
+        function removeItem(index) {
+            cart.splice(index, 1);
+            renderCart();
+        }
+
+        async function checkout() {
+            if (cart.length === 0) {
+                alert('សូមជ្រើសរើសទំនិញយ៉ាងហោចណាស់មួយ!');
+                return;
+            }
+
+            let grandTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            const paymentMethod = document.getElementById('paymentMethod').value;
+
+            const orderData = {
+                cashier_id: currentUser.id,
+                total_amount: grandTotal,
+                payment_method: paymentMethod
+            };
+
+            try {
+                const res = await fetch('/api/orders', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(orderData)
+                });
+                const result = await res.json();
+
+                if (res.ok && result.success) {
+                    alert(`បង់ប្រាក់បានជោគជ័យ! លេខវិក្កយបត្រ #${result.order.id}`);
+                    cart = [];
+                    renderCart();
+                } else {
+                    alert('បរាជ័យក្នុងការទូទាត់ប្រាក់៖ ' + (result.error || 'Database error'));
+                }
+            } catch (err) {
+                console.error('Checkout Error:', err);
+                alert('មានបញ្ហាក្នុងការតភ្ជាប់ទៅកាន់ Server!');
+            }
+        }
+    </script>
+</body>
+</html>
