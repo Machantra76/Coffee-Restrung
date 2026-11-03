@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Main Menu - ប្រព័ន្ធ POS</title>
+    <title>Main Dashboard - ប្រព័ន្ធ POS</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;600&display=swap" rel="stylesheet">
@@ -17,10 +17,10 @@
 <body>
     <!-- Navbar -->
     <nav class="navbar navbar-dark bg-dark px-4 py-3 shadow-sm">
-        <span class="navbar-brand fw-bold fs-4"><i class="fa-solid fa-cash-register me-2"></i> ហាងកាហ្វេ POS System</span>
+        <span class="navbar-brand fw-bold fs-4"><i class="fa-solid fa-cash-register me-2"></i> ហាងកាហ្វេ និងភោជនីយដ្ឋាន | Café & Restaurant POS</span>
         <div class="d-flex align-items-center text-white">
             <span id="userDisplay" class="me-3 fw-bold bg-secondary px-3 py-1 rounded-pill"></span>
-            <button class="btn btn-danger btn-sm px-3 fw-bold" onclick="logout()"><i class="fa-solid fa-right-from-bracket me-1"></i> ចាកចេញ</button>
+            <button class="btn btn-danger btn-sm px-3 fw-bold" onclick="logout()"><i class="fa-solid fa-right-from-bracket me-1"></i> ចាកចេញ / Logout</button>
         </div>
     </nav>
 
@@ -28,52 +28,74 @@
     <div class="container py-5">
         <div class="row text-center mb-5">
             <div class="col-12">
-                <h2 class="fw-bold text-dark">ម៉ឺនុយមេ (Main Menu)</h2>
-                <p class="text-muted">សូមជ្រើសរើសមុខងារដែលចង់ប្រើប្រាស់</p>
+                <h2 class="fw-bold text-dark">ផ្ទាំងម៉ឺនុយមេ | Main Menu Dashboard</h2>
+                <p class="text-muted">សូមជ្រើសរើសមុខងារដែលចង់ប្រើប្រាស់ | Please select a module to start working</p>
             </div>
         </div>
 
         <div class="row g-4 justify-content-center">
-            <!-- 1. មុខងារលក់ទំនិញ -->
+            <!-- 1. POS / Sales Terminal -->
             <div class="col-md-4 col-sm-6">
                 <div class="card menu-card p-4 text-center bg-white h-100" style="cursor: pointer;" onclick="location.href='sale.html'">
                     <div class="card-body">
-                        <i class="fa-solid fa-shopping-cart text-primary card-icon"></i>
+                        <i class="fa-solid fa-cart-shopping text-primary card-icon"></i>
                         <h4 class="fw-bold text-dark">ទំព័រលក់ (POS)</h4>
-                        <p class="text-muted small">ចុះបញ្ជីការលក់ទំនិញ គិតលុយ និងចេញវិក្កយបត្រជូនអតិថិជន។</p>
+                        <p class="text-muted small">ចុះបញ្ជីការលក់ គិតលុយ និងចេញវិក្កយបត្រ<br><i>Process orders and billing</i></p>
                     </div>
                 </div>
             </div>
 
-            <!-- 2. មុខងារគ្រប់គ្រងផលិតផល -->
+            <!-- 2. Products Management -->
             <div class="col-md-4 col-sm-6">
                 <div class="card menu-card p-4 text-center bg-white h-100" style="cursor: pointer;" onclick="location.href='products.html'">
                     <div class="card-body">
                         <i class="fa-solid fa-boxes-stacked text-success card-icon"></i>
                         <h4 class="fw-bold text-dark">គ្រប់គ្រងផលិតផល</h4>
-                        <p class="text-muted small">បន្ថែម កែសម្រួល ឬលុបមុខទំនិញ និងកំណត់តម្លៃ.</p>
+                        <p class="text-muted small">បន្ថែម កែសម្រួល ឬលុបមុខទំនិញ<br><i>Manage menu items and categories</i></p>
                     </div>
                 </div>
             </div>
 
-            <!-- 3. មុខងារប្រវត្តិការលក់ -->
+            <!-- 3. Inventory / Stock -->
+            <div class="col-md-4 col-sm-6">
+                <div class="card menu-card p-4 text-center bg-white h-100" style="cursor: pointer;" onclick="location.href='inventory.html'">
+                    <div class="card-body">
+                        <i class="fa-solid fa-warehouse text-info card-icon"></i>
+                        <h4 class="fw-bold text-dark">ស្តុកទំនិញ (Inventory)</h4>
+                        <p class="text-muted small">តាមដានកម្រិតស្តុក និងវត្ថុធាតុដើម<br><i>Track stock levels and supplies</i></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. Kitchen Display System -->
+            <div class="col-md-4 col-sm-6">
+                <div class="card menu-card p-4 text-center bg-white h-100" style="cursor: pointer;" onclick="location.href='kitchen.html'">
+                    <div class="card-body">
+                        <i class="fa-solid fa-utensils text-warning card-icon"></i>
+                        <h4 class="fw-bold text-dark">ផ្នែកផ្ទះបាយ (Kitchen)</h4>
+                        <p class="text-muted small">បង្ហាញបញ្ជាទិញម្ហូប និងភេសជ្ជៈសម្រាប់ធ្វើ<br><i>View incoming food and drink orders</i></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5. Sales History / Orders -->
             <div class="col-md-4 col-sm-6">
                 <div class="card menu-card p-4 text-center bg-white h-100" style="cursor: pointer;" onclick="location.href='orders.html'">
                     <div class="card-body">
-                        <i class="fa-solid fa-receipt text-warning card-icon"></i>
+                        <i class="fa-solid fa-receipt text-secondary card-icon"></i>
                         <h4 class="fw-bold text-dark">ប្រវត្តិការលក់</h4>
-                        <p class="text-muted small">ពិនិត្យមើលរបាយការណ៍ និងប្រវត្តិវិក្កយបត្រកន្លងមក។</p>
+                        <p class="text-muted small">ពិនិត្យមើលរបាយការណ៍ និងវិក្កយបត្រចាស់ៗ<br><i>Review past transactions and receipts</i></p>
                     </div>
                 </div>
             </div>
 
-            <!-- 4. មុខងារគ្រប់គ្រងអ្នកប្រើប្រាស់ (Admin Only) -->
+            <!-- 6. User Management (Admin Only) -->
             <div class="col-md-4 col-sm-6" id="adminMenu" style="display: none;">
                 <div class="card menu-card p-4 text-center bg-white h-100" style="cursor: pointer;" onclick="location.href='users.html'">
                     <div class="card-body">
                         <i class="fa-solid fa-users-gear text-danger card-icon"></i>
                         <h4 class="fw-bold text-dark">គ្រប់គ្រងគណនី</h4>
-                        <p class="text-muted small">បង្កើត និងគ្រប់គ្រងសិទ្ធិអ្នកប្រើប្រាស់ក្នុងប្រព័ន្ធ។</p>
+                        <p class="text-muted small">គ្រប់គ្រងបុគ្គលិក និងសិទ្ធិអ្នកប្រើប្រាស់<br><i>Manage staff accounts and roles</i></p>
                     </div>
                 </div>
             </div>
@@ -82,17 +104,17 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // អានទិន្នន័យ User ពី sessionStorage (មិនប្រើ localStorage តាមការកំណត់)
+            // អានទិន្នន័យពី sessionStorage (មិនប្រើ localStorage តាមការកំណត់)
             const user = JSON.parse(sessionStorage.getItem('currentUser'));
             if (!user) {
                 window.location.href = 'login.html';
                 return;
             }
             
-            // បង្ហាញឈ្មោះ និងតួនាទី
-            document.getElementById('userDisplay').innerText = `${user.role}: ${user.full_name}`;
+            // បង្ហាញព័ត៌មាន User
+            document.getElementById('userDisplay').innerText = `តួនាទី / Role: ${user.role} (${user.full_name})`;
 
-            // ប្រសិនបើជា Admin អាចបង្ហាញ Menu ពិសេសបន្ថែម
+            // បង្ហាញ Menu គ្រប់គ្រងគណនី เฉพาะ Admin
             if (user.role === 'Admin') {
                 document.getElementById('adminMenu').style.display = 'block';
             }
