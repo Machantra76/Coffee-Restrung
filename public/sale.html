@@ -12,20 +12,15 @@
         .product-card { cursor: pointer; transition: all 0.2s ease; border: none; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         .product-card:hover { transform: translateY(-3px); box-shadow: 0 6px 12px rgba(0,0,0,0.1); background-color: #f8fafc; }
         
-        /* សម្រាប់ Computer និង iPad: កំណត់ឱ្យផ្ទាំងកន្រ្តកផ្នែកខាងស្តាំមានកម្ពស់ល្មម និង scroll បាន */
         @media (min-width: 992px) {
             .cart-container { height: calc(100vh - 90px); position: sticky; top: 15px; }
             .products-container { height: calc(100vh - 90px); overflow-y: auto; }
         }
-        /* សម្រាប់ Phone: កន្រ្តកនឹងនៅពីក្រោម ឬតាមលំដាប់ Responsive */
-        @media (max-width: 991.98px) {
-            .cart-container { margin-top: 20px; margin-bottom: 30px; }
-        }
-        .cart-items-box { max-height: 350px; overflow-y: auto; }
+        .cart-items-box { max-height: 250px; overflow-y: auto; }
     </style>
 </head>
 <body>
-    <!-- Navbar (Responsive for all screens) -->
+    <!-- Navbar -->
     <nav class="navbar navbar-dark bg-dark px-3 py-2 shadow-sm">
         <div class="container-fluid d-flex flex-wrap justify-content-between align-items-center">
             <span class="navbar-brand fw-bold fs-6 fs-md-5">
@@ -33,7 +28,7 @@
             </span>
             <div class="d-flex align-items-center gap-2 flex-wrap">
                 <span id="cashierDisplay" class="text-white small fw-bold bg-secondary px-3 py-1 rounded-pill"></span>
-                <a href="pos.html" class="btn btn-outline-light btn-sm"><i class="fa-solid fa-house me-1"></i> ម៉ឺនុយមេ</a>
+                <a href="pos.html" class="btn btn-outline-light btn-sm"><i class="fa-solid fa-house me-1"></i> ម៉ឺនុយមេ / Menu</a>
             </div>
         </div>
     </nav>
@@ -42,58 +37,109 @@
     <div class="container-fluid py-3 px-2 px-md-3">
         <div class="row g-3">
             
-            <!-- ខាងឆ្វេង៖ បញ្ជីផលិតផល (Products Grid) - Auto scale for Phone (col-12), iPad (col-md-7), PC (col-lg-8) -->
+            <!-- ខាងឆ្វេង៖ បញ្ជីផលិតផល -->
             <div class="col-12 col-md-7 col-lg-8 products-container">
-                <div class="mb-3">
-                    <h4 class="fw-bold text-dark fs-5 fs-md-4"><i class="fa-solid fa-boxes-stacked me-2"></i> មុខទំនិញ / Menu Items</h4>
-                    <p class="text-muted small">ចុចលើទំនិញដើម្បីបន្ថែមចូលកន្រ្តកគិតលុយ</p>
+                <div class="mb-3 d-flex justify-content-between align-items-center flex-wrap">
+                    <div>
+                        <h4 class="fw-bold text-dark fs-5 fs-md-4 mb-0"><i class="fa-solid fa-boxes-stacked me-2"></i> មុខទំនិញ / Menu Items</h4>
+                        <p class="text-muted small mb-0">ចុចលើទំនិញដើម្បីបន្ថែមចូលកន្រ្តក | Click item to add to cart</p>
+                    </div>
+                    <!-- អត្រាប្តូរប្រាក់ (Exchange Rate Display/Setting) -->
+                    <div class="bg-white px-3 py-1 rounded shadow-sm border small">
+                        <span class="fw-bold text-secondary">អត្រាប្តូរប្រាក់ / Rate:</span> 
+                        <span class="text-primary fw-bold">1$ = <input type="number" id="exchangeRate" value="4100" class="form-control form-control-sm d-inline-block text-center fw-bold text-primary p-0" style="width: 70px;" onchange="renderCart()"> Riel</span>
+                    </div>
                 </div>
                 <div class="row g-2 g-md-3" id="productsGrid">
                     <!-- Load dynamically -->
                 </div>
             </div>
 
-            <!-- ខាងស្តាំ៖ កន្រ្តកទំនិញ និងទូទាត់ប្រាក់ (Cart & Checkout) -->
+            <!-- ខាងស្តាំ៖ កន្រ្តក និងការគណនាប្រាក់ -->
             <div class="col-12 col-md-5 col-lg-4">
                 <div class="card shadow-sm border-0 rounded-4 p-3 cart-container bg-white d-flex flex-column justify-content-between">
                     <div>
-                        <h4 class="fw-bold text-dark mb-3 fs-5 fs-md-4"><i class="fa-solid fa-cart-shopping me-2"></i> កន្រ្តកវិក្កយបត្រ (Cart)</h4>
+                        <h4 class="fw-bold text-dark mb-2 fs-5 fs-md-4"><i class="fa-solid fa-cart-shopping me-2"></i> កន្រ្តកវិក្កយបត្រ / Cart</h4>
                         
-                        <!-- Cart Table / List -->
-                        <div class="cart-items-box border rounded p-2 mb-3 bg-light">
-                            <table class="table table-sm align-middle mb-0">
+                        <!-- Cart Table -->
+                        <div class="cart-items-box border rounded p-1 mb-2 bg-light">
+                            <table class="table table-sm align-middle mb-0" style="font-size: 0.9rem;">
                                 <thead class="table-light">
                                     <tr>
-                                        <th>មុខទំនិញ</th>
-                                        <th class="text-center">ចំនួន</th>
-                                        <th class="text-end">តម្លៃ</th>
-                                        <th class="text-end">សរុប</th>
+                                        <th>ទំនិញ / Item</th>
+                                        <th class="text-center">ចំនួន / Qty</th>
+                                        <th class="text-end">តម្លៃ / Price</th>
+                                        <th class="text-end">សរុប / Total</th>
                                         <th></th>
                                     </tr>
                                 </thead>
                                 <tbody id="cartTableBody">
-                                    <tr><td colspan="5" class="text-center text-muted py-3 small">មិនទាន់មានទំនិញក្នុងកន្រ្តក</td></tr>
+                                    <tr><td colspan="5" class="text-center text-muted py-3 small">មិនទាន់មានទំនិញ / Empty cart</td></tr>
                                 </tbody>
                             </table>
                         </div>
                     </div>
 
-                    <!-- Summary & Checkout Section -->
-                    <div class="border-top pt-3">
-                        <div class="d-flex justify-content-between mb-2">
-                            <span class="fw-bold text-muted small">ទឹកប្រាក់សរុប (Grand Total):</span>
-                            <span id="grandTotalDisplay" class="fw-bold fs-4 text-success">$0.00</span>
+                    <!-- Calculation & Checkout Section -->
+                    <div class="border-top pt-2">
+                        <!-- Subtotal -->
+                        <div class="d-flex justify-content-between small mb-1">
+                            <span class="text-muted">ទឹកប្រាក់រួម / Subtotal:</span>
+                            <span id="subTotalDisplay" class="fw-bold">$0.00</span>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label small fw-bold">ទម្រង់បង់ប្រាក់ (Payment Method):</label>
-                            <select class="form-select form-select-sm" id="paymentMethod">
-                                <option value="Cash">សាច់ប្រាក់ (Cash)</option>
-                                <option value="KHQR">វីង/បាគង (KHQR / ABA)</option>
-                                <option value="Credit Card">កាតធនាគារ (Credit Card)</option>
-                            </select>
+
+                        <!-- Discount -->
+                        <div class="d-flex justify-content-between align-items-center small mb-1">
+                            <span class="text-muted">បញ្ចុះតម្លៃ / Discount (%):</span>
+                            <input type="number" id="discountPercent" value="0" min="0" max="100" class="form-control form-control-sm text-end w-25" oninput="renderCart()">
                         </div>
+
+                        <!-- VAT -->
+                        <div class="d-flex justify-content-between align-items-center small mb-1">
+                            <span class="text-muted">អាករ VAT (10%):</span>
+                            <div class="form-check form-switch m-0">
+                                <input class="form-check-input" type="checkbox" id="vatToggle" onchange="renderCart()">
+                            </div>
+                        </div>
+
+                        <!-- Grand Total USD & Riel -->
+                        <div class="bg-light p-2 rounded mb-2 border">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="fw-bold text-dark small">ទឹកប្រាក់សរុប / Grand Total:</span>
+                                <div class="text-end">
+                                    <span id="grandTotalUSD" class="fw-bold fs-5 text-success">$0.00</span><br>
+                                    <span id="grandTotalRiel" class="text-muted small fw-bold">0 រៀល</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Payment Method -->
+                        <div class="row g-2 mb-2">
+                            <div class="col-6">
+                                <label class="form-label small fw-bold mb-1">ទម្រង់បង់ប្រាក់ / Pay:</label>
+                                <select class="form-select form-select-sm" id="paymentMethod">
+                                    <option value="Cash">សាច់ប្រាក់ (Cash)</option>
+                                    <option value="KHQR">វីង/បាគង (KHQR)</option>
+                                    <option value="Credit Card">កាត (Card)</option>
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small fw-bold mb-1">បានទទួលលុយ / Received ($):</label>
+                                <input type="number" id="amountReceived" class="form-control form-control-sm text-end fw-bold text-primary" placeholder="0.00" oninput="calculateChange()">
+                            </div>
+                        </div>
+
+                        <!-- Change Return -->
+                        <div class="bg-success-subtle p-2 rounded mb-2 d-flex justify-content-between align-items-center border border-success-subtle">
+                            <span class="fw-bold text-success small">ប្រាក់អាប់សងវិញ / Change:</span>
+                            <div class="text-end">
+                                <span id="changeUSD" class="fw-bold text-success">$0.00</span>
+                                <span id="changeRiel" class="text-success small fw-bold d-block">(0 រៀល)</span>
+                            </div>
+                        </div>
+
                         <button class="btn btn-success w-100 py-2 fw-bold fs-6 shadow-sm" onclick="checkout()">
-                            <i class="fa-solid fa-check-circle me-1"></i> បង់ប្រាក់ និងចេញវិក្កយបត្រ
+                            <i class="fa-solid fa-check-circle me-1"></i> បង់ប្រាក់ និងចេញវិក្កយបត្រ / Checkout
                         </button>
                     </div>
                 </div>
@@ -106,6 +152,7 @@
         let cart = [];
         let products = [];
         let currentUser = null;
+        let finalCalculatedTotal = 0;
 
         document.addEventListener('DOMContentLoaded', async () => {
             currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
@@ -184,15 +231,19 @@
             tbody.innerHTML = '';
 
             if (cart.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-3 small">មិនទាន់មានទំនិញក្នុងកន្រ្តក</td></tr>`;
-                document.getElementById('grandTotalDisplay').innerText = '$0.00';
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-3 small">មិនទាន់មានទំនិញ / Empty cart</td></tr>`;
+                document.getElementById('subTotalDisplay').innerText = '$0.00';
+                document.getElementById('grandTotalUSD').innerText = '$0.00';
+                document.getElementById('grandTotalRiel').innerText = '0 រៀល';
+                finalCalculatedTotal = 0;
+                calculateChange();
                 return;
             }
 
-            let grandTotal = 0;
+            let subTotal = 0;
             cart.forEach((item, index) => {
                 let totalItemPrice = item.price * item.quantity;
-                grandTotal += totalItemPrice;
+                subTotal += totalItemPrice;
 
                 tbody.innerHTML += `
                     <tr>
@@ -211,7 +262,25 @@
                 `;
             });
 
-            document.getElementById('grandTotalDisplay').innerText = `$${grandTotal.toFixed(2)}`;
+            // គណនា Discount
+            let discountPercent = parseFloat(document.getElementById('discountPercent').value) || 0;
+            let discountAmount = (subTotal * discountPercent) / 100;
+            let afterDiscount = subTotal - discountAmount;
+
+            // គណនា VAT (10%)
+            let isVatChecked = document.getElementById('vatToggle').checked;
+            let vatAmount = isVatChecked ? (afterDiscount * 0.10) : 0;
+
+            // Grand Total
+            finalCalculatedTotal = afterDiscount + vatAmount;
+            let exchangeRate = parseFloat(document.getElementById('exchangeRate').value) || 4100;
+            let totalRiel = Math.round(finalCalculatedTotal * exchangeRate);
+
+            document.getElementById('subTotalDisplay').innerText = `$${subTotal.toFixed(2)}`;
+            document.getElementById('grandTotalUSD').innerText = `$${finalCalculatedTotal.toFixed(2)}`;
+            document.getElementById('grandTotalRiel').innerText = `${totalRiel.toLocaleString()} រៀល`;
+
+            calculateChange();
         }
 
         function updateQty(index, change) {
@@ -227,18 +296,40 @@
             renderCart();
         }
 
+        // គណនាប្រាក់អាប់ (Change Return)
+        function calculateChange() {
+            let receivedUSD = parseFloat(document.getElementById('amountReceived').value) || 0;
+            let exchangeRate = parseFloat(document.getElementById('exchangeRate').value) || 4100;
+            
+            let changeUSD = receivedUSD - finalCalculatedTotal;
+            let changeRiel = Math.round(changeUSD * exchangeRate);
+
+            if (changeUSD >= 0) {
+                document.getElementById('changeUSD').innerText = `$${changeUSD.toFixed(2)}`;
+                document.getElementById('changeRiel').innerText = `(${changeRiel.toLocaleString()} រៀល)`;
+            } else {
+                document.getElementById('changeUSD').innerText = `$0.00`;
+                document.getElementById('changeRiel').innerText = `(ខ្វះលុយ / Insufficient)`;
+            }
+        }
+
         async function checkout() {
             if (cart.length === 0) {
-                alert('សូមជ្រើសរើសទំនិញយ៉ាងហោចណាស់មួយ!');
+                alert('សូមជ្រើសរើសទំនិញយ៉ាងហោចណាស់មួយ! / Please select at least one item!');
                 return;
             }
 
-            let grandTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            let receivedUSD = parseFloat(document.getElementById('amountReceived').value) || 0;
+            if (receivedUSD < finalCalculatedTotal) {
+                alert('ទឹកប្រាក់ទទួលបានមិនទាន់គ្រប់គ្រងតាមតម្លៃសរុបទេ! / Amount received is less than total!');
+                return;
+            }
+
             const paymentMethod = document.getElementById('paymentMethod').value;
 
             const orderData = {
                 cashier_id: currentUser.id,
-                total_amount: grandTotal,
+                total_amount: finalCalculatedTotal,
                 payment_method: paymentMethod
             };
 
@@ -251,15 +342,18 @@
                 const result = await res.json();
 
                 if (res.ok && result.success) {
-                    alert(`បង់ប្រាក់បានជោគជ័យ! លេខវិក្កយបត្រ #${result.order.id}`);
+                    alert(`បង់ប្រាក់បានជោគជ័យ! លេខវិក្កយបត្រ #${result.order.id} \nPayment Successful! Invoice #${result.order.id}`);
                     cart = [];
+                    document.getElementById('amountReceived').value = '';
+                    document.getElementById('discountPercent').value = '0';
+                    document.getElementById('vatToggle').checked = false;
                     renderCart();
                 } else {
                     alert('បរាជ័យក្នុងការទូទាត់ប្រាក់៖ ' + (result.error || 'Database error'));
                 }
             } catch (err) {
                 console.error('Checkout Error:', err);
-                alert('មានបញ្ហាក្នុងការតភ្ជាប់ទៅកាន់ Server!');
+                alert('មានបញ្ហាក្នុងការតភ្ជាប់ទៅកាន់ Server! / Connection error!');
             }
         }
     </script>
