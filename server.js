@@ -32,6 +32,15 @@ async function initDB() {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
 
+            CREATE TABLE IF NOT EXISTS products (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(150) NOT NULL,
+                price NUMERIC(10, 2) NOT NULL,
+                category VARCHAR(100) DEFAULT 'General',
+                image_url TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+
             CREATE TABLE IF NOT EXISTS orders (
                 id SERIAL PRIMARY KEY,
                 cashier_id INT REFERENCES users(id),
@@ -55,7 +64,7 @@ async function initDB() {
             ALTER TABLE orders ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'Pending';
         `);
 
-        console.log('✅ Database tables (users, orders, order_items) initialized successfully on Cloud!');
+        console.log('✅ Database tables initialized successfully on Cloud!');
     } catch (err) {
         console.error('❌ Database initialization error:', err);
     }
@@ -67,18 +76,9 @@ initDB();
 const userRoutes = require('./routes/users');
 app.use('/api/users', userRoutes);
 
-// API សម្រាប់ទាញយកបញ្ជី Cashier ទាំងអស់ (សម្រាប់ Admin ជ្រើសរើសមើល)
-app.get('/api/users/cashiers-list', async (req, res) => {
-    try {
-        const result = await pool.query("SELECT id, full_name, username FROM users WHERE role = 'Cashier' AND is_active = true");
-        res.json({ success: true, data: result.rows });
-    } catch (err) {
-        console.error('Get Cashiers Error:', err);
-        res.status(500).json({ success: false, error: 'Database error' });
-    }
-});
+// ================= PRODUCT APIs (CRUD) =================
 
-// API សម្រាប់ទាញយកបញ្ជីផលិតផល
+// ១. ទាញយកបញ្ជីផលិតផលទាំងអស់
 app.get('/api/products', async (req, res) => {
     try {
         const result = await pool.query('SELECT * FROM products ORDER BY id DESC');
@@ -89,15 +89,64 @@ app.get('/api/products', async (req, res) => {
     }
 });
 
-// API សម្រាប់បង្កើត Order និងរក្សាទុកមុខទំនិញនីមួយៗចូល order_items
+// ២. បន្ថែមផលិតផលថ្មី (សម្រាប់ Admin)
+app.post('/api/products', async (req, res) => {
+    const { name, price, category, image_url } = req.body;
+    if (!name || !price) {
+        return res.status(400).json({ success: false, error: 'Name and Price are required' });
+    }
+
+    try {
+        const result = await pool.query(
+            'INSERT INTO products (name, price, category, image_url) VALUES ($1, $2, $3, $4) RETURNING *',
+            [name, parseFloat(price), category || 'General', image_url || null]
+        );
+        res.status(201).json({ success: true, data: result.rows[0] });
+    } catch (err) {
+        console.error('Add Product Error:', err);
+        res.status(500).json({ success: false, error: 'Database error' });
+    }
+});
+
+// ៣. កែប្រែផលិតផល
+app.put('/api/products/:id', async (req, res) => {
+    const { id } = req.params;
+    const { name, price, category, image_url } = req.body;
+
+    try {
+        const result = await pool.query(
+            'UPDATE products SET name = $1, price = $2, category = $3, image_url = $4 WHERE id = $5 RETURNING *',
+            [name, parseFloat(price), category, image_url, id]
+        );
+        res.json({ success: true, data: result.rows[0] });
+    } catch (err) {
+        console.error('Update Product Error:', err);
+        res.status(500).json({ success: false, error: 'Database error' });
+    }
+});
+
+// ៤. លុបផលិតផល
+app.delete('/api/products/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        await pool.query('DELETE FROM products WHERE id = $1', [id]);
+        res.json({ success: true, message: 'Product deleted successfully' });
+    } catch (err) {
+        console.error('Delete Product Error:', err);
+        res.status(500).json({ success: false, error: 'Database error' });
+    }
+});
+
+// ================= ORDER APIs =================
+
+// API សម្រាប់បង្កើត Order និងកត់ត្រាចូល order_items
 app.post('/api/orders', async (req, res) => {
     const { cashier_id, total_amount, payment_method, items } = req.body;
     
     const client = await pool.connect();
     try {
-        await client.query('BEGIN'); // ចាប់ផ្តើម Transaction
+        await client.query('BEGIN');
 
-        // ១. បញ្ចូលទិន្នន័យចូលតារាង orders
         const orderQuery = `
             INSERT INTO orders (cashier_id, total_amount, payment_method, status, created_at) 
             VALUES ($1, $2, $3, 'Pending', CURRENT_TIMESTAMP) 
@@ -106,7 +155,6 @@ app.post('/api/orders', async (req, res) => {
         const orderResult = await client.query(orderQuery, [cashier_id, total_amount, payment_method || 'Cash']);
         const newOrderId = orderResult.rows[0].id;
 
-        // ២. បញ្ចូលមុខទំនិញនីមួយៗចូលតារាង order_items
         if (items && items.length > 0) {
             for (let item of items) {
                 const itemQuery = `
@@ -117,16 +165,16 @@ app.post('/api/orders', async (req, res) => {
             }
         }
 
-        await client.query('COMMIT'); // រក្សាទុកជាផ្លូវការ
+        await client.query('COMMIT');
         
         res.status(201).json({ 
             success: true, 
-            message: 'Order and items created successfully', 
+            message: 'Order created successfully', 
             order: orderResult.rows[0] 
         });
 
     } catch (err) {
-        await client.query('ROLLBACK'); // បើខុស គឺបោះបង់ចោលវិញ
+        await client.query('ROLLBACK');
         console.error('Create Order Error:', err);
         res.status(500).json({ success: false, error: 'Database error: ' + err.message });
     } finally {
@@ -134,33 +182,7 @@ app.post('/api/orders', async (req, res) => {
     }
 });
 
-// API សម្រាប់ទាញយករបាយការណ៍សកម្មភាពលក់របស់ Cashier ម្នាក់ៗ
-app.get('/api/orders/cashier-activity/:cashierId', async (req, res) => {
-    const { cashierId } = req.params;
-    try {
-        const ordersResult = await pool.query(
-            'SELECT id, total_amount, payment_method, created_at FROM orders WHERE cashier_id = $1 ORDER BY id DESC',
-            [cashierId]
-        );
-
-        const sumResult = await pool.query(
-            'SELECT COUNT(id) as total_bills, SUM(total_amount) as grand_total FROM orders WHERE cashier_id = $1',
-            [cashierId]
-        );
-
-        res.json({
-            success: true,
-            total_bills: sumResult.rows[0].total_bills || 0,
-            grand_total: sumResult.rows[0].grand_total || 0,
-            orders: ordersResult.rows
-        });
-    } catch (err) {
-        console.error('Cashier Activity Error:', err);
-        res.status(500).json({ success: false, error: 'Database error' });
-    }
-});
-
-// API សម្រាប់ទាញយក Order ដែលមិនទាន់ប្រគល់ជូន (Pending & Preparing) សម្រាប់ផ្ទះបាយ
+// API ទាញយក Order សម្រាប់ផ្ទះបាយ (Pending & Preparing)
 app.get('/api/orders/kitchen', async (req, res) => {
     try {
         const result = await pool.query(`
@@ -177,10 +199,10 @@ app.get('/api/orders/kitchen', async (req, res) => {
     }
 });
 
-// API សម្រាប់ប្តូរស្ថានភាព Order (Pending -> Preparing -> Completed)
+// API ប្តូរស្ថានភាព Order
 app.patch('/api/orders/:id/status', async (req, res) => {
     const { id } = req.params;
-    const { status } = req.body; // 'Preparing' ឬ 'Completed'
+    const { status } = req.body;
     try {
         await pool.query('UPDATE orders SET status = $1 WHERE id = $2', [status, id]);
         res.json({ success: true, message: 'Updated order status successfully' });
@@ -190,7 +212,7 @@ app.patch('/api/orders/:id/status', async (req, res) => {
     }
 });
 
-// Root Route - បង្ហាញទំព័រ Login មុនគេ
+// Root Route
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
