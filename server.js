@@ -93,6 +93,35 @@ app.get('/api/orders/cashier-activity/:cashierId', async (req, res) => {
         res.status(500).json({ success: false, error: 'Database error' });
     }
 });
+// API សម្រាប់ទាញយក Order ដែលមិនទាន់ប្រគល់ជូន (Pending & Preparing) សម្រាប់ផ្ទះបាយ
+app.get('/api/orders/kitchen', async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT o.id, o.total_amount, o.payment_method, o.status, o.created_at, u.full_name as cashier_name
+            FROM orders o
+            LEFT JOIN users u ON o.cashier_id = u.id
+            WHERE o.status IN ('Pending', 'Preparing') OR o.status IS NULL
+            ORDER BY o.id ASC
+        `);
+        res.json({ success: true, data: result.rows });
+    } catch (err) {
+        console.error('Kitchen Orders Error:', err);
+        res.status(500).json({ success: false, error: 'Database error' });
+    }
+});
+
+// API សម្រាប់ប្តូរស្ថានភាព Order (Pending -> Preparing -> Completed)
+app.patch('/api/orders/:id/status', async (req, res) => {
+    const { id } = req.params;
+    const { status } = req.body; // 'Preparing' ឬ 'Completed'
+    try {
+        await pool.query('UPDATE orders SET status = $1 WHERE id = $2', [status, id]);
+        res.json({ success: true, message: 'Updated order status successfully' });
+    } catch (err) {
+        console.error('Update Order Status Error:', err);
+        res.status(500).json({ success: false, error: 'Database error' });
+    }
+});
 
 // Root Route - បង្ហាញទំព័រ Login មុនគេ
 app.get('/', (req, res) => {
