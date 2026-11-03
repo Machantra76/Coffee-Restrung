@@ -26,11 +26,12 @@ async function initDB() {
             );
         `);
         
+        // ធានាថាមាន columns ទាំងពីរ និងទម្លាក់ NOT NULL constraint លើ password_hash ចោល
         await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS password VARCHAR(255);`);
         await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);`);
         await pool.query(`ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL;`).catch(() => {});
         
-        console.log('✅ Users table initialized & updated successfully!');
+        console.log('✅ Users table initialized successfully!');
     } catch (err) {
         console.error('❌ Error initializing database table:', err);
     }
@@ -53,9 +54,11 @@ app.get('/', (req, res) => {
 app.listen(PORT, () => {
     console.log(`🚀 Server is running on port ${PORT}`);
 });
-```[cite: 6]
+```[cite: 10]
 
-#### ២. កូដសម្រាប់ File **`routes/users.js`** (សុទ្ធ)
+---
+
+### ២. កូដសម្រាប់ File **`routes/users.js`**
 ```javascript
 const express = require('express');
 const router = express.Router();
@@ -75,6 +78,7 @@ router.post('/', async (req, res) => {
     const { username, password, full_name, role } = req.body;
     try {
         const userRole = role || 'Cashier';
+        // បញ្ចូលទាំង password និង password_hash ព្រមគ្នាដើម្បីការពារ Not-Null Constraint Error
         const query = `
             INSERT INTO users (username, password, password_hash, full_name, role) 
             VALUES ($1, $2, $2, $3, $4) RETURNING id, username, full_name, role
@@ -119,3 +123,4 @@ router.post('/login', async (req, res) => {
     }
 });
 
+module.exports = router;
