@@ -12,6 +12,30 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public')); // សម្រាប់អាន Folder public (pos.html)
 
+// 💡 មុខងារស្វ័យប្រវត្តិបង្កើត Table ក្នុង Database ពេល Server ចាប់ផ្ដើមដំណើរការ
+async function initDB() {
+    try {
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                username VARCHAR(100) UNIQUE NOT NULL,
+                password VARCHAR(255),
+                full_name VARCHAR(150) NOT NULL,
+                role VARCHAR(50) NOT NULL DEFAULT 'Cashier',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+        // ធានាថាមាន column password ស្រាប់ ទោះតារាងមានមុនក៏ដោយ
+        await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS password VARCHAR(255);`);
+        console.log('✅ Users table initialized successfully!');
+    } catch (err) {
+        console.error('❌ Error initializing database table:', err);
+    }
+}
+
+// ហៅ function បង្កើត Table
+initDB();
+
 // ២. ហៅ Routes មកដាក់ពីក្រោម app
 const productRoutes = require('./routes/productRoutes');
 const orderRoutes = require('./routes/orderRoutes');
