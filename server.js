@@ -87,6 +87,42 @@ app.get('/api/orders/cashier-activity/:cashierId', async (req, res) => {
         res.status(500).json({ success: false, error: 'Database error' });
     }
 });
+// API សម្រាប់ទាញយកបញ្ជី Cashier ទាំងអស់ (សម្រាប់ Admin ជ្រើសរើសមើល)
+app.get('/api/users/cashiers-list', async (req, res) => {
+    try {
+        const result = await pool.query("SELECT id, full_name, username FROM users WHERE role = 'Cashier' AND is_active = true");
+        res.json({ success: true, data: result.rows });
+    } catch (err) {
+        console.error('Get Cashiers Error:', err);
+        res.status(500).json({ success: false, error: 'Database error' });
+    }
+});
+
+// API សម្រាប់ទាញយករបាយការណ៍សកម្មភាពលក់តាម Cashier ID
+app.get('/api/orders/cashier-activity/:cashierId', async (req, res) => {
+    const { cashierId } = req.params;
+    try {
+        const ordersResult = await pool.query(
+            'SELECT id, total_amount, payment_method, created_at FROM orders WHERE cashier_id = $1 ORDER BY id DESC',
+            [cashierId]
+        );
+
+        const sumResult = await pool.query(
+            'SELECT COUNT(id) as total_bills, SUM(total_amount) as grand_total FROM orders WHERE cashier_id = $1',
+            [cashierId]
+        );
+
+        res.json({
+            success: true,
+            total_bills: sumResult.rows[0].total_bills || 0,
+            grand_total: sumResult.rows[0].grand_total || 0,
+            orders: ordersResult.rows
+        });
+    } catch (err) {
+        console.error('Cashier Activity Error:', err);
+        res.status(500).json({ success: false, error: 'Database error' });
+    }
+});
 
 // Root Route - បង្ហាញទំព័រ Login មុនគេ
 app.get('/', (req, res) => {
