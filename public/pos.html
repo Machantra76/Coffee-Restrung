@@ -87,7 +87,7 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link fw-semibold px-3 rounded text-white-50" href="inventory.html" id="menu-inventory" onclick="alert('ទំព័រគ្រប់គ្រងស្តុក កំពុងអភិវឌ្ឍន៍!')">
+                        <a class="nav-link fw-semibold px-3 rounded text-white-50" href="inventory.html" id="menu-inventory">
                             <i class="fa-solid fa-box-archive me-1"></i> គ្រប់គ្រងស្តុក
                         </a>
                     </li>
@@ -103,13 +103,16 @@
                     <div class="dropdown">
                         <button class="btn btn-outline-light dropdown-toggle d-flex align-items-center gap-2 px-3 py-1.5 rounded-pill" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="backdrop-filter: blur(8px); background: rgba(255,255,255,0.15);">
                             <i class="fa-solid fa-user-shield text-warning"></i>
-                            <span id="currentUsername" class="fw-bold">Loading...</span>
+                            <span id="currentUsername" class="fw-bold">Admin (សុខ សុភា)</span>
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2" id="userDropdownMenu">
-                            <li><h6 class="dropdown-header text-muted">គណនីបច្ចុប្បន្ន</h6></li>
-                            <li><a class="dropdown-item text-primary" href="#" data-bs-toggle="modal" data-bs-target="#addUserModal"><i class="fa-solid fa-user-plus me-2"></i> បង្កើត User ថ្មី</a></li>
+                            <li><h6 class="dropdown-header text-muted">ប្ដូរគណនី (Switch Role)</h6></li>
+                            <div id="userListContainer">
+                                <li><a class="dropdown-item" href="#" onclick="switchUser('Admin (សុខ សុភា)', 'Admin', 1)"><i class="fa-solid fa-user-tie me-2 text-primary"></i> Admin (សុខ សុភា)</a></li>
+                            </div>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item text-danger" href="#" onclick="logout()"><i class="fa-solid fa-right-from-bracket me-2"></i> ចាកចេញ (Logout)</a></li>
+                            <li><a class="dropdown-item text-primary" href="#" data-bs-toggle="modal" data-bs-target="#addUserModal"><i class="fa-solid fa-user-plus me-2"></i> បង្កើត User ថ្មី</a></li>
+                            <li><a class="dropdown-item text-danger" href="#" onclick="alert('ចាកចេញពីប្រព័ន្ធដោយសុវត្ថិភាព!')"><i class="fa-solid fa-right-from-bracket me-2"></i> ចាកចេញ (Logout)</a></li>
                         </ul>
                     </div>
                 </div>
@@ -204,6 +207,7 @@
                                 <option value="Admin">Admin (អ្នកគ្រប់គ្រង)</option>
                                 <option value="Cashier" selected>Cashier (អ្នកគិតលុយ)</option>
                                 <option value="Kitchen">Kitchen (ផ្នែកផ្ទះបាយ)</option>
+                                <option value="Stock">Stock (អ្នកគ្រប់គ្រងស្តុក)</option>
                             </select>
                         </div>
                     </div>
@@ -222,35 +226,46 @@
         let allProducts = [];
         let cart = [];
         let tables = [];
-        let currentUserId = null;
+        let currentUserId = 1;
 
         document.addEventListener('DOMContentLoaded', () => {
-            checkAuth();
             loadCategories();
             loadProducts();
             loadTables();
+            loadUsers();
         });
 
-        // មុខងារឆែកមើល Login Authentication
-        function checkAuth() {
-            const user = JSON.parse(localStorage.getItem('currentUser'));
-            if (!user) {
-                // ប្រសិនបើមិនទាន់ Login ទេ ឱ្យរុញទៅកាន់ login.html វិញ
-                window.location.href = 'login.html';
-                return;
-            }
+        // 0. ទាញយក Users ពី Database បង្ហាញក្នុង Dropdown
+        async function loadUsers() {
+            try {
+                const res = await fetch('/api/users');
+                const result = await res.json();
+                if (result.success && result.data.length > 0) {
+                    const container = document.getElementById('userListContainer');
+                    container.innerHTML = '';
+                    result.data.forEach(u => {
+                        let iconClass = 'fa-user-tie text-primary';
+                        if (u.role === 'Cashier') iconClass = 'fa-cash-register text-success';
+                        if (u.role === 'Kitchen') iconClass = 'fa-utensils text-warning';
+                        if (u.role === 'Stock') iconClass = 'fa-box-archive text-info'; // ⬅️ Icon សម្រាប់ Stock
 
-            // កំណត់តម្លៃ User ID និងបង្ហាញឈ្មោះលើ Header
-            currentUserId = user.id;
-            document.getElementById('currentUsername').innerText = `${user.role} (${user.full_name})`;
+                        container.innerHTML += `
+                            <li>
+                                <a class="dropdown-item" href="#" onclick="switchUser('${u.role} (${u.full_name})', '${u.role}', ${u.id})">
+                                    <i class="fa-solid ${iconClass} me-2"></i> ${u.role} (${u.full_name})
+                                </a>
+                            </li>
+                        `;
+                    });
+                }
+            } catch (err) { console.error(' Error loading users:', err); }
         }
 
-        // មុខងារ Logout
-        function logout() {
-            if (confirm('តើអ្នកពិតជាចង់ចាកចេញពីប្រព័ន្ធមែនទេ?')) {
-                localStorage.removeItem('currentUser');
-                window.location.href = 'login.html';
-            }
+        // ប្តូរ User ពេលចុច Menu Dropdown
+        function switchUser(userName, roleName, userId) {
+            currentUserId = userId;
+            document.getElementById('currentUsername').innerText = userName;
+            console.log(`Switched to user ID: ${userId} - ${userName} (${roleName})`);
         }
 
         // បង្កើត User ថ្មីតាម Form Modal
@@ -278,6 +293,9 @@
                     const modalElement = document.getElementById('addUserModal');
                     const modal = bootstrap.Modal.getInstance(modalElement);
                     if (modal) modal.hide();
+                    
+                    // ផ្ទុកបញ្ជី User ឡើងវិញ
+                    loadUsers();
                 } else {
                     alert('បរាជ័យ៖ ' + (result.error || 'មិនអាចបង្កើតបានទេ'));
                 }
