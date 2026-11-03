@@ -15,7 +15,7 @@ if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-// កំណត់កន្លែងរក្សាទុករូបភាពដែលបាន Upload
+// កំណត់កន្លែងរក្សាទុករូបភាពដែលได้ Upload
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         cb(null, uploadDir);
@@ -29,7 +29,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
-// តភ្ជាប់ជាមួយ Cloud Database (Neon PostgreSQL)
+// តភ្ជាប់ជាមួយ Cloud Database (Neon PostgreSQL)[cite: 6]
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: { rejectUnauthorized: false }
@@ -40,7 +40,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// មុខងារបង្កើតតារាង Database និង Column បន្ថែម
+// មុខងារបង្កើតតារាង Database និង Column បន្ថែមស្វ័យប្រវត្តិ[cite: 6]
 async function initDB() {
     try {
         await pool.query(`
@@ -82,10 +82,13 @@ async function initDB() {
             );
         `);
         
+        // ធានាថា Column ទាំងអស់ត្រូវបានបន្ថែម បើទោះបីជាតារាងត្រូវបានបង្កើតរួចហើយក៏ដោយ
         await pool.query(`
             ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
             ALTER TABLE orders ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'Pending';
             ALTER TABLE products ADD COLUMN IF NOT EXISTS barcode VARCHAR(100);
+            ALTER TABLE products ADD COLUMN IF NOT EXISTS category VARCHAR(100) DEFAULT 'General';
+            ALTER TABLE products ADD COLUMN IF NOT EXISTS image_url TEXT;
         `);
 
         console.log('✅ Database tables & columns initialized successfully!');
@@ -100,7 +103,7 @@ initDB();
 const userRoutes = require('./routes/users');
 app.use('/api/users', userRoutes);
 
-// ================= PRODUCT APIs (CRUD with Image Upload & Barcode) =================
+// ================= PRODUCT APIs (CRUD with Image Upload & Barcode)[cite: 6] =================
 
 // ១. ទាញយកបញ្ជីផលិតផលទាំងអស់
 app.get('/api/products', async (req, res) => {
@@ -113,7 +116,7 @@ app.get('/api/products', async (req, res) => {
     }
 });
 
-// ២. បន្ថែមផលិតផលថ្មី ( Upload រូបភាព និង បារកូដ )
+// ២. បន្ថែមផលិតផលថ្មី ( Upload រូបភាព និង បារកូដ )[cite: 6]
 app.post('/api/products', (req, res) => {
     upload.single('image_file')(req, res, async (err) => {
         if (err) {
@@ -145,7 +148,7 @@ app.post('/api/products', (req, res) => {
     });
 });
 
-// ៣. កែប្រែផលិតផល
+// ៣. កែប្រែផលិតផល[cite: 6]
 app.put('/api/products/:id', (req, res) => {
     upload.single('image_file')(req, res, async (err) => {
         if (err) {
@@ -174,7 +177,7 @@ app.put('/api/products/:id', (req, res) => {
     });
 });
 
-// ៤. លុបផលិតផល
+// ៤. លុបផលិតផល[cite: 6]
 app.delete('/api/products/:id', async (req, res) => {
     const { id } = req.params;
     try {
@@ -186,7 +189,7 @@ app.delete('/api/products/:id', async (req, res) => {
     }
 });
 
-// ================= ORDER APIs =================
+// ================= ORDER APIs[cite: 6] =================
 app.post('/api/orders', async (req, res) => {
     const { cashier_id, total_amount, payment_method, items } = req.body;
     
