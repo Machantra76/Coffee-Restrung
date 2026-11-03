@@ -190,13 +190,19 @@
                     }
 
                     products.forEach(p => {
+                        // បង្កើត Tag រូបភាព Auto-size ស្អាតនៅលើកាតទំនិញ
+                        const imgTag = p.image_url 
+                            ? `<img src="${p.image_url}" class="card-img-top" style="height: 120px; object-fit: cover;" onerror="this.src='https://via.placeholder.com/150?text=No+Img'">`
+                            : `<div class="bg-light d-flex align-items-center justify-content-center text-secondary" style="height: 120px;"><i class="fa-solid fa-image fs-2"></i></div>`;
+
                         grid.innerHTML += `
                             <div class="col-6 col-sm-4 col-md-6 col-lg-4">
-                                <div class="card product-card p-2 p-md-3 h-100 bg-white" onclick="addToCart(${p.id})">
-                                    <div class="card-body text-center p-1 p-md-2">
-                                        <h5 class="fw-bold text-dark fs-6 fs-md-5 mb-1">${p.name}</h5>
-                                        <p class="text-success fw-bold mb-0 fs-6">$${Number(p.price).toFixed(2)}</p>
-                                        <span class="badge bg-light text-secondary mt-1 small">${p.category || 'General'}</span>
+                                <div class="card product-card h-100 bg-white overflow-hidden shadow-sm" onclick="addToCart(${p.id})">
+                                    ${imgTag}
+                                    <div class="card-body text-center p-2">
+                                        <h5 class="fw-bold text-dark fs-6 mb-1 text-truncate">${p.name}</h5>
+                                        <p class="text-success fw-bold mb-1 fs-6">$${Number(p.price).toFixed(2)}</p>
+                                        <span class="badge bg-light text-secondary border small">${p.category || 'General'}</span>
                                     </div>
                                 </div>
                             </div>
@@ -323,7 +329,6 @@
 
             const paymentMethod = document.getElementById('paymentMethod').value;
 
-            // បញ្ជូនទំនិញក្នុងកន្រ្តក (items) ទៅកាន់ Server ដើម្បីកត់ត្រាចូល order_items
             const orderData = {
                 cashier_id: currentUser.id,
                 total_amount: finalCalculatedTotal,
