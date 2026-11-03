@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
+const path = require('path');
 const pool = require('./config/db');
 
 // ១. ប្រកាស app ឱ្យបានមុនគេបង្អស់
@@ -10,7 +11,7 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static('public')); // សម្រាប់អាន Folder public (pos.html)
+app.use(express.static('public')); // សម្រាប់អាន Folder public (pos.html, login.html)
 
 // 💡 មុខងារស្វ័យប្រវត្តិបង្កើត Table ក្នុង Database ពេល Server ចាប់ផ្ដើមដំណើរការ
 async function initDB() {
@@ -45,9 +46,9 @@ app.use('/api', productRoutes);
 app.use('/api', orderRoutes);
 app.use('/api/users', userRoutes); // ⬅️ កំណត់ Endpoint សម្រាប់ Users (/api/users)
 
-// Test Route
+// Root Route - បង្ហាញទំព័រ login.html មុនគេបង្អស់ពេលចូល Website
 app.get('/', (req, res) => {
-    res.json({ success: true, message: 'Café & Restaurant POS API is running smoothly!' });
+    res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
 // Start Server
