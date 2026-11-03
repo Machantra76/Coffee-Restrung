@@ -58,6 +58,36 @@ initDB();
 const userRoutes = require('./routes/users');
 app.use('/api/users', userRoutes);
 
+// ==========================================
+// API សម្រាប់ទាញយករបាយការណ៍សកម្មភាពលក់របស់ Cashier ម្នាក់ៗ
+// ==========================================
+app.get('/api/orders/cashier-activity/:cashierId', async (req, res) => {
+    const { cashierId } = req.params;
+    try {
+        // 1. ទាញយកបញ្ជីវិក្កយបត្រដែល Cashier នេះបានលក់
+        const ordersResult = await pool.query(
+            'SELECT id, total_amount, payment_method, created_at FROM orders WHERE cashier_id = $1 ORDER BY id DESC',
+            [cashierId]
+        );
+
+        // 2. គណនាសរុបទឹកប្រាក់ដែលលក់បានទាំងអស់
+        const sumResult = await pool.query(
+            'SELECT COUNT(id) as total_bills, SUM(total_amount) as grand_total FROM orders WHERE cashier_id = $1',
+            [cashierId]
+        );
+
+        res.json({
+            success: true,
+            total_bills: sumResult.rows[0].total_bills || 0,
+            grand_total: sumResult.rows[0].grand_total || 0,
+            orders: ordersResult.rows
+        });
+    } catch (err) {
+        console.error('Cashier Activity Error:', err);
+        res.status(500).json({ success: false, error: 'Database error' });
+    }
+});
+
 // Root Route - បង្ហាញទំព័រ Login មុនគេ
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'login.html'));
