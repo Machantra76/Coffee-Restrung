@@ -7,10 +7,10 @@ const pool = new Pool({
     ssl: { rejectUnauthorized: false }
 });
 
-// ១. ទាញយកបញ្ជី User ទាំងអស់ពី Cloud Database
+// ១. ទាញយកបញ្ជី User ទាំងអស់ (រួមទាំង status active/is_active)
 router.get('/', async (req, res) => {
     try {
-        const result = await pool.query('SELECT id, username, full_name, role, created_at FROM users ORDER BY id DESC');
+        const result = await pool.query('SELECT id, username, full_name, role, is_active, created_at FROM users ORDER BY id DESC');
         res.json({ success: true, data: result.rows });
     } catch (err) {
         console.error('Get Users Error:', err);
@@ -18,14 +18,14 @@ router.get('/', async (req, res) => {
     }
 });
 
-// ២. បង្កើត User ថ្មីចូល Cloud Database
+// ២. បង្កើត User ថ្មី (កំណត់ is_active = true ស្រាប់)
 router.post('/', async (req, res) => {
     const { username, password, full_name, role } = req.body;
     try {
         const userRole = role || 'Cashier';
         const query = `
-            INSERT INTO users (username, password, full_name, role) 
-            VALUES ($1, $2, $3, $4) RETURNING id, username, full_name, role
+            INSERT INTO users (username, password, full_name, role, is_active) 
+            VALUES ($1, $2, $3, $4, true) RETURNING id, username, full_name, role, is_active
         `;
         const values = [username, password, full_name, userRole];
         const result = await pool.query(query, values);
@@ -37,7 +37,20 @@ router.post('/', async (req, res) => {
     }
 });
 
-// ៣. API សម្រាប់ផ្ទៀងផ្ទាត់ការ Login
+// ៣. ផ្លាស់ប្តូរស្ថានភាព Active / UnActive របស់ User
+router.patch('/:id/status', async (req, res) => {
+    const { id } = req.params;
+    const { is_active } = req.body;
+    try {
+        await pool.query('UPDATE users SET is_active = $1 WHERE id = $2', [is_active, id]);
+        res.json({ success: true, message: 'Updated user status successfully' });
+    } catch (err) {
+        console.error('Update Status Error:', err);
+        res.status(500).json({ success: false, error: 'Database error' });
+    }
+});
+
+// ៤. ផ្ទៀងផ្ទាត់ការ Login (ពិនិត្យមើលថាតើ Account ត្រូវបាន Active ឬអត់)
 router.post('/login', async (req, res) => {
     const { username, password } = req.body;
     try {
@@ -48,6 +61,12 @@ router.post('/login', async (req, res) => {
         }
 
         const user = result.rows[0];
+        
+        // ពិនិត្យមើលស្ថានភាព Account Active ឬអត់
+        if (user.is_active === false) {
+            return res.status(403).json({ success: false, error: 'គណនីនេះត្រូវបានផ្អាកដំណើរការ (UnActive)!' });
+        }
+
         if (user.password !== password) {
             return res.status(400).json({ success: false, error: 'ពាក្យសម្ងាត់ (Password) មិនត្រឹមត្រូវទេ!' });
         }
@@ -63,7 +82,7 @@ router.post('/login', async (req, res) => {
         });
     } catch (err) {
         console.error('Login Error:', err);
-        res.status(500).json({ success: false, error: 'មានបញ្ហាក្នុងការផ្ទៀងផ្ទាត់ Login' });
+        res.status(500).json({ success: false, error: 'មានបញ្ហាក្នុងการផ្ទៀងផ្ទាត់ Login' });
     }
 });
 
