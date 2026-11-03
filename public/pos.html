@@ -16,62 +16,11 @@
             background-color: #f8fafc;
             color: #334155;
         }
-        
-        /* 🎨 Banner Header រចនាប័ទ្មថ្មី ដេញពណ៌បែប Luxury Gradient & Diamond Glow Effect */
-        .pos-header {
-            background: linear-gradient(135deg, #1e1b4b 0%, #311b92 40%, #4a148c 70%, #1e293b 100%);
-            color: #ffffff;
-            padding: 16px 28px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
-            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
-            position: relative;
-            overflow: hidden;
-        }
 
-        /* Effect ពន្លឺភ្លឺផ្លេកបែបគ្រាប់ពេជ្រ */
-        .pos-header::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(255, 215, 0, 0.15) 0%, rgba(255, 255, 255, 0) 60%);
-            transform: rotate(30deg);
-            pointer-events: none;
-        }
-
-        .pos-header h4 {
-            font-weight: 700;
-            letter-spacing: 0.5px;
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            z-index: 1;
-        }
-
-        /* ស្ទីល User Badge បែប Glassmorphism */
-        .user-badge {
-            background: rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(8px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            color: #ffffff;
-            padding: 8px 18px;
-            border-radius: 30px;
-            font-weight: 600;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
-            transition: all 0.3s ease;
-            z-index: 1;
-            display: inline-block;
-        }
-
-        .user-badge:hover {
-            background: rgba(255, 255, 255, 0.25);
-            transform: translateY(-1px);
+        /* 🎨 Main Navbar & Header Style */
+        .main-navbar {
+            background: linear-gradient(135deg, #1e1b4b 0%, #311b92 50%, #4a148c 100%) !important;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
         }
 
         .product-card {
@@ -114,18 +63,61 @@
 </head>
 <body>
 
-    <!-- Header ថ្មីបែប Premium Gradient & Diamond Glow -->
-    <div class="pos-header">
-        <h4 class="m-0">
-            <i class="fa-solid fa-mug-hot text-warning fs-3"></i> 
-            <span>ហាងកាហ្វេ និងភោជនីយដ្ឋាន POS</span>
-        </h4>
-        <div>
-            <span class="user-badge">
-                <i class="fa-solid fa-gem text-warning me-1"></i> Cashier: Admin
-            </span>
+    <!-- Main Menu Navbar / Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark main-navbar px-4 py-2 sticky-top">
+        <div class="container-fluid p-0">
+            <a class="navbar-brand fw-bold text-warning d-flex align-items-center gap-2" href="pos.html">
+                <i class="fa-solid fa-mug-hot fs-3"></i> 
+                <span>ហាងកាហ្វេ និងភោជនីយដ្ឋាន POS</span>
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse justify-content-between" id="navbarNav">
+                <!-- Main Menu Links សម្រាប់បើកទំព័រតៗគ្នា -->
+                <ul class="navbar-nav mx-auto gap-2 my-2 my-lg-0">
+                    <li class="nav-item">
+                        <a class="nav-link fw-semibold px-3 rounded text-white bg-white bg-opacity-20 active" href="pos.html" id="menu-pos">
+                            <i class="fa-solid fa-cash-register me-1 text-warning"></i> POS លក់ទំនិញ
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link fw-semibold px-3 rounded text-white-50" href="kitchen.html" id="menu-kitchen" onclick="alert('ទំព័រផ្ទះបាយ (Kitchen) កំពុងអភិវឌ្ឍន៍!')">
+                            <i class="fa-solid fa-bowl-food me-1"></i> ផ្ទះបាយ (Kitchen)
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link fw-semibold px-3 rounded text-white-50" href="inventory.html" id="menu-inventory" onclick="alert('ទំព័រគ្រប់គ្រងស្តុក កំពុងអភិវឌ្ឍន៍!')">
+                            <i class="fa-solid fa-box-archive me-1"></i> គ្រប់គ្រងស្តុក
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link fw-semibold px-3 rounded text-white-50" href="reports.html" id="menu-reports" onclick="alert('ទំព័ររបាយការណ៍ កំពុងអភិវឌ្ឍន៍!')">
+                            <i class="fa-solid fa-chart-line me-1"></i> របាយការណ៍
+                        </a>
+                    </li>
+                </ul>
+
+                <!-- User Profile & Switch Roles -->
+                <div class="d-flex align-items-center gap-3">
+                    <div class="dropdown">
+                        <button class="btn btn-outline-light dropdown-toggle d-flex align-items-center gap-2 px-3 py-1.5 rounded-pill" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="backdrop-filter: blur(8px); background: rgba(255,255,255,0.15);">
+                            <i class="fa-solid fa-user-shield text-warning"></i>
+                            <span id="currentUsername" class="fw-bold">Admin (សុខ សុភា)</span>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2">
+                            <li><h6 class="dropdown-header text-muted">ប្ដូរគណនី (Switch Role)</h6></li>
+                            <li><a class="dropdown-item" href="#" onclick="switchUser('Admin (សុខ សុភា)', 'Admin')"><i class="fa-solid fa-user-tie me-2 text-primary"></i> Admin (ពេញសិទ្ធិ)</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="switchUser('Cashier (ចន្ថា)', 'Cashier')"><i class="fa-solid fa-cash-register me-2 text-success"></i> Cashier (អ្នកគិតលុយ)</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="switchUser('Staff (បូរី)', 'Kitchen')"><i class="fa-solid fa-utensils me-2 text-warning"></i> Kitchen (ផ្ទះបាយ)</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger" href="#" onclick="alert('ចាកចេញពីប្រព័ន្ធដោយសុវត្ថិភាព!')"><i class="fa-solid fa-right-from-bracket me-2"></i> ចាកចេញ (Logout)</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
         </div>
-    </div>
+    </nav>
 
     <div class="container-fluid">
         <div class="row">
@@ -199,7 +191,13 @@
             loadTables();
         });
 
-        // 1. ទាញយក Categories
+        // ប្តូរ User ពេលចុច Menu Dropdown
+        function switchUser(userName, roleName) {
+            document.getElementById('currentUsername').innerText = userName;
+            console.log(`Switched to user: ${userName} (${roleName})`);
+        }
+
+        // 1. ទាញយក Categories ពី API
         async function loadCategories() {
             try {
                 const res = await fetch('/api/categories');
@@ -213,7 +211,7 @@
             } catch (err) { console.error(err); }
         }
 
-        // 2. ទាញយក Products
+        // 2. ទាញយក Products ពី API
         async function loadProducts(categoryId = 'all') {
             try {
                 let url = '/api/products';
@@ -254,7 +252,7 @@
             loadProducts(catId);
         }
 
-        // 3. ទាញយក Tables
+        // 3. ទាញយក Tables ពី API
         async function loadTables() {
             try {
                 const res = await fetch('/api/tables');
@@ -317,7 +315,7 @@
             renderCart();
         }
 
-        // 5. Submit Order
+        // 5. Submit Order ទៅ API
         async function submitOrder() {
             const tableId = document.getElementById('tableSelect').value;
             if (!tableId) {
@@ -358,7 +356,7 @@
                 }
             } catch (err) {
                 console.error(err);
-                alert('មានបញ្ហាក្នុងการតភ្ជាប់ទៅកាន់ Server!');
+                alert('មានបញ្ហាក្នុងការតភ្ជាប់ទៅកាន់ Server!');
             }
         }
     </script>
