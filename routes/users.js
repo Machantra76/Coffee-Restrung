@@ -7,7 +7,7 @@ const pool = new Pool({
     ssl: { rejectUnauthorized: false }
 });
 
-// ១. ទាញយកបញ្ជី User ទាំងអស់ (រួមទាំង status active/is_active)
+// ១. ទាញយកបញ្ជី User ទាំងអស់
 router.get('/', async (req, res) => {
     try {
         const result = await pool.query('SELECT id, username, full_name, role, is_active, created_at FROM users ORDER BY id DESC');
@@ -18,7 +18,7 @@ router.get('/', async (req, res) => {
     }
 });
 
-// ២. បង្កើត User ថ្មី (កំណត់ is_active = true ស្រាប់)
+// ២. បង្កើត User ថ្មី
 router.post('/', async (req, res) => {
     const { username, password, full_name, role } = req.body;
     try {
@@ -50,7 +50,7 @@ router.patch('/:id/status', async (req, res) => {
     }
 });
 
-// ៤. ផ្ទៀងផ្ទាត់ការ Login (ពិនិត្យមើលថាតើ Account ត្រូវបាន Active ឬអត់)
+// ៤. ផ្ទៀងផ្ទាត់ការ Login
 router.post('/login', async (req, res) => {
     const { username, password } = req.body;
     try {
@@ -62,7 +62,6 @@ router.post('/login', async (req, res) => {
 
         const user = result.rows[0];
         
-        // ពិនិត្យមើលស្ថានភាព Account Active ឬអត់
         if (user.is_active === false) {
             return res.status(403).json({ success: false, error: 'គណនីនេះត្រូវបានផ្អាកដំណើរការ (UnActive)!' });
         }
@@ -82,7 +81,7 @@ router.post('/login', async (req, res) => {
         });
     } catch (err) {
         console.error('Login Error:', err);
-        res.status(500).json({ success: false, error: 'មានបញ្ហាក្នុងการផ្ទៀងផ្ទាត់ Login' });
+        res.status(500).json({ success: false, error: 'មានបញ្ហាក្នុងការផ្ទៀងផ្ទាត់ Login' });
     }
 });
 
