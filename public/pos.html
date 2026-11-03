@@ -51,13 +51,13 @@
                 </div>
             </div>
 
-            <!-- 2. Cashier Activity (Cashier Only) -->
+            <!-- 2. Cashier & Admin Activity Monitoring -->
             <div class="col-12 col-sm-6 col-lg-4" id="cashierActivityMenu" style="display: none;">
                 <div class="card menu-card p-3 p-md-4 text-center bg-white" style="cursor: pointer;" onclick="location.href='cashier-activity.html'">
                     <div class="card-body">
                         <i class="fa-solid fa-chart-pie text-success card-icon"></i>
-                        <h4 class="fw-bold text-dark fs-5 fs-md-4">សកម្មភាពលក់របស់ខ្ញុំ</h4>
-                        <p class="text-muted small">ពិនិត្យទឹកប្រាក់ និងវិក្កយបត្រប្រចាំវេន<br><i>View my sales & shift stats</i></p>
+                        <h4 class="fw-bold text-dark fs-5 fs-md-4" id="activityTitle">សកម្មភាពលក់របស់ខ្ញុំ</h4>
+                        <p class="text-muted small" id="activityDesc">ពិនិត្យទឹកប្រាក់ និងវិក្កយបត្រប្រចាំវេន<br><i>View sales & shift stats</i></p>
                     </div>
                 </div>
             </div>
@@ -156,6 +156,12 @@
             // បង្ហាញ Menu តាម Role នីមួយៗ
             if (user.role === 'Admin') {
                 document.getElementById('adminMenu').style.display = 'block';
+                
+                // ឱ្យ Admin ឃើញប៊ូតុងសកម្មភាពលក់ និងដូរអត្ថបទឱ្យត្រូវជាមួយ Admin
+                const activityMenu = document.getElementById('cashierActivityMenu');
+                activityMenu.style.display = 'block';
+                document.getElementById('activityTitle').innerText = "ត្រួតពិនិត្យការលក់ Cashier";
+                document.getElementById('activityDesc').innerHTML = "ពិនិត្យមើលទឹកប្រាក់ និងវិក្កយបត្របុគ្គលិក<br><i>Monitor cashier sales activity</i>";
             }
             if (user.role === 'Cashier') {
                 document.getElementById('cashierActivityMenu').style.display = 'block';
