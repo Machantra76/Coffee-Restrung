@@ -18,7 +18,7 @@ router.post('/', async (req, res) => {
     const { username, password, full_name, role } = req.body;
     try {
         const query = `
-            INSERT INTO users (username, password, full_name, role) 
+            INSERT INTO users (username, password_hash, full_name, role) 
             VALUES ($1, $2, $3, $4) RETURNING id, username, full_name, role
         `;
         const values = [username, password, full_name, role || 'Cashier'];
