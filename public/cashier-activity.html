@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>សកម្មភាពការលក់ប្រចាំវេន | Cashier Activity</title>
+    <title>សកម្មភាពលក់ | Sales Activity Monitoring</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;600&display=swap" rel="stylesheet">
@@ -14,7 +14,7 @@
 </head>
 <body>
     <nav class="navbar navbar-dark bg-dark px-4 py-3 shadow-sm">
-        <span class="navbar-brand fw-bold fs-4"><i class="fa-solid fa-chart-line me-2"></i> សកម្មភាពលក់របស់ខ្ញុំ | My Sales Activity</span>
+        <span class="navbar-brand fw-bold fs-4"><i class="fa-solid fa-chart-line me-2"></i> សកម្មភាពលក់ប្រចាំវេន | Sales Activity</span>
         <div>
             <a href="pos.html" class="btn btn-outline-light btn-sm me-2"><i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ក្រោយ / Back</a>
             <button class="btn btn-danger btn-sm px-3 fw-bold" onclick="logout()"><i class="fa-solid fa-right-from-bracket me-1"></i> ចាកចេញ</button>
@@ -22,6 +22,18 @@
     </nav>
 
     <div class="container py-5">
+        <!-- សម្រាប់ Admin ជ្រើសរើសមើល Cashier ណាមួយ -->
+        <div class="row mb-4" id="adminSelectContainer" style="display: none;">
+            <div class="col-md-6">
+                <div class="card p-3 bg-white">
+                    <label class="form-label fw-bold text-primary"><i class="fa-solid fa-user-tie me-1"></i> ជ្រើសរើសអ្នកគិតលុយ (Select Cashier):</label>
+                    <select class="form-select" id="cashierSelect" onchange="onCashierChange()">
+                        <!-- Load dynamically -->
+                    </select>
+                </div>
+            </div>
+        </div>
+
         <!-- Summary Cards -->
         <div class="row g-4 mb-4">
             <div class="col-md-6">
@@ -40,7 +52,7 @@
 
         <!-- Detailed Orders Table -->
         <div class="card p-4 bg-white">
-            <h4 class="fw-bold mb-3 text-dark"><i class="fa-solid fa-list-check me-2"></i> ប្រវត្តិវិក្កយបត្រក្នុងវេននេះ</h4>
+            <h4 class="fw-bold mb-3 text-dark"><i class="fa-solid fa-list-check me-2"></i> ប្រវត្តិវិក្កយបត្រ</h4>
             <div class="table-responsive">
                 <table class="table table-hover align-middle">
                     <thead class="table-dark">
@@ -60,15 +72,53 @@
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const user = JSON.parse(sessionStorage.getItem('currentUser'));
-            if (!user) {
+        let currentUser = null;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
+            if (!currentUser) {
                 window.location.href = 'login.html';
                 return;
             }
-            loadCashierActivity(user.id);
+
+            if (currentUser.role === 'Admin') {
+                // ប្រសិនបើជា Admin ត្រូវបង្ហាញ Dropdown ជ្រើសរើស Cashier
+                document.getElementById('adminSelectContainer').style.display = 'flex';
+                await loadCashiersList();
+            } else {
+                // ប្រសិនបើជា Cashier គឺទាញយកទិន្នន័យរបស់ខ្លួនឯងផ្ទាល់
+                loadCashierActivity(currentUser.id);
+            }
         });
 
+        // មុខងារទាញយកបញ្ជី Cashier ទាំងអស់សម្រាប់ Admin
+        async function loadCashiersList() {
+            try {
+                const res = await fetch('/api/users/cashiers-list');
+                const result = await res.json();
+                if (result.success && result.data.length > 0) {
+                    const select = document.getElementById('cashierSelect');
+                    select.innerHTML = '';
+                    result.data.forEach(c => {
+                        select.innerHTML += `<option value="${c.id}">${c.full_name} (${c.username})</option>`;
+                    });
+                    // Load ទិន្នន័យរបស់ Cashier ទីមួយមុនគេ
+                    loadCashierActivity(result.data[0].id);
+                } else {
+                    document.getElementById('activityTableBody').innerHTML = `<tr><td colspan="4" class="text-center text-muted">មិនទាន់មានគណនី Cashier ដែលActive ទេ។</td></tr>`;
+                }
+            } catch (err) {
+                console.error('Error loading cashiers list:', err);
+            }
+        }
+
+        // ពេល Admin ប្តូរឈ្មោះ Cashier ក្នុង Dropdown
+        function onCashierChange() {
+            const cashierId = document.getElementById('cashierSelect').value;
+            loadCashierActivity(cashierId);
+        }
+
+        // មុខងារទាញយកសកម្មភាពលក់តាម Cashier ID
         async function loadCashierActivity(cashierId) {
             try {
                 const res = await fetch(`/api/orders/cashier-activity/${cashierId}`);
@@ -80,11 +130,11 @@
                     const tbody = document.getElementById('activityTableBody');
                     tbody.innerHTML = '';
                     if (result.orders.length === 0) {
-                        tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">មិនទាប់មានកំណត់ត្រាការលក់ក្នុងវេននេះទេ។</td></tr>`;
+                        tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">មិនទាន់មានកំណត់ត្រាការលក់សម្រាប់ Cashier នេះទេ។</td></tr>`;
                         return;
                     }
 
-                    result.orders.forEach((o, index) => {
+                    result.orders.forEach((o) => {
                         tbody.innerHTML += `
                             <tr>
                                 <td>#${o.id}</td>
@@ -95,7 +145,8 @@
                         `;
                     });
                 }
-            } catch (err) {
+            }
+            catch (err) {
                 console.error('Error loading cashier activity:', err);
             }
         }
