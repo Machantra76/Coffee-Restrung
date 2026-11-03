@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>សកម្មភាពការលក់ប្រចាំវេន | Cashier Activity</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Kantumruy Pro', sans-serif; background-color: #f1f5f9; }
+        .card { border: none; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-dark px-4 py-3 shadow-sm">
+        <span class="navbar-brand fw-bold fs-4"><i class="fa-solid fa-chart-line me-2"></i> សកម្មភាពលក់របស់ខ្ញុំ | My Sales Activity</span>
+        <div>
+            <a href="pos.html" class="btn btn-outline-light btn-sm me-2"><i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ក្រោយ / Back</a>
+            <button class="btn btn-danger btn-sm px-3 fw-bold" onclick="logout()"><i class="fa-solid fa-right-from-bracket me-1"></i> ចាកចេញ</button>
+        </div>
+    </nav>
+
+    <div class="container py-5">
+        <!-- Summary Cards -->
+        <div class="row g-4 mb-4">
+            <div class="col-md-6">
+                <div class="card p-4 bg-primary text-white">
+                    <h5><i class="fa-solid fa-receipt me-2"></i> ចំនួនវិក្កយបត្រសរុប (Total Bills)</h5>
+                    <h2 id="totalBills" class="fw-bold display-6">0</h2>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card p-4 bg-success text-white">
+                    <h5><i class="fa-solid fa-dollar-sign me-2"></i> ទឹកប្រាក់លក់បានសរុប (Total Sales Amount)</h5>
+                    <h2 id="grandTotal" class="fw-bold display-6">$0.00</h2>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detailed Orders Table -->
+        <div class="card p-4 bg-white">
+            <h4 class="fw-bold mb-3 text-dark"><i class="fa-solid fa-list-check me-2"></i> ប្រវត្តិវិក្កយបត្រក្នុងវេននេះ</h4>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>#ID</th>
+                            <th>ទឹកប្រាក់ (Amount)</th>
+                            <th>ទម្រង់បង់ប្រាក់ (Payment)</th>
+                            <th>ម៉ោងលក់ (Time)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="activityTableBody">
+                        <!-- Load dynamically -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const user = JSON.parse(sessionStorage.getItem('currentUser'));
+            if (!user) {
+                window.location.href = 'login.html';
+                return;
+            }
+            loadCashierActivity(user.id);
+        });
+
+        async function loadCashierActivity(cashierId) {
+            try {
+                const res = await fetch(`/api/orders/cashier-activity/${cashierId}`);
+                const result = await res.json();
+                if (result.success) {
+                    document.getElementById('totalBills').innerText = result.total_bills;
+                    document.getElementById('grandTotal').innerText = `$${Number(result.grand_total).toFixed(2)}`;
+
+                    const tbody = document.getElementById('activityTableBody');
+                    tbody.innerHTML = '';
+                    if (result.orders.length === 0) {
+                        tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">មិនទាប់មានកំណត់ត្រាការលក់ក្នុងវេននេះទេ។</td></tr>`;
+                        return;
+                    }
+
+                    result.orders.forEach((o, index) => {
+                        tbody.innerHTML += `
+                            <tr>
+                                <td>#${o.id}</td>
+                                <td class="fw-bold text-success">$${Number(o.total_amount).toFixed(2)}</td>
+                                <td><span class="badge bg-secondary">${o.payment_method}</span></td>
+                                <td>${new Date(o.created_at).toLocaleString()}</td>
+                            </tr>
+                        `;
+                    });
+                }
+            } catch (err) {
+                console.error('Error loading cashier activity:', err);
+            }
+        }
+
+        function logout() {
+            sessionStorage.removeItem('currentUser');
+            sessionStorage.removeItem('currentShift');
+            window.location.href = 'login.html';
+        }
+    </script>
+</body>
+</html>
