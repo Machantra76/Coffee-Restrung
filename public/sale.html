@@ -262,16 +262,13 @@
                 `;
             });
 
-            // គណនា Discount
             let discountPercent = parseFloat(document.getElementById('discountPercent').value) || 0;
             let discountAmount = (subTotal * discountPercent) / 100;
             let afterDiscount = subTotal - discountAmount;
 
-            // គណនា VAT (10%)
             let isVatChecked = document.getElementById('vatToggle').checked;
             let vatAmount = isVatChecked ? (afterDiscount * 0.10) : 0;
 
-            // Grand Total
             finalCalculatedTotal = afterDiscount + vatAmount;
             let exchangeRate = parseFloat(document.getElementById('exchangeRate').value) || 4100;
             let totalRiel = Math.round(finalCalculatedTotal * exchangeRate);
@@ -296,7 +293,6 @@
             renderCart();
         }
 
-        // គណនាប្រាក់អាប់ (Change Return)
         function calculateChange() {
             let receivedUSD = parseFloat(document.getElementById('amountReceived').value) || 0;
             let exchangeRate = parseFloat(document.getElementById('exchangeRate').value) || 4100;
@@ -327,10 +323,16 @@
 
             const paymentMethod = document.getElementById('paymentMethod').value;
 
+            // បញ្ជូនទំនិញក្នុងកន្រ្តក (items) ទៅកាន់ Server ដើម្បីកត់ត្រាចូល order_items
             const orderData = {
                 cashier_id: currentUser.id,
                 total_amount: finalCalculatedTotal,
-                payment_method: paymentMethod
+                payment_method: paymentMethod,
+                items: cart.map(item => ({
+                    id: item.id,
+                    quantity: item.quantity,
+                    price: item.price
+                }))
             };
 
             try {
