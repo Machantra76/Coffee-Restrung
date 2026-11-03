@@ -37,15 +37,25 @@ async function initDB() {
                 cashier_id INT REFERENCES users(id),
                 total_amount NUMERIC(10, 2) NOT NULL,
                 payment_method VARCHAR(50) DEFAULT 'Cash',
+                status VARCHAR(50) DEFAULT 'Pending',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE TABLE IF NOT EXISTS order_items (
+                id SERIAL PRIMARY KEY,
+                order_id INT REFERENCES orders(id) ON DELETE CASCADE,
+                product_id INT,
+                quantity INT NOT NULL,
+                price NUMERIC(10, 2) NOT NULL
             );
         `);
         
         await pool.query(`
             ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
+            ALTER TABLE orders ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'Pending';
         `);
 
-        console.log('✅ Database tables (users & orders) initialized successfully on Cloud!');
+        console.log('✅ Database tables (users, orders, order_items) initialized successfully on Cloud!');
     } catch (err) {
         console.error('❌ Database initialization error:', err);
     }
@@ -65,6 +75,62 @@ app.get('/api/users/cashiers-list', async (req, res) => {
     } catch (err) {
         console.error('Get Cashiers Error:', err);
         res.status(500).json({ success: false, error: 'Database error' });
+    }
+});
+
+// API សម្រាប់ទាញយកបញ្ជីផលិតផល
+app.get('/api/products', async (req, res) => {
+    try {
+        const result = await pool.query('SELECT * FROM products ORDER BY id DESC');
+        res.json({ success: true, data: result.rows });
+    } catch (err) {
+        console.error('Get Products Error:', err);
+        res.status(500).json({ success: false, error: 'Database error' });
+    }
+});
+
+// API សម្រាប់បង្កើត Order និងរក្សាទុកមុខទំនិញនីមួយៗចូល order_items
+app.post('/api/orders', async (req, res) => {
+    const { cashier_id, total_amount, payment_method, items } = req.body;
+    
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN'); // ចាប់ផ្តើម Transaction
+
+        // ១. បញ្ចូលទិន្នន័យចូលតារាង orders
+        const orderQuery = `
+            INSERT INTO orders (cashier_id, total_amount, payment_method, status, created_at) 
+            VALUES ($1, $2, $3, 'Pending', CURRENT_TIMESTAMP) 
+            RETURNING id, total_amount, created_at
+        `;
+        const orderResult = await client.query(orderQuery, [cashier_id, total_amount, payment_method || 'Cash']);
+        const newOrderId = orderResult.rows[0].id;
+
+        // ២. បញ្ចូលមុខទំនិញនីមួយៗចូលតារាង order_items
+        if (items && items.length > 0) {
+            for (let item of items) {
+                const itemQuery = `
+                    INSERT INTO order_items (order_id, product_id, quantity, price)
+                    VALUES ($1, $2, $3, $4)
+                `;
+                await client.query(itemQuery, [newOrderId, item.id, item.quantity, item.price]);
+            }
+        }
+
+        await client.query('COMMIT'); // រក្សាទុកជាផ្លូវការ
+        
+        res.status(201).json({ 
+            success: true, 
+            message: 'Order and items created successfully', 
+            order: orderResult.rows[0] 
+        });
+
+    } catch (err) {
+        await client.query('ROLLBACK'); // បើខុស គឺបោះបង់ចោលវិញ
+        console.error('Create Order Error:', err);
+        res.status(500).json({ success: false, error: 'Database error: ' + err.message });
+    } finally {
+        client.release();
     }
 });
 
@@ -93,6 +159,7 @@ app.get('/api/orders/cashier-activity/:cashierId', async (req, res) => {
         res.status(500).json({ success: false, error: 'Database error' });
     }
 });
+
 // API សម្រាប់ទាញយក Order ដែលមិនទាន់ប្រគល់ជូន (Pending & Preparing) សម្រាប់ផ្ទះបាយ
 app.get('/api/orders/kitchen', async (req, res) => {
     try {
