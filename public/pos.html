@@ -107,7 +107,7 @@
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2" id="userDropdownMenu">
                             <li><h6 class="dropdown-header text-muted">គណនីប្រើប្រាស់</h6></li>
-                            <li><a class="dropdown-item text-primary" href="#" data-bs-toggle="modal" data-bs-target="#addUserModal"><i class="fa-solid fa-user-plus me-2"></i> បង្កើត User ថ្មី</a></li>
+                            <li id="addUserMenuOption"><a class="dropdown-item text-primary" href="#" data-bs-toggle="modal" data-bs-target="#addUserModal"><i class="fa-solid fa-user-plus me-2"></i> បង្កើត User ថ្មី</a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item text-danger" href="#" onclick="logout()"><i class="fa-solid fa-right-from-bracket me-2"></i> ចាកចេញ (Logout)</a></li>
                         </ul>
@@ -226,13 +226,13 @@
         let currentUserId = null;
 
         document.addEventListener('DOMContentLoaded', () => {
-            checkAuth(); // 🔍 ឆែកមើលការ Login មុនគេបង្អស់
+            checkAuth(); // 🔍 ឆែកសិទ្ធិ និង Authentication មុនគេបង្អស់
             loadCategories();
             loadProducts();
             loadTables();
         });
 
-        // មុខងារឆែកមើល Authentication ຜ່ານ LocalStorage
+        // មុខងារឆែកមើល Authentication និង Role-Based Access Control
         function checkAuth() {
             const user = JSON.parse(localStorage.getItem('currentUser'));
             if (!user) {
@@ -244,6 +244,25 @@
             // កំណត់តម្លៃ User ID និងបង្ហាញឈ្មោះលើ Header
             currentUserId = user.id;
             document.getElementById('currentUsername').innerText = `${user.role} (${user.full_name})`;
+
+            // 🛠️ ដាក់លក្ខខណ្ឌតាម Role នីមួយៗ
+            if (user.role === 'Kitchen') {
+                alert('ស្វាគមន៍! កំពុងបញ្ជូនទៅកាន់ទំព័រផ្ទះបាយ...');
+                window.location.href = 'kitchen.html';
+                return;
+            }
+
+            if (user.role === 'Stock') {
+                alert('ស្វាគមន៍! កំពុងបញ្ជូនទៅកាន់ទំព័រគ្រប់គ្រងស្តុក...');
+                window.location.href = 'inventory.html';
+                return;
+            }
+
+            // បើមិនមែនជា Admin ទេ គឺលាក់ប៊ូតុងបង្កើត User ចោល
+            if (user.role !== 'Admin') {
+                const addUserMenu = document.getElementById('addUserMenuOption');
+                if (addUserMenu) addUserMenu.style.display = 'none';
+            }
         }
 
         // មុខងារ Logout
