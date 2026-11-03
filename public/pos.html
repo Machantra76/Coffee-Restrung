@@ -15,7 +15,6 @@
     </style>
 </head>
 <body>
-    <!-- Navbar (Responsive for mobile & PC) -->
     <nav class="navbar navbar-dark bg-dark px-3 py-3 shadow-sm">
         <div class="container-fluid d-flex flex-wrap justify-content-between align-items-center">
             <span class="navbar-brand fw-bold fs-5 fs-md-4 mb-2 mb-md-0">
@@ -30,7 +29,6 @@
         </div>
     </nav>
 
-    <!-- Main Container / Dashboard Menu (Auto-size Grid for Computer, iPad, Phone) -->
     <div class="container py-4 py-md-5">
         <div class="row text-center mb-4 mb-md-5">
             <div class="col-12">
@@ -40,7 +38,7 @@
         </div>
 
         <div class="row g-3 g-md-4 justify-content-center">
-            <!-- 1. POS / Sales Terminal (Cashier Shift Check) -->
+            <!-- 1. POS / Sales Terminal -->
             <div class="col-12 col-sm-6 col-lg-4">
                 <div class="card menu-card p-3 p-md-4 text-center bg-white" style="cursor: pointer;" onclick="checkShiftAndSell()">
                     <div class="card-body">
@@ -153,11 +151,8 @@
             
             document.getElementById('userDisplay').innerText = `${user.role}: ${user.full_name}`;
 
-            // បង្ហាញ Menu តាម Role នីមួយៗ
             if (user.role === 'Admin') {
                 document.getElementById('adminMenu').style.display = 'block';
-                
-                // ឱ្យ Admin ឃើញប៊ូតុងសកម្មភាពលក់ និងដូរអត្ថបទឱ្យត្រូវជាមួយ Admin
                 const activityMenu = document.getElementById('cashierActivityMenu');
                 activityMenu.style.display = 'block';
                 document.getElementById('activityTitle').innerText = "ត្រួតពិនិត្យការលក់ Cashier";
@@ -168,13 +163,11 @@
             }
         });
 
-        // មុខងារពិនិត្យវេនលក់មុននឹងចូលទំព័រ POS សម្រាប់ Cashier
         function checkShiftAndSell() {
             const user = JSON.parse(sessionStorage.getItem('currentUser'));
             if (user.role === 'Cashier') {
                 const currentShift = sessionStorage.getItem('currentShift');
                 if (!currentShift) {
-                    // បើមិនទាន់បើកវេន បង្ហាញ Modal ឱ្យបើកវេន
                     const shiftModal = new bootstrap.Modal(document.getElementById('shiftModal'));
                     shiftModal.show();
                     return;
@@ -183,7 +176,6 @@
             window.location.href = 'sale.html';
         }
 
-        // មុខងារບັນທึกការបើកវេន
         function startShift() {
             const openingCash = document.getElementById('openingCash').value;
             if (!openingCash) {
