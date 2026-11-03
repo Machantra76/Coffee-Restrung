@@ -10,36 +10,52 @@
     <style>
         body { font-family: 'Kantumruy Pro', sans-serif; background-color: #f8fafc; }
         
+        /* 🎨 រចនាបថកាតទំនិញស្ទាយ Pinterest */
         .product-card {
             cursor: pointer;
             transition: all 0.25s ease;
-            border: 1px solid #f1f5f9;
-            border-radius: 16px;
+            border: 1px solid #e2e8f0;
+            border-radius: 18px;
             background-color: #ffffff;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
             overflow: hidden;
+            position: relative;
         }
         .product-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.07);
-            border-color: #e2e8f0;
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+            border-color: #cbd5e1;
         }
         
-        /* 🛠️ កែសម្រួលប្រអប់រូបភាពឱ្យតូចល្មមស្អាត (កម្ពស់ត្រឹម 85px) */
+        /* 🖼️ ប្រអប់រូបភាពពេញគែមខាងលើ */
         .product-img-wrapper {
             width: 100%;
-            height: 85px; 
-            background-color: #ffffff;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            height: 140px;
+            background-color: #f1f5f9;
+            position: relative;
             overflow: hidden;
-            padding: 10px 10px 2px 10px;
         }
         .product-img-wrapper img {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* បំពេញប្រអប់ស្អាត */
+        }
+
+        /* ⭐ ផ្លាកពិន្ទុលើរូបភាព (Rating Badge) */
+        .rating-badge {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background-color: rgba(0, 0, 0, 0.65);
+            color: #ffffff;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            backdrop-filter: blur(4px);
         }
 
         @media (min-width: 992px) {
@@ -214,11 +230,15 @@
                     }
 
                     products.forEach(p => {
-                        let imgTag = `<div class="product-img-wrapper text-secondary"><i class="fa-solid fa-image fs-2"></i></div>`;
+                        let imgTag = `
+                            <div class="product-img-wrapper d-flex align-items-center justify-content-center text-secondary">
+                                <i class="fa-solid fa-image fs-2"></i>
+                            </div>`;
                         
                         if (p.image_url && p.image_url.trim() !== '') {
                             imgTag = `
                                 <div class="product-img-wrapper">
+                                    <div class="rating-badge"><i class="fa-solid fa-star text-warning"></i> 5.0</div>
                                     <img src="${p.image_url}" alt="${p.name}" onerror="this.src='https://via.placeholder.com/150?text=No+Img'">
                                 </div>
                             `;
@@ -228,7 +248,7 @@
                             <div class="col-6 col-sm-4 col-md-6 col-lg-4">
                                 <div class="card product-card h-100 bg-white shadow-sm" onclick="addToCart(${p.id})">
                                     ${imgTag}
-                                    <div class="card-body text-center p-2">
+                                    <div class="card-body p-2">
                                         <h5 class="fw-bold text-dark fs-6 mb-1 text-truncate">${p.name}</h5>
                                         <p class="text-success fw-bold mb-1 fs-6">$${Number(p.price).toFixed(2)}</p>
                                         <span class="badge bg-light text-secondary border small">${p.category || 'General'}</span>
