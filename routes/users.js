@@ -63,10 +63,3 @@ router.post('/login', async (req, res) => {
     }
 });
 
-module.exports = router;
-```[cite: 7]
-
-### 📌 ជំហានបន្ត៖
-1. យកកូដខាងលើទៅជំនួសໃນ File **`routes/users.js`**[cite: 7]។
-2. ทำការ **Git Commit & Push** ឡើងទៅកាន់ GitHub ជាការស្រេច[cite: 3]។ 
-ពេលនេះ Render នឹង Deploy ឡើងបានជោគជ័យ (Live) ហើយបងអាចបង្កើត User បានធម្មតា! សុំអភ័យទោសផងចំពោះកំហុសឆ្គងអក្សរមុននេះបង!
