@@ -105,12 +105,13 @@
                             <i class="fa-solid fa-user-shield text-warning"></i>
                             <span id="currentUsername" class="fw-bold">Admin (សុខ សុភា)</span>
                         </button>
-                        <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2">
+                        <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2" id="userDropdownMenu">
                             <li><h6 class="dropdown-header text-muted">ប្ដូរគណនី (Switch Role)</h6></li>
-                            <li><a class="dropdown-item" href="#" onclick="switchUser('Admin (សុខ សុភា)', 'Admin')"><i class="fa-solid fa-user-tie me-2 text-primary"></i> Admin (ពេញសិទ្ធិ)</a></li>
-                            <li><a class="dropdown-item" href="#" onclick="switchUser('Cashier (ចន្ថា)', 'Cashier')"><i class="fa-solid fa-cash-register me-2 text-success"></i> Cashier (អ្នកគិតលុយ)</a></li>
-                            <li><a class="dropdown-item" href="#" onclick="switchUser('Staff (បូរី)', 'Kitchen')"><i class="fa-solid fa-utensils me-2 text-warning"></i> Kitchen (ផ្ទះបាយ)</a></li>
+                            <div id="userListContainer">
+                                <li><a class="dropdown-item" href="#" onclick="switchUser('Admin (សុខ សុភា)', 'Admin', 1)"><i class="fa-solid fa-user-tie me-2 text-primary"></i> Admin (សុខ សុភា)</a></li>
+                            </div>
                             <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-primary" href="#" data-bs-toggle="modal" data-bs-target="#addUserModal"><i class="fa-solid fa-user-plus me-2"></i> បង្កើត User ថ្មី</a></li>
                             <li><a class="dropdown-item text-danger" href="#" onclick="alert('ចាកចេញពីប្រព័ន្ធដោយសុវត្ថិភាព!')"><i class="fa-solid fa-right-from-bracket me-2"></i> ចាកចេញ (Logout)</a></li>
                         </ul>
                     </div>
@@ -178,23 +179,128 @@
         </div>
     </div>
 
+    <!-- Modal សម្រាប់បង្កើត User ថ្មី -->
+    <div class="modal fade" id="addUserModal" tabindex="-1" aria-labelledby="addUserModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title fw-bold" id="addUserModalLabel"><i class="fa-solid fa-user-plus me-2"></i> បង្កើតគណនីអ្នកប្រើប្រាស់ថ្មី</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="createUserForm" onsubmit="registerUser(event)">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Username (សម្រាប់ Login):</label>
+                            <input type="text" class="form-control" id="newUsername" placeholder="ឧ. cashier01" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">ពាក្យសម្ងាត់ (Password):</label>
+                            <input type="password" class="form-control" id="newPassword" placeholder="បញ្ចូលពាក្យសម្ងាត់" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">ឈ្មោះពេញ (Full Name):</label>
+                            <input type="text" class="form-control" id="newFullName" placeholder="ឧ. ចាន់ ធារ៉ា" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">តួនាទី (Role):</label>
+                            <select class="form-select" id="newRole">
+                                <option value="Admin">Admin (អ្នកគ្រប់គ្រង)</option>
+                                <option value="Cashier" selected>Cashier (អ្នកគិតលុយ)</option>
+                                <option value="Kitchen">Kitchen (ផ្នែកផ្ទះបាយ)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">បោះបង់</button>
+                        <button type="submit" class="btn btn-primary fw-bold"><i class="fa-solid fa-save me-1"></i> រក្សាទុក User</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         let allProducts = [];
         let cart = [];
         let tables = [];
+        let currentUserId = 1;
 
         document.addEventListener('DOMContentLoaded', () => {
             loadCategories();
             loadProducts();
             loadTables();
+            loadUsers();
         });
 
+        // 0. ទាញយក Users ពី Database បង្ហាញក្នុង Dropdown
+        async function loadUsers() {
+            try {
+                const res = await fetch('/api/users');
+                const result = await res.json();
+                if (result.success && result.data.length > 0) {
+                    const container = document.getElementById('userListContainer');
+                    container.innerHTML = '';
+                    result.data.forEach(u => {
+                        let iconClass = 'fa-user-tie text-primary';
+                        if (u.role === 'Cashier') iconClass = 'fa-cash-register text-success';
+                        if (u.role === 'Kitchen') iconClass = 'fa-utensils text-warning';
+
+                        container.innerHTML += `
+                            <li>
+                                <a class="dropdown-item" href="#" onclick="switchUser('${u.role} (${u.full_name})', '${u.role}', ${u.id})">
+                                    <i class="fa-solid ${iconClass} me-2"></i> ${u.role} (${u.full_name})
+                                </a>
+                            </li>
+                        `;
+                    });
+                }
+            } catch (err) { console.error(' Error loading users:', err); }
+        }
+
         // ប្តូរ User ពេលចុច Menu Dropdown
-        function switchUser(userName, roleName) {
+        function switchUser(userName, roleName, userId) {
+            currentUserId = userId;
             document.getElementById('currentUsername').innerText = userName;
-            console.log(`Switched to user: ${userName} (${roleName})`);
+            console.log(`Switched to user ID: ${userId} - ${userName} (${roleName})`);
+        }
+
+        // បង្កើត User ថ្មីតាម Form Modal
+        async function registerUser(event) {
+            event.preventDefault();
+            const payload = {
+                username: document.getElementById('newUsername').value,
+                password: document.getElementById('newPassword').value,
+                full_name: document.getElementById('newFullName').value,
+                role: document.getElementById('newRole').value
+            };
+
+            try {
+                const res = await fetch('/api/users', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await res.json();
+                if (res.ok && result.success) {
+                    alert('បង្កើត User ថ្មីបានជោគជ័យ!');
+                    document.getElementById('createUserForm').reset();
+                    
+                    // បិទ Modal
+                    const modalElement = document.getElementById('addUserModal');
+                    const modal = bootstrap.Modal.getInstance(modalElement);
+                    if (modal) modal.hide();
+                    
+                    // ផ្ទុកបញ្ជី User ឡើងវិញ
+                    loadUsers();
+                } else {
+                    alert('បរាជ័យ៖ ' + (result.error || 'មិនអាចបង្កើតបានទេ'));
+                }
+            } catch (err) {
+                console.error(err);
+                alert('មានបញ្ហាក្នុងការតភ្ជាប់ Server!');
+            }
         }
 
         // 1. ទាញយក Categories ពី API
@@ -329,7 +435,7 @@
 
             const payload = {
                 table_id: parseInt(tableId),
-                user_id: 1,
+                user_id: currentUserId,
                 order_type: 'dine_in',
                 items: cart.map(i => ({
                     product_id: i.id,
