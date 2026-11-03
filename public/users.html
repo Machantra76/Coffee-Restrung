@@ -13,7 +13,6 @@
     </style>
 </head>
 <body>
-    <!-- Navbar -->
     <nav class="navbar navbar-dark bg-dark px-4 py-3 shadow-sm">
         <span class="navbar-brand fw-bold fs-4"><i class="fa-solid fa-users-gear me-2"></i> គ្រប់គ្រងគណនី | User Management</span>
         <div>
@@ -24,7 +23,6 @@
 
     <div class="container py-5">
         <div class="row g-4">
-            <!-- Form បន្ថែម User ថ្មី -->
             <div class="col-md-4">
                 <div class="card p-4 bg-white">
                     <h4 class="fw-bold mb-3 text-primary"><i class="fa-solid fa-user-plus me-2"></i> បន្ថែមបុគ្គលិកថ្មី<br><small class="text-muted fs-6">Add New User</small></h4>
@@ -57,7 +55,6 @@
                 </div>
             </div>
 
-            <!-- តារាងបង្ហាញបញ្ជី User -->
             <div class="col-md-8">
                 <div class="card p-4 bg-white">
                     <h4 class="fw-bold mb-3 text-dark"><i class="fa-solid fa-list me-2"></i> បញ្ជីបុគ្គលិកទាំងអស់<br><small class="text-muted fs-6">Staff List</small></h4>
@@ -75,7 +72,7 @@
                                 </tr>
                             </thead>
                             <tbody id="userTableBody">
-                                <!-- ទិន្នន័យទាញពី Database នឹងត្រូវ Load មកទីនេះដោយស្វ័យប្រវត្តិ -->
+                                <!-- Load dynamically -->
                             </tbody>
                         </table>
                     </div>
@@ -95,7 +92,6 @@
             loadUsers();
         });
 
-        // មុខងារទាញយកបញ្ជី User ពី Cloud API
         async function loadUsers() {
             try {
                 const res = await fetch('/api/users');
@@ -110,7 +106,7 @@
                         else if (u.role === 'Kitchen') badgeColor = 'bg-warning text-dark';
                         else if (u.role === 'Stock') badgeColor = 'bg-info text-dark';
 
-                        const isActive = u.is_active !== false; // ស្ಡង់ដារបើអត់ទាន់មាន គឺถือថា active (true)
+                        const isActive = u.is_active !== false;
 
                         tbody.innerHTML += `
                             <tr>
@@ -139,7 +135,6 @@
             }
         }
 
-        // មុខងារប្តូរស្ថានភាព Active / UnActive
         async function toggleStatus(id, newStatus) {
             try {
                 const res = await fetch(`/api/users/${id}/status`, {
@@ -149,17 +144,16 @@
                 });
                 const result = await res.json();
                 if (result.success) {
-                    loadUsers(); // Refresh តារាងឡើងវិញ
+                    loadUsers();
                 } else {
                     alert('បរាជ័យក្នុងការប្តូរស្ថានភាព!');
                 }
             } catch (err) {
                 console.error('Error toggling status:', err);
-                alert('មានបញ្ហាក្នុងការតភ្ជាប់ទៅកាន់ Server!');
+                alert('មានបញ្ហាក្នុងการតភ្ជាប់ទៅកាន់ Server!');
             }
         }
 
-        // មុខងារបង្កើត User ថ្មីបញ្ជូនទៅកាន់ Cloud API
         async function createUser(event) {
             event.preventDefault();
             const username = document.getElementById('username').value;
@@ -176,7 +170,7 @@
                 const result = await res.json();
 
                 if (res.ok && result.success) {
-                    alert('បង្កើត User បានដោយជោគជ័យ! / User created successfully!');
+                    alert('បង្កើត User បានដោយជោគជ័យ!');
                     document.getElementById('addUserForm').reset();
                     loadUsers();
                 } else {
@@ -184,7 +178,7 @@
                 }
             } catch (err) {
                 console.error('Error creating user:', err);
-                alert('មានបញ្ហាក្នុងการតភ្ជាប់ទៅកាន់ Server!');
+                alert('មានបញ្ហាក្នុងការតភ្ជាប់ទៅកាន់ Server!');
             }
         }
 
