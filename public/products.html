@@ -9,7 +9,33 @@
     <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;600&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Kantumruy Pro', sans-serif; background-color: #f1f5f9; }
-        .product-img-thumb { width: 45px; height: 45px; object-fit: cover; border-radius: 8px; }
+        
+        /* កំណត់ Auto-size សម្រាប់រូបភាពក្នុងតារាង */
+        .product-img-thumb {
+            width: 50px;
+            height: 50px;
+            object-fit: cover; /* Auto-size រូបភាពឱ្យពេញប្រអប់ស្មើស្អាតមិនកន្រ្ទាក់ */
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+
+        /* ផ្ទាំង Preview រូបភាពពេលរើស File */
+        .image-preview-box {
+            width: 100px;
+            height: 100px;
+            border: 2px dashed #cbd5e1;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            background-color: #f8fafc;
+        }
+        .image-preview-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* Auto-size preview image */
+        }
     </style>
 </head>
 <body>
@@ -39,18 +65,28 @@
 
                     <form id="productForm" onsubmit="saveProduct(event)">
                         <input type="hidden" id="productId">
+                        <input type="hidden" id="existingImageUrl">
 
-                        <div class="mb-3">
+                        <!-- ប្រអប់បញ្ចូលលេខបាកូដ (Barcode Input) -->
+                        <div class="mb-2">
+                            <label class="form-label small fw-bold">លេខបាកូដ / Barcode (Optional)</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-light"><i class="fa-solid fa-barcode"></i></span>
+                                <input type="text" id="productBarcode" class="form-control" placeholder="ស្កែន ឬវាយលេខបាកូដ">
+                            </div>
+                        </div>
+
+                        <div class="mb-2">
                             <label class="form-label small fw-bold">ឈ្មោះទំនិញ / Product Name (*)</label>
                             <input type="text" id="productName" class="form-control form-control-sm" placeholder="ឧ. Coffee Latte" required>
                         </div>
 
-                        <div class="mb-3">
+                        <div class="mb-2">
                             <label class="form-label small fw-bold">តម្លៃ ($) / Price ($) (*)</label>
                             <input type="number" step="0.01" id="productPrice" class="form-control form-control-sm" placeholder="ឧ. 2.50" required>
                         </div>
 
-                        <div class="mb-3">
+                        <div class="mb-2">
                             <label class="form-label small fw-bold">ប្រភេទ / Category</label>
                             <select id="productCategory" class="form-select form-select-sm">
                                 <option value="Coffee">កាហ្វេ / Coffee</option>
@@ -61,9 +97,19 @@
                             </select>
                         </div>
 
+                        <!-- ជ្រើសរើស File រូបភាព (Add Picture File) -->
                         <div class="mb-3">
-                            <label class="form-label small fw-bold">URL រូបភាព / Image URL (Optional)</label>
-                            <input type="url" id="productImage" class="form-control form-control-sm" placeholder="https://example.com/image.jpg">
+                            <label class="form-label small fw-bold">រូបភាពទំនិញ / Upload Picture File</label>
+                            <input type="file" id="productImageFile" class="form-control form-control-sm mb-2" accept="image/*" onchange="previewImage(event)">
+                            
+                            <!-- ប្រអប់បង្ហាញរូបភាព preview ដែល Auto-size -->
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="image-preview-box" id="previewContainer">
+                                    <span class="text-muted small text-center p-1" id="previewPlaceholder"><i class="fa-solid fa-image d-block fs-4 mb-1"></i>គ្មានរូប</span>
+                                    <img id="previewImg" src="" class="d-none" alt="Preview">
+                                </div>
+                                <span class="text-muted small">រូបភាពនឹងត្រូវ auto-size តម្រូវតាមប្រអប់ស្វ័យប្រវត្តិ។</span>
+                            </div>
                         </div>
 
                         <div class="d-flex gap-2">
@@ -93,6 +139,7 @@
                             <thead class="table-light">
                                 <tr class="small">
                                     <th>រូបភាព</th>
+                                    <th>បាកូដ</th>
                                     <th>ឈ្មោះទំនិញ</th>
                                     <th>ប្រភេទ</th>
                                     <th class="text-end">តម្លៃ ($)</th>
@@ -100,7 +147,7 @@
                                 </tr>
                             </thead>
                             <tbody id="productsTableBody">
-                                <tr><td colspan="5" class="text-center text-muted py-4">កំពុងទាញយកទិន្នន័យ...</td></tr>
+                                <tr><td colspan="6" class="text-center text-muted py-4">កំពុងទាញយកទិន្នន័យ...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -117,7 +164,6 @@
         document.addEventListener('DOMContentLoaded', () => {
             currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
 
-            // 🛡️ Route Protection: ឱ្យចូលបានតែ Admin ប៉ុណ្ណោះ
             if (!currentUser || currentUser.role !== 'Admin') {
                 alert('Unauthorized Access! សម្រាប់តែ Admin តែប៉ុណ្ណោះ។');
                 window.location.href = 'pos.html';
@@ -128,7 +174,24 @@
             loadProducts();
         });
 
-        // ១. ទាញយកបញ្ជីផលិតផលពី Backend
+        // បង្ហាញរូបភាព preview ភ្លាមៗពេលជ្រើសរើស file
+        function previewImage(event) {
+            const file = event.target.files[0];
+            const previewImg = document.getElementById('previewImg');
+            const previewPlaceholder = document.getElementById('previewPlaceholder');
+
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    previewImg.src = e.target.result;
+                    previewImg.classList.remove('d-none');
+                    previewPlaceholder.classList.add('d-none');
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // ១. ទាញយកបញ្ជីផលិតផល
         async function loadProducts() {
             try {
                 const res = await fetch('/api/products');
@@ -140,18 +203,19 @@
                     tbody.innerHTML = '';
 
                     if (productsList.length === 0) {
-                        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-4">មិនទាន់មានទំនិញក្នុង Database ទេ។</td></tr>`;
+                        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">មិនទាន់មានទំនិញក្នុង Database ទេ។</td></tr>`;
                         return;
                     }
 
                     productsList.forEach(p => {
                         const imgTag = p.image_url 
-                            ? `<img src="${p.image_url}" class="product-img-thumb shadow-sm" onerror="this.src='https://via.placeholder.com/45?text=No+Img'">`
+                            ? `<img src="${p.image_url}" class="product-img-thumb shadow-sm" onerror="this.src='https://via.placeholder.com/50?text=No+Img'">`
                             : `<div class="product-img-thumb bg-light d-flex align-items-center justify-content-center text-secondary"><i class="fa-solid fa-image"></i></div>`;
 
                         tbody.innerHTML += `
                             <tr>
                                 <td>${imgTag}</td>
+                                <td class="small font-monospace text-muted">${p.barcode || '---'}</td>
                                 <td class="fw-bold text-dark">${p.name}</td>
                                 <td><span class="badge bg-light text-dark border">${p.category || 'General'}</span></td>
                                 <td class="text-end fw-bold text-success">$${Number(p.price).toFixed(2)}</td>
@@ -172,17 +236,23 @@
             }
         }
 
-        // ២. រក្សាទុកផលិតផល (បន្ថែមថ្មី ឬ កែប្រែ)
+        // ២. រក្សាទុកផលិតផល (ប្រើ FormData ដើម្បីផ្ញើ File)
         async function saveProduct(e) {
             e.preventDefault();
 
             const id = document.getElementById('productId').value;
-            const name = document.getElementById('productName').value;
-            const price = document.getElementById('productPrice').value;
-            const category = document.getElementById('productCategory').value;
-            const image_url = document.getElementById('productImage').value;
+            const formData = new FormData();
+            
+            formData.append('barcode', document.getElementById('productBarcode').value);
+            formData.append('name', document.getElementById('productName').value);
+            formData.append('price', document.getElementById('productPrice').value);
+            formData.append('category', document.getElementById('productCategory').value);
+            formData.append('existing_image_url', document.getElementById('existingImageUrl').value);
 
-            const productData = { name, price, category, image_url };
+            const fileInput = document.getElementById('productImageFile');
+            if (fileInput.files[0]) {
+                formData.append('image_file', fileInput.files[0]);
+            }
 
             const method = id ? 'PUT' : 'POST';
             const endpoint = id ? `/api/products/${id}` : '/api/products';
@@ -190,8 +260,7 @@
             try {
                 const res = await fetch(endpoint, {
                     method: method,
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(productData)
+                    body: formData // ផ្ញើជា Multipart FormData
                 });
                 const result = await res.json();
 
@@ -214,10 +283,23 @@
             if (!product) return;
 
             document.getElementById('productId').value = product.id;
+            document.getElementById('productBarcode').value = product.barcode || '';
             document.getElementById('productName').value = product.name;
             document.getElementById('productPrice').value = product.price;
             document.getElementById('productCategory').value = product.category || 'General';
-            document.getElementById('productImage').value = product.image_url || '';
+            document.getElementById('existingImageUrl').value = product.image_url || '';
+
+            const previewImg = document.getElementById('previewImg');
+            const previewPlaceholder = document.getElementById('previewPlaceholder');
+
+            if (product.image_url) {
+                previewImg.src = product.image_url;
+                previewImg.classList.remove('d-none');
+                previewPlaceholder.classList.add('d-none');
+            } else {
+                previewImg.classList.add('d-none');
+                previewPlaceholder.classList.remove('d-none');
+            }
 
             document.getElementById('formTitle').innerHTML = `<i class="fa-solid fa-pen-to-square me-1 text-warning"></i> កែប្រែមុខទំនិញ / Edit Product`;
         }
@@ -242,10 +324,13 @@
             }
         }
 
-        // ៥.កំណត់ Form ឡើងវិញ (Reset)
+        // ៥. កំណត់ Form ឡើងវិញ
         function resetForm() {
             document.getElementById('productForm').reset();
             document.getElementById('productId').value = '';
+            document.getElementById('existingImageUrl').value = '';
+            document.getElementById('previewImg').classList.add('d-none');
+            document.getElementById('previewPlaceholder').classList.remove('d-none');
             document.getElementById('formTitle').innerHTML = `<i class="fa-solid fa-plus-circle me-1 text-primary"></i> បន្ថែមមុខទំនិញថ្មី / Add Product`;
         }
     </script>
