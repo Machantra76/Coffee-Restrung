@@ -9,13 +9,13 @@ const multer = require('multer');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ធានាថា Folder public/uploads មានស្រាប់ បើគ្មានត្រូវបង្កើតវាស្វ័យប្រវត្តិ
+// ធានាថា Folder public/uploads មានស្រាប់
 const uploadDir = path.join(__dirname, 'public', 'uploads');
 if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-// កំណត់កន្លែងរក្សាទុករូបភាពដែលได้ Upload
+// កំណត់កន្លែងរក្សាទុករូបភាព
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         cb(null, uploadDir);
@@ -82,7 +82,6 @@ async function initDB() {
             );
         `);
         
-        // ធានាថា Column ទាំងអស់ត្រូវបានបន្ថែម បើទោះបីជាតារាងត្រូវបានបង្កើតរួចហើយក៏ដោយ
         await pool.query(`
             ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
             ALTER TABLE orders ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'Pending';
@@ -103,7 +102,7 @@ initDB();
 const userRoutes = require('./routes/users');
 app.use('/api/users', userRoutes);
 
-// ================= PRODUCT APIs (CRUD with Image Upload & Barcode)[cite: 6] =================
+// ================= PRODUCT APIs (CRUD with File Upload & Image URL) =================
 
 // ១. ទាញយកបញ្ជីផលិតផលទាំងអស់
 app.get('/api/products', async (req, res) => {
@@ -116,7 +115,7 @@ app.get('/api/products', async (req, res) => {
     }
 });
 
-// ២. បន្ថែមផលិតផលថ្មី ( Upload រូបភាព និង បារកូដ )[cite: 6]
+// ២. បន្ថែមផលិតផលថ្មី (អាចប្រើ File Upload ឬ Image_url)
 app.post('/api/products', (req, res) => {
     upload.single('image_file')(req, res, async (err) => {
         if (err) {
@@ -124,13 +123,14 @@ app.post('/api/products', (req, res) => {
             return res.status(400).json({ success: false, error: 'File upload error: ' + err.message });
         }
 
-        const { barcode, name, price, category } = req.body;
+        const { barcode, name, price, category, image_url_input } = req.body;
         
         if (!name || !price) {
             return res.status(400).json({ success: false, error: 'Name and Price are required' });
         }
 
-        let image_url = null;
+        // 優先权៖ បើមានការ Upload File ថ្មី យក File នោះ បើគ្មានទេ យក Image URL ທີ່វាយបញ្ចូល
+        let image_url = image_url_input || null;
         if (req.file) {
             image_url = '/uploads/' + req.file.filename;
         }
@@ -148,7 +148,7 @@ app.post('/api/products', (req, res) => {
     });
 });
 
-// ៣. កែប្រែផលិតផល[cite: 6]
+// ៣. កែប្រែផលិតផល
 app.put('/api/products/:id', (req, res) => {
     upload.single('image_file')(req, res, async (err) => {
         if (err) {
@@ -157,12 +157,15 @@ app.put('/api/products/:id', (req, res) => {
         }
 
         const { id } = req.params;
-        const { barcode, name, price, category } = req.body;
+        const { barcode, name, price, category, image_url_input, existing_image_url } = req.body;
 
         try {
-            let image_url = req.body.existing_image_url || null;
+            let image_url = existing_image_url || null;
+            if (image_url_input) {
+                image_url = image_url_input; // បើមានការប្តូរ Image URL ថ្មី
+            }
             if (req.file) {
-                image_url = '/uploads/' + req.file.filename;
+                image_url = '/uploads/' + req.file.filename; // បើមានការ Upload File ថ្មី
             }
 
             const result = await pool.query(
@@ -177,7 +180,7 @@ app.put('/api/products/:id', (req, res) => {
     });
 });
 
-// ៤. លុបផលិតផល[cite: 6]
+// ៤. លុបផលិតផល
 app.delete('/api/products/:id', async (req, res) => {
     const { id } = req.params;
     try {
@@ -189,7 +192,7 @@ app.delete('/api/products/:id', async (req, res) => {
     }
 });
 
-// ================= ORDER APIs[cite: 6] =================
+// ================= ORDER APIs =================
 app.post('/api/orders', async (req, res) => {
     const { cashier_id, total_amount, payment_method, items } = req.body;
     
