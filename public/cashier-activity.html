@@ -22,7 +22,6 @@
     </nav>
 
     <div class="container py-5">
-        <!-- សម្រាប់ Admin ជ្រើសរើសមើល Cashier ណាមួយ -->
         <div class="row mb-4" id="adminSelectContainer" style="display: none;">
             <div class="col-md-6">
                 <div class="card p-3 bg-white">
@@ -34,7 +33,6 @@
             </div>
         </div>
 
-        <!-- Summary Cards -->
         <div class="row g-4 mb-4">
             <div class="col-md-6">
                 <div class="card p-4 bg-primary text-white">
@@ -50,7 +48,6 @@
             </div>
         </div>
 
-        <!-- Detailed Orders Table -->
         <div class="card p-4 bg-white">
             <h4 class="fw-bold mb-3 text-dark"><i class="fa-solid fa-list-check me-2"></i> ប្រវត្តិវិក្កយបត្រ</h4>
             <div class="table-responsive">
@@ -82,16 +79,13 @@
             }
 
             if (currentUser.role === 'Admin') {
-                // ប្រសិនបើជា Admin ត្រូវបង្ហាញ Dropdown ជ្រើសរើស Cashier
                 document.getElementById('adminSelectContainer').style.display = 'flex';
                 await loadCashiersList();
             } else {
-                // ប្រសិនបើជា Cashier គឺទាញយកទិន្នន័យរបស់ខ្លួនឯងផ្ទាល់
                 loadCashierActivity(currentUser.id);
             }
         });
 
-        // មុខងារទាញយកបញ្ជី Cashier ទាំងអស់សម្រាប់ Admin
         async function loadCashiersList() {
             try {
                 const res = await fetch('/api/users/cashiers-list');
@@ -102,7 +96,6 @@
                     result.data.forEach(c => {
                         select.innerHTML += `<option value="${c.id}">${c.full_name} (${c.username})</option>`;
                     });
-                    // Load ទិន្នន័យរបស់ Cashier ទីមួយមុនគេ
                     loadCashierActivity(result.data[0].id);
                 } else {
                     document.getElementById('activityTableBody').innerHTML = `<tr><td colspan="4" class="text-center text-muted">មិនទាន់មានគណនី Cashier ដែលActive ទេ។</td></tr>`;
@@ -112,13 +105,11 @@
             }
         }
 
-        // ពេល Admin ប្តូរឈ្មោះ Cashier ក្នុង Dropdown
         function onCashierChange() {
             const cashierId = document.getElementById('cashierSelect').value;
             loadCashierActivity(cashierId);
         }
 
-        // មុខងារទាញយកសកម្មភាពលក់តាម Cashier ID
         async function loadCashierActivity(cashierId) {
             try {
                 const res = await fetch(`/api/orders/cashier-activity/${cashierId}`);
