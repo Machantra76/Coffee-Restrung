@@ -7,14 +7,14 @@ const { Pool } = require('pg');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// តភ្ជាប់ជាមួយ Cloud Database (Neon PostgreSQL)[cite: 6]
+// តភ្ជាប់ជាមួយ Cloud Database (Neon PostgreSQL)
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: { rejectUnauthorized: false }
 });
 
 app.use(cors());
-app.use(express.json({ limit: '10mb' })); // ពង្រីកទំហំ JSON សម្រាប់ຮັບ Base64 String
+app.use(express.json({ limit: '10mb' })); 
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -44,6 +44,7 @@ async function initDB() {
 
             CREATE TABLE IF NOT EXISTS orders (
                 id SERIAL PRIMARY KEY,
+                order_number VARCHAR(100),
                 cashier_id INT,
                 total_amount NUMERIC(10, 2) NOT NULL,
                 payment_method VARCHAR(50) DEFAULT 'Cash',
@@ -60,9 +61,10 @@ async function initDB() {
             );
         `);
 
-        // 🛠️ បន្ថែមបញ្ជាពិនិត្យ និងធានាថា column cashier_id មានស្រាប់ក្នុង orders ជានិច្ច
+        // ធានាថា column ទាំងនេះមានស្រាប់ក្នុង database ជានិច្ច
         await pool.query(`
             ALTER TABLE orders ADD COLUMN IF NOT EXISTS cashier_id INTEGER;
+            ALTER TABLE orders ADD COLUMN IF NOT EXISTS order_number VARCHAR(100);
         `);
 
         console.log('✅ Database tables and columns initialized successfully!');
@@ -77,9 +79,7 @@ initDB();
 const userRoutes = require('./routes/users');
 app.use('/api/users', userRoutes);
 
-// ================= PRODUCT APIs (Base64 Stored in Database) =================
-
-// ១. ទាញយកបញ្ជីផលិតផលទាំងអស់
+// ================= PRODUCT APIs =================
 app.get('/api/products', async (req, res) => {
     try {
         const result = await pool.query('SELECT * FROM products ORDER BY id DESC');
@@ -90,7 +90,6 @@ app.get('/api/products', async (req, res) => {
     }
 });
 
-// ២. បន្ថែមផលិតផលថ្មី (รับ Base64 ឬ URL ຜ່ານ JSON)
 app.post('/api/products', async (req, res) => {
     const { barcode, name, price, category, image_url } = req.body;
     
@@ -110,7 +109,6 @@ app.post('/api/products', async (req, res) => {
     }
 });
 
-// ៣. កែប្រែផលិតផល
 app.put('/api/products/:id', async (req, res) => {
     const { id } = req.params;
     const { barcode, name, price, category, image_url } = req.body;
@@ -127,7 +125,6 @@ app.put('/api/products/:id', async (req, res) => {
     }
 });
 
-// ៤. លុបផលិតផល
 app.delete('/api/products/:id', async (req, res) => {
     const { id } = req.params;
     try {
@@ -147,12 +144,15 @@ app.post('/api/orders', async (req, res) => {
     try {
         await client.query('BEGIN');
 
+        // បង្កើត Order Number បែបស្វ័យប្រវត្តិ (ឧ. ORD-Timestamp)
+        const orderNumber = 'ORD-' + Date.now();
+
         const orderQuery = `
-            INSERT INTO orders (cashier_id, total_amount, payment_method, status, created_at) 
-            VALUES ($1, $2, $3, 'Pending', CURRENT_TIMESTAMP) 
-            RETURNING id, total_amount, created_at
+            INSERT INTO orders (order_number, cashier_id, total_amount, payment_method, status, created_at) 
+            VALUES ($1, $2, $3, $4, 'Pending', CURRENT_TIMESTAMP) 
+            RETURNING id, order_number, total_amount, created_at
         `;
-        const orderResult = await client.query(orderQuery, [cashier_id || null, total_amount, payment_method || 'Cash']);
+        const orderResult = await client.query(orderQuery, [orderNumber, cashier_id || null, total_amount, payment_method || 'Cash']);
         const newOrderId = orderResult.rows[0].id;
 
         if (items && items.length > 0) {
@@ -178,7 +178,7 @@ app.post('/api/orders', async (req, res) => {
 app.get('/api/orders/kitchen', async (req, res) => {
     try {
         const result = await pool.query(`
-            SELECT o.id, o.total_amount, o.payment_method, o.status, o.created_at, u.full_name as cashier_name
+            SELECT o.id, o.order_number, o.total_amount, o.payment_method, o.status, o.created_at, u.full_name as cashier_name
             FROM orders o
             LEFT JOIN users u ON o.cashier_id = u.id
             WHERE o.status IN ('Pending', 'Preparing') OR o.status IS NULL
