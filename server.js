@@ -18,7 +18,7 @@ app.use(express.json({ limit: '10mb' })); // ពង្រីកទំហំ JSON
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// មុខងារបង្កើតតារាង Database
+// មុខងារបង្កើត និងកែសម្រួលតារាង Database ស្វ័យប្រវត្តិ
 async function initDB() {
     try {
         await pool.query(`
@@ -44,7 +44,7 @@ async function initDB() {
 
             CREATE TABLE IF NOT EXISTS orders (
                 id SERIAL PRIMARY KEY,
-                cashier_id INT REFERENCES users(id),
+                cashier_id INT,
                 total_amount NUMERIC(10, 2) NOT NULL,
                 payment_method VARCHAR(50) DEFAULT 'Cash',
                 status VARCHAR(50) DEFAULT 'Pending',
@@ -59,7 +59,13 @@ async function initDB() {
                 price NUMERIC(10, 2) NOT NULL
             );
         `);
-        console.log('✅ Database tables initialized successfully!');
+
+        // 🛠️ បន្ថែមបញ្ជាពិនិត្យ និងធានាថា column cashier_id មានស្រាប់ក្នុង orders ជានិច្ច
+        await pool.query(`
+            ALTER TABLE orders ADD COLUMN IF NOT EXISTS cashier_id INTEGER;
+        `);
+
+        console.log('✅ Database tables and columns initialized successfully!');
     } catch (err) {
         console.error('❌ Database initialization error:', err);
     }
@@ -146,7 +152,7 @@ app.post('/api/orders', async (req, res) => {
             VALUES ($1, $2, $3, 'Pending', CURRENT_TIMESTAMP) 
             RETURNING id, total_amount, created_at
         `;
-        const orderResult = await client.query(orderQuery, [cashier_id, total_amount, payment_method || 'Cash']);
+        const orderResult = await client.query(orderQuery, [cashier_id || null, total_amount, payment_method || 'Cash']);
         const newOrderId = orderResult.rows[0].id;
 
         if (items && items.length > 0) {
