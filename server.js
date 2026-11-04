@@ -2,32 +2,10 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 const path = require('path');
-const fs = require('fs');
 const { Pool } = require('pg');
-const multer = require('multer');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
-// ធានាថា Folder public/uploads មានស្រាប់
-const uploadDir = path.join(__dirname, 'public', 'uploads');
-if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-// កំណត់កន្លែងរក្សាទុករូបភាព
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, uploadDir);
-    },
-    filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        const ext = path.extname(file.originalname);
-        cb(null, 'product-' + uniqueSuffix + ext);
-    }
-});
-
-const upload = multer({ storage: storage });
 
 // តភ្ជាប់ជាមួយ Cloud Database (Neon PostgreSQL)[cite: 6]
 const pool = new Pool({
@@ -36,11 +14,11 @@ const pool = new Pool({
 });
 
 app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '10mb' })); // ពង្រីកទំហំ JSON សម្រាប់ຮັບ Base64 String
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// មុខងារបង្កើតតារាង Database និង Column បន្ថែមស្វ័យប្រវត្តិ[cite: 6]
+// មុខងារបង្កើតតារាង Database
 async function initDB() {
     try {
         await pool.query(`
@@ -81,16 +59,7 @@ async function initDB() {
                 price NUMERIC(10, 2) NOT NULL
             );
         `);
-        
-        await pool.query(`
-            ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
-            ALTER TABLE orders ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'Pending';
-            ALTER TABLE products ADD COLUMN IF NOT EXISTS barcode VARCHAR(100);
-            ALTER TABLE products ADD COLUMN IF NOT EXISTS category VARCHAR(100) DEFAULT 'General';
-            ALTER TABLE products ADD COLUMN IF NOT EXISTS image_url TEXT;
-        `);
-
-        console.log('✅ Database tables & columns initialized successfully!');
+        console.log('✅ Database tables initialized successfully!');
     } catch (err) {
         console.error('❌ Database initialization error:', err);
     }
@@ -102,7 +71,7 @@ initDB();
 const userRoutes = require('./routes/users');
 app.use('/api/users', userRoutes);
 
-// ================= PRODUCT APIs (CRUD with File Upload & Image URL) =================
+// ================= PRODUCT APIs (Base64 Stored in Database) =================
 
 // ១. ទាញយកបញ្ជីផលិតផលទាំងអស់
 app.get('/api/products', async (req, res) => {
@@ -115,69 +84,41 @@ app.get('/api/products', async (req, res) => {
     }
 });
 
-// ២. បន្ថែមផលិតផលថ្មី (អាចប្រើ File Upload ឬ Image_url)
-app.post('/api/products', (req, res) => {
-    upload.single('image_file')(req, res, async (err) => {
-        if (err) {
-            console.error('Multer Upload Error:', err);
-            return res.status(400).json({ success: false, error: 'File upload error: ' + err.message });
-        }
+// ២. បន្ថែមផលិតផលថ្មី (รับ Base64 ឬ URL ຜ່ານ JSON)
+app.post('/api/products', async (req, res) => {
+    const { barcode, name, price, category, image_url } = req.body;
+    
+    if (!name || !price) {
+        return res.status(400).json({ success: false, error: 'Name and Price are required' });
+    }
 
-        const { barcode, name, price, category, image_url_input } = req.body;
-        
-        if (!name || !price) {
-            return res.status(400).json({ success: false, error: 'Name and Price are required' });
-        }
-
-        // 優先权៖ បើមានការ Upload File ថ្មី យក File នោះ បើគ្មានទេ យក Image URL ທີ່វាយបញ្ចូល
-        let image_url = image_url_input || null;
-        if (req.file) {
-            image_url = '/uploads/' + req.file.filename;
-        }
-
-        try {
-            const result = await pool.query(
-                'INSERT INTO products (barcode, name, price, category, image_url) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-                [barcode || null, name, parseFloat(price), category || 'General', image_url]
-            );
-            res.status(201).json({ success: true, data: result.rows[0] });
-        } catch (dbErr) {
-            console.error('Database Insert Product Error:', dbErr);
-            res.status(500).json({ success: false, error: 'Database error: ' + dbErr.message });
-        }
-    });
+    try {
+        const result = await pool.query(
+            'INSERT INTO products (barcode, name, price, category, image_url) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+            [barcode || null, name, parseFloat(price), category || 'General', image_url || null]
+        );
+        res.status(201).json({ success: true, data: result.rows[0] });
+    } catch (dbErr) {
+        console.error('Database Insert Product Error:', dbErr);
+        res.status(500).json({ success: false, error: 'Database error: ' + dbErr.message });
+    }
 });
 
 // ៣. កែប្រែផលិតផល
-app.put('/api/products/:id', (req, res) => {
-    upload.single('image_file')(req, res, async (err) => {
-        if (err) {
-            console.error('Multer Update Error:', err);
-            return res.status(400).json({ success: false, error: 'File upload error: ' + err.message });
-        }
+app.put('/api/products/:id', async (req, res) => {
+    const { id } = req.params;
+    const { barcode, name, price, category, image_url } = req.body;
 
-        const { id } = req.params;
-        const { barcode, name, price, category, image_url_input, existing_image_url } = req.body;
-
-        try {
-            let image_url = existing_image_url || null;
-            if (image_url_input) {
-                image_url = image_url_input; // បើមានការប្តូរ Image URL ថ្មី
-            }
-            if (req.file) {
-                image_url = '/uploads/' + req.file.filename; // បើមានការ Upload File ថ្មី
-            }
-
-            const result = await pool.query(
-                'UPDATE products SET barcode = $1, name = $2, price = $3, category = $4, image_url = $5 WHERE id = $6 RETURNING *',
-                [barcode || null, name, parseFloat(price), category, image_url, id]
-            );
-            res.json({ success: true, data: result.rows[0] });
-        } catch (dbErr) {
-            console.error('Database Update Product Error:', dbErr);
-            res.status(500).json({ success: false, error: 'Database error: ' + dbErr.message });
-        }
-    });
+    try {
+        const result = await pool.query(
+            'UPDATE products SET barcode = $1, name = $2, price = $3, category = $4, image_url = $5 WHERE id = $6 RETURNING *',
+            [barcode || null, name, parseFloat(price), category, image_url || null, id]
+        );
+        res.json({ success: true, data: result.rows[0] });
+    } catch (dbErr) {
+        console.error('Database Update Product Error:', dbErr);
+        res.status(500).json({ success: false, error: 'Database error: ' + dbErr.message });
+    }
 });
 
 // ៤. លុបផលិតផល
