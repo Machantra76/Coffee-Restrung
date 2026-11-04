@@ -10,7 +10,7 @@ exports.getTables = async (req, res) => {
     }
 };
 
-// 2. បង្កើត Order ថ្មី (គាំទ្រទាំង price និង unit_price ព្រមទាំងការពារ subtotal មិនឱ្យ null)
+// 2. បង្កើត Order ថ្មី (បញ្ចូល order_number ស្វ័យប្រវត្តិដើម្បីការពារ Not-Null Constraint)
 exports.createOrder = async (req, res) => {
     const client = await pool.connect();
     try {
@@ -21,12 +21,12 @@ exports.createOrder = async (req, res) => {
         const actualPaymentMethod = payment_method || 'Cash';
         const actualOrderType = order_type || 'POS';
 
-        // បង្កើត Order Number ស្វ័យប្រវត្តិ
+        // បង្កើត Order Number ស្វ័យប្រវត្តិជានិច្ច
         const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
         const randNum = Math.floor(1000 + Math.random() * 9000);
         const orderNumber = `ORD-${dateStr}-${randNum}`;
 
-        // ត្រួតពិនិត្យ និងគណនា Subtotal ឱ្យបានត្រឹមត្រូវ ១០០% (ការពារកុំឱ្យចេញ Null)
+        // គណនា Total និង Items
         let calculatedTotal = 0;
         const processedItems = items.map(item => {
             const itemPrice = Number(item.unit_price || item.price || 0);
@@ -44,7 +44,7 @@ exports.createOrder = async (req, res) => {
 
         const finalTotal = total_amount !== undefined ? Number(total_amount) : calculatedTotal;
 
-        // 插入 ចូលតារាង orders
+        // 插入 ចូលតារាង orders ដោយដាក់ order_number ចូលទៅជាមួយ
         const orderQuery = `
             INSERT INTO orders (order_number, table_id, user_id, cashier_id, order_type, total_amount, net_amount, payment_method, status) 
             VALUES ($1, $2, $3, $3, $4, $5, $5, $6, 'pending') RETURNING *
@@ -59,7 +59,7 @@ exports.createOrder = async (req, res) => {
         ]);
         const newOrder = orderResult.rows[0];
 
-        // 插入 ចូលតារាង order_items ដោយធានាថា subtotal មានតម្លៃច្បាស់លាស់
+        // 插入 ចូលតារាង order_items នីមួយៗ
         for (let item of processedItems) {
             await client.query(
                 `INSERT INTO order_items (order_id, product_id, quantity, price, unit_price, subtotal, notes) 
