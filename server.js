@@ -7,7 +7,7 @@ const { Pool } = require('pg');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// តភ្ជាប់ជាមួយ Cloud Database (Neon PostgreSQL)
+// តភ្ជាប់ជាមួយ Cloud Database (Neon PostgreSQL)[cite: 6]
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: { rejectUnauthorized: false }
@@ -18,7 +18,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// មុខងារបង្កើត និងកែសម្រួលតារាង Database ស្វ័យប្រវត្តិ
+// មុខងារបង្កើត និងពិនិត្យតារាង Database ស្វ័យប្រវត្តិ
 async function initDB() {
     try {
         await pool.query(`
@@ -47,6 +47,7 @@ async function initDB() {
                 order_number VARCHAR(100),
                 cashier_id INT,
                 total_amount NUMERIC(10, 2) NOT NULL,
+                net_amount NUMERIC(10, 2),
                 payment_method VARCHAR(50) DEFAULT 'Cash',
                 status VARCHAR(50) DEFAULT 'Pending',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -61,10 +62,12 @@ async function initDB() {
             );
         `);
 
-        // ធានាថា column ទាំងនេះមានស្រាប់ក្នុង database ជានិច្ច
+        // ធានាថា column សំខាន់ៗមានស្រាប់
         await pool.query(`
             ALTER TABLE orders ADD COLUMN IF NOT EXISTS cashier_id INTEGER;
             ALTER TABLE orders ADD COLUMN IF NOT EXISTS order_number VARCHAR(100);
+            ALTER TABLE orders ADD COLUMN IF NOT EXISTS net_amount NUMERIC(10, 2);
+            ALTER TABLE order_items ADD COLUMN IF NOT EXISTS price NUMERIC(10, 2);
         `);
 
         console.log('✅ Database tables and columns initialized successfully!');
@@ -144,12 +147,12 @@ app.post('/api/orders', async (req, res) => {
     try {
         await client.query('BEGIN');
 
-        // បង្កើត Order Number បែបស្វ័យប្រវត្តិ (ឧ. ORD-Timestamp)
         const orderNumber = 'ORD-' + Date.now();
 
+        // ដាក់បញ្ចូលទាំង total_amount និង net_amount ស្របតាម struct database របស់បង
         const orderQuery = `
-            INSERT INTO orders (order_number, cashier_id, total_amount, payment_method, status, created_at) 
-            VALUES ($1, $2, $3, $4, 'Pending', CURRENT_TIMESTAMP) 
+            INSERT INTO orders (order_number, cashier_id, total_amount, net_amount, payment_method, status, created_at) 
+            VALUES ($1, $2, $3, $3, $4, 'Pending', CURRENT_TIMESTAMP) 
             RETURNING id, order_number, total_amount, created_at
         `;
         const orderResult = await client.query(orderQuery, [orderNumber, cashier_id || null, total_amount, payment_method || 'Cash']);
@@ -169,6 +172,7 @@ app.post('/api/orders', async (req, res) => {
         res.status(201).json({ success: true, message: 'Order created successfully', order: orderResult.rows[0] });
     } catch (err) {
         await client.query('ROLLBACK');
+        console.error('Checkout Error:', err);
         res.status(500).json({ success: false, error: 'Database error: ' + err.message });
     } finally {
         client.release();
