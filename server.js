@@ -18,7 +18,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// មុខងារបង្កើតតារាង Database (រួមទាំងតារាង stock_in_history)
+// មុខងារបង្កើតតារាង Database (រួមទាំង users, products, orders, order_items, និង stock_in_history)
 async function initDB() {
     try {
         await pool.query(`
@@ -156,6 +156,7 @@ app.put('/api/inventory/:id/stock', async (req, res) => {
     }
 });
 
+// 📦 API សម្រាប់បន្ថែមស្តុកចូលថ្មី (Stock In) ព្រមទាំងកត់ត្រាកាលបរិច្ឆេទ និងតម្លៃដើម
 app.post('/api/inventory/stock-in', async (req, res) => {
     const { product_id, quantity_added, cost_price, note } = req.body;
 
@@ -219,8 +220,7 @@ app.get('/api/inventory', async (req, res) => {
     }
 });
 
-// ================= ORDER APIs =================
-
+// ================= ORDER APIs (With Strict Stock Validation & Deduction) =================
 app.post('/api/orders', async (req, res) => {
     const { cashier_id, total_amount, payment_method, items } = req.body;
     
@@ -228,6 +228,7 @@ app.post('/api/orders', async (req, res) => {
     try {
         await client.query('BEGIN');
 
+        // ១. ពិនិត្យស្តុក និងទប់ស្កាត់មិនឱ្យលក់លើសចំនួនក្នុងឃ្លាំង
         if (items && items.length > 0) {
             for (let item of items) {
                 const checkStock = await client.query('SELECT stock_qty, name FROM products WHERE id = $1', [item.id]);
@@ -248,6 +249,7 @@ app.post('/api/orders', async (req, res) => {
             }
         }
 
+        // ២. បង្កើត Order ថ្មី
         const orderQuery = `
             INSERT INTO orders (cashier_id, total_amount, payment_method, status, created_at) 
             VALUES ($1, $2, $3, 'Pending', CURRENT_TIMESTAMP) 
@@ -256,6 +258,7 @@ app.post('/api/orders', async (req, res) => {
         const orderResult = await client.query(orderQuery, [cashier_id, total_amount, payment_method || 'Cash']);
         const newOrderId = orderResult.rows[0].id;
 
+        // ៣. បញ្ចូលទិន្នន័យចូល order_items
         if (items && items.length > 0) {
             for (let item of items) {
                 const itemQuery = `
@@ -302,7 +305,7 @@ app.patch('/api/orders/:id/status', async (req, res) => {
     }
 });
 
-// 📊 ៥. ទាញយកប្រវត្តិការលក់ ( Sales History ) + Filter កាលបរិច្ឆេទ + គណនាប្រាក់ចំណេញ (Profit)
+// 📊 ៥. ទាញយកប្រវត្តិការលក់ (Sales History) + Filter កាលបរិច្ឆេទ + គណនាប្រាក់ចំណេញសរុប និងប្រចាំថ្ងៃ (Daily Summary)
 app.get('/api/orders/history', async (req, res) => {
     const { fromDate, toDate } = req.query;
     try {
@@ -320,7 +323,7 @@ app.get('/api/orders/history', async (req, res) => {
 
         const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
 
-        // Query ប្រវត្តិ Order
+        // ១. ទាញយកបញ្ជីវិក្កយបត្រទាំងអស់
         const query = `
             SELECT o.id, o.total_amount, o.payment_method, o.status, o.created_at, u.full_name as cashier_name 
             FROM orders o
@@ -330,7 +333,7 @@ app.get('/api/orders/history', async (req, res) => {
         `;
         const result = await pool.query(query, params);
 
-        // Query គណនាប្រាក់ចំណេញសរុប ( ផ្អែកលើ order_items និងតម្លៃដើមមធ្យមចុងក្រោយក្នុង stock_in_history )
+        // ២. គណនាប្រាក់ចំណេញសរុប (Total Profit)
         const profitQuery = `
             SELECT COALESCE(SUM((oi.price - COALESCE(s.cost_price, 0)) * oi.quantity), 0) as total_profit
             FROM order_items oi
@@ -345,10 +348,31 @@ app.get('/api/orders/history', async (req, res) => {
         const profitResult = await pool.query(profitQuery, params);
         const totalProfit = parseFloat(profitResult.rows[0]?.total_profit || 0);
 
+        // ៣. 📊 グループ (Group) ទិន្នន័យសង្ខេបតាមថ្ងៃនីមួយៗ (Daily Breakdown)
+        const dailyQuery = `
+            SELECT 
+                DATE(o.created_at) as sale_date,
+                COUNT(o.id) as total_orders,
+                SUM(o.total_amount) as daily_revenue,
+                COALESCE(SUM((oi.price - COALESCE(s.cost_price, 0)) * oi.quantity), 0) as daily_profit
+            FROM orders o
+            JOIN order_items oi ON o.id = oi.order_id
+            LEFT JOIN (
+                SELECT DISTINCT ON (product_id) product_id, cost_price 
+                FROM stock_in_history 
+                ORDER BY product_id, created_at DESC
+            ) s ON oi.product_id = s.product_id
+            ${whereSql}
+            GROUP BY DATE(o.created_at)
+            ORDER BY sale_date DESC;
+        `;
+        const dailyResult = await pool.query(dailyQuery, params);
+
         res.json({ 
             success: true, 
             data: result.rows,
-            total_profit: totalProfit
+            total_profit: totalProfit,
+            daily_summary: dailyResult.rows
         });
     } catch (err) {
         console.error('Get Orders History Error:', err);
