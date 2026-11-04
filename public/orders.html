@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ប្រវត្តិការលក់ និងវិក្កយបត្រ | Sales Reports</title>
+    <title>ប្រវត្តិការលក់ និងរបាយការណ៍ប្រាក់ចំណេញ | Reports</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;600&display=swap" rel="stylesheet">
@@ -14,7 +14,7 @@
 </head>
 <body>
     <nav class="navbar navbar-dark bg-dark px-4 py-3 shadow-sm">
-        <span class="navbar-brand fw-bold fs-4"><i class="fa-solid fa-receipt me-2"></i> ប្រវត្តិការលក់ និងវិក្កយបត្រ (Past Transactions)</span>
+        <span class="navbar-brand fw-bold fs-4"><i class="fa-solid fa-receipt me-2"></i> របាយការណ៍ការលក់ និងប្រាក់ចំណេញ (Reports)</span>
         <div>
             <a href="pos.html" class="btn btn-outline-light btn-sm me-2"><i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ក្រោយ / Back</a>
             <button class="btn btn-danger btn-sm px-3 fw-bold" onclick="logout()"><i class="fa-solid fa-right-from-bracket me-1"></i> ចាកចេញ</button>
@@ -60,15 +60,35 @@
             </div>
             <div class="col-md-4">
                 <div class="card p-4 bg-warning text-dark">
-                    <h5><i class="fa-solid fa-chart-line me-2"></i> ប្រាក់ចំណេញសរុប (Profit)</h5>
+                    <h5><i class="fa-solid fa-chart-line me-2"></i> ប្រាក់ចំណេញសរុប (Total Profit)</h5>
                     <h2 id="totalProfit" class="fw-bold display-6">$0.00</h2>
                 </div>
             </div>
         </div>
 
+        <!-- 📊 Daily Summary Table (តារាងសង្ខេបប្រចាំថ្ងៃ) -->
+        <div class="card p-4 bg-white mb-4">
+            <h4 class="fw-bold mb-3 text-dark"><i class="fa-solid fa-calendar-days me-2 text-primary"></i> របាយការណ៍សង្ខេបប្រាក់ចំណេញតាមថ្ងៃ (Daily Profit Summary)</h4>
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover align-middle">
+                    <thead class="table-secondary">
+                        <tr>
+                            <th>កាលបរិច្ឆេទ (Date)</th>
+                            <th class="text-center">ចំនួនវិក្កយបត្រ (Orders)</th>
+                            <th class="text-end">ប្រាក់លក់បាន (Revenue)</th>
+                            <th class="text-end">ប្រាក់ចំណេញ (Profit)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dailySummaryTableBody">
+                        <!-- Load dynamically -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
         <!-- Orders History Table -->
         <div class="card p-4 bg-white">
-            <h4 class="fw-bold mb-3 text-dark"><i class="fa-solid fa-list-check me-2"></i> បញ្ជីប្រវត្តិវិក្កយបត្រទាំងអស់</h4>
+            <h4 class="fw-bold mb-3 text-dark"><i class="fa-solid fa-list-check me-2"></i> បញ្ជីប្រវត្តិវិក្កយបត្រលម្អិត</h4>
             <div class="table-responsive">
                 <table class="table table-hover align-middle">
                     <thead class="table-dark">
@@ -97,7 +117,6 @@
                 return;
             }
 
-            // កំណត់ថ្ងៃបច្ចុប្បន្នជា Default សម្រាប់ From / To
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('fromDate').value = today;
             document.getElementById('toDate').value = today;
@@ -130,6 +149,27 @@
                     const totalProfit = Number(result.total_profit || 0);
                     document.getElementById('totalProfit').innerText = `$${totalProfit.toFixed(2)}`;
 
+                    // 📊 1. បង្ហាញតារាងសង្ខេបប្រចាំថ្ងៃ (Daily Summary)
+                    const dailySummary = result.daily_summary || [];
+                    const dailyTbody = document.getElementById('dailySummaryTableBody');
+                    dailyTbody.innerHTML = '';
+
+                    if (dailySummary.length === 0) {
+                        dailyTbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-3">មិនមានទិន្នន័យក្នុងចន្លោះថ្ងៃនេះទេ។</td></tr>`;
+                    } else {
+                        dailySummary.forEach(d => {
+                            dailyTbody.innerHTML += `
+                                <tr>
+                                    <td class="fw-bold"><i class="fa-regular fa-calendar me-2 text-secondary"></i>${d.sale_date}</td>
+                                    <td class="text-center fw-bold">${d.total_orders} វិក្កយបត្រ</td>
+                                    <td class="text-end fw-bold text-success">$${Number(d.daily_revenue).toFixed(2)}</td>
+                                    <td class="text-end fw-bold text-warning">$${Number(d.daily_profit).toFixed(2)}</td>
+                                </tr>
+                            `;
+                        });
+                    }
+
+                    // 2. បង្ហាញតារាងប្រវត្តិវិក្កយបត្រលម្អិត
                     const tbody = document.getElementById('reportsTableBody');
                     tbody.innerHTML = '';
 
