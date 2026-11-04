@@ -43,14 +43,13 @@
             margin: 0 !important;
         }
         
-        .product-img-wrapper img {
-            width: 100% !important;
-            height: 100% !important;
-            object-fit: cover !important; /* ធ្វើឱ្យរូបភាពលាតសន្ធឹងពេញប្រអប់ល្អឥតខ្ចោះ */
-            display: block;
-            transition: transform 0.3s ease;
-        }
-
+      .product-img-wrapper img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important; /* 🛠️ ផ្លាស់ប្តូរត្រង់នេះ ដើម្បីឱ្យរូបភាពបង្ហាញពេញលេញ មិនឱ្យដាច់គែម */
+    display: block;
+    background-color: #ffffff; /* ពណ៌ផ្ទៃខាងក្រោយ */
+}
         .product-card:hover .product-img-wrapper img {
             transform: scale(1.06);
         }
