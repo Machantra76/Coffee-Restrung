@@ -38,6 +38,7 @@ async function initDB() {
                 name VARCHAR(150) NOT NULL,
                 price NUMERIC(10, 2) NOT NULL,
                 category VARCHAR(100) DEFAULT 'General',
+                stock_qty INT DEFAULT 0,
                 image_url TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
@@ -84,9 +85,9 @@ app.get('/api/products', async (req, res) => {
     }
 });
 
-// ២. បន្ថែមផលិតផលថ្មី (รับ Base64 ឬ URL ຜ່ານ JSON)
+// ២. បន្ថែមផលិតផលថ្មី
 app.post('/api/products', async (req, res) => {
-    const { barcode, name, price, category, image_url } = req.body;
+    const { barcode, name, price, category, stock_qty, image_url } = req.body;
     
     if (!name || !price) {
         return res.status(400).json({ success: false, error: 'Name and Price are required' });
@@ -94,8 +95,8 @@ app.post('/api/products', async (req, res) => {
 
     try {
         const result = await pool.query(
-            'INSERT INTO products (barcode, name, price, category, image_url) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-            [barcode || null, name, parseFloat(price), category || 'General', image_url || null]
+            'INSERT INTO products (barcode, name, price, category, stock_qty, image_url) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+            [barcode || null, name, parseFloat(price), category || 'General', parseInt(stock_qty) || 0, image_url || null]
         );
         res.status(201).json({ success: true, data: result.rows[0] });
     } catch (dbErr) {
@@ -120,6 +121,9 @@ app.put('/api/products/:id', async (req, res) => {
         res.status(500).json({ success: false, error: 'Database error: ' + dbErr.message });
     }
 });
+
+// ================= INVENTORY / STOCK APIs =================
+
 // កែសម្រួលចំនួនស្តុកទំនិញ
 app.put('/api/inventory/:id/stock', async (req, res) => {
     const { id } = req.params;
@@ -135,7 +139,8 @@ app.put('/api/inventory/:id/stock', async (req, res) => {
         res.status(500).json({ success: false, error: 'Database error: ' + err.message });
     }
 });
-// ទាញយកបញ្ជីស្តុកទំនិញទាំងអស់ (ត្រូវមាន stock_qty)
+
+// ទាញយកបញ្ជីស្តុកទំនិញទាំងអស់ (រួមទាំង stock_qty)
 app.get('/api/inventory', async (req, res) => {
     try {
         const result = await pool.query('SELECT id, name, price, category, stock_qty, image_url FROM products ORDER BY id DESC');
@@ -158,7 +163,7 @@ app.delete('/api/products/:id', async (req, res) => {
     }
 });
 
-// ================= ORDER APIs =================
+// ================= ORDER APIs (With Stock Deduction) =================
 app.post('/api/orders', async (req, res) => {
     const { cashier_id, total_amount, payment_method, items } = req.body;
     
@@ -166,6 +171,32 @@ app.post('/api/orders', async (req, res) => {
     try {
         await client.query('BEGIN');
 
+        // ១. ពិនិត្យ និងកាត់បន្ថយស្តុកទំនិញដោយស្វ័យប្រវត្តិ
+        if (items && items.length > 0) {
+            for (let item of items) {
+                const checkStock = await client.query('SELECT stock_qty, name FROM products WHERE id = $1', [item.id]);
+                if (checkStock.rows.length === 0) {
+                    throw new Error(`ទំនិញ ID ${item.id} មិនមានក្នុងប្រព័ន្ធទេ។`);
+                }
+
+                const currentStock = checkStock.rows[0].stock_qty || 0;
+                
+                // ប្រសិនបើចង់ទប់ស្កាត់ដាច់ខាតមិនឱ្យលក់លើសស្តុក សូមដកសញ្ញា Comment ខាងក្រោមចេញ៖
+                /*
+                if (currentStock < item.quantity) {
+                    throw new Error(`ទំនិញ "${checkStock.rows[0].name}" ក្នុងស្តុកសល់តែ ${currentStock} ប៉ុណ្ណោះ!`);
+                }
+                */
+
+                // កាត់បន្ថយចំនួនស្តុកចុះតាមចំនួនដែលបានលក់
+                await client.query(
+                    'UPDATE products SET stock_qty = stock_qty - $1 WHERE id = $2',
+                    [item.quantity, item.id]
+                );
+            }
+        }
+
+        // ២. បង្កើត Order ថ្មី
         const orderQuery = `
             INSERT INTO orders (cashier_id, total_amount, payment_method, status, created_at) 
             VALUES ($1, $2, $3, 'Pending', CURRENT_TIMESTAMP) 
@@ -174,6 +205,7 @@ app.post('/api/orders', async (req, res) => {
         const orderResult = await client.query(orderQuery, [cashier_id, total_amount, payment_method || 'Cash']);
         const newOrderId = orderResult.rows[0].id;
 
+        // ៣. បញ្ចូលទិន្នន័យចូល order_items
         if (items && items.length > 0) {
             for (let item of items) {
                 const itemQuery = `
@@ -185,7 +217,7 @@ app.post('/api/orders', async (req, res) => {
         }
 
         await client.query('COMMIT');
-        res.status(201).json({ success: true, message: 'Order created successfully', order: orderResult.rows[0] });
+        res.status(201).json({ success: true, message: 'Order created successfully and stock updated', order: orderResult.rows[0] });
     } catch (err) {
         await client.query('ROLLBACK');
         res.status(500).json({ success: false, error: 'Database error: ' + err.message });
@@ -219,6 +251,7 @@ app.patch('/api/orders/:id/status', async (req, res) => {
         res.status(500).json({ success: false, error: 'Database error' });
     }
 });
+
 // ៥. ទាញយកប្រវត្តិការលក់ទាំងអស់សម្រាប់ធ្វើ Report (Sales History)
 app.get('/api/orders/history', async (req, res) => {
     try {
@@ -234,6 +267,7 @@ app.get('/api/orders/history', async (req, res) => {
         res.status(500).json({ success: false, error: 'Database error: ' + err.message });
     }
 });
+
 // ទាញយកបញ្ជី Cashiers ទាំងអស់សម្រាប់ Admin ជ្រើសរើស
 app.get('/api/users/cashiers-list', async (req, res) => {
     try {
@@ -278,18 +312,6 @@ app.get('/api/orders/cashier-activity/:cashierId', async (req, res) => {
         });
     } catch (err) {
         console.error('Get Cashier Activity Error:', err);
-        res.status(500).json({ success: false, error: 'Database error: ' + err.message });
-    }
-});
-// ================= INVENTORY / STOCK APIs =================
-
-// ទាញយកបញ្ជីស្តុកទំនិញទាំងអស់
-app.get('/api/inventory', async (req, res) => {
-    try {
-        const result = await pool.query('SELECT id, name, price, category, image_url FROM products ORDER BY id DESC');
-        res.json({ success: true, data: result.rows });
-    } catch (err) {
-        console.error('Get Inventory Error:', err);
         res.status(500).json({ success: false, error: 'Database error: ' + err.message });
     }
 });
