@@ -10,12 +10,12 @@
     <style>
         body { font-family: 'Kantumruy Pro', sans-serif; background-color: #f4f7fa; }
         
-        /* 🎨 រចនាបថកាតទំនិញ៖ មានតែរូបភាពពេញកាតទាំងស្រុង */
+        /* 🎨 រចនាបថកាតទំនិញ៖ បង្ហាញរូបភាពពេញកាតទាំងស្រុង ស្របតាមរូបរាងក្នុង Database */
         .product-card {
             cursor: pointer;
             transition: all 0.3s ease;
             border: none;
-            border-radius: 20px;
+            border-radius: 16px;
             background-color: #ffffff;
             box-shadow: 0 4px 16px rgba(149, 157, 165, 0.08);
             overflow: hidden; 
@@ -24,7 +24,7 @@
             align-items: center;
             justify-content: center;
             padding: 0px !important; 
-            height: 130px; /* កម្ពស់កាតទំនិញពេញលេញសម្រាប់រូបភាព */
+            height: 120px; /* កម្ពស់កាតទំនិញស្អាតល្មម */
         }
 
         .product-card:hover {
@@ -32,21 +32,21 @@
             box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
         }
         
-        /* 🖼️ ប្រអប់រូបភាពលាតសន្ធឹងពេញកាតទាំងមូល */
+        /* 🖼️ ប្រអប់រូបភាពលាតសន្ធឹងពេញកាតទាំងមូល កោងជ្រុងស្អាត */
         .product-img-wrapper {
             width: 100% !important;
             height: 100% !important; 
             background-color: #f8fafc;
             position: relative;
             overflow: hidden;
-            border-radius: 20px !important;  
+            border-radius: 16px !important;  
             margin: 0 !important;
         }
         
         .product-img-wrapper img {
             width: 100% !important;
             height: 100% !important;
-            object-fit: cover !important; 
+            object-fit: cover !important; /* ធ្វើឱ្យរូបភាពលាតសន្ធឹងពេញប្រអប់ល្អឥតខ្ចោះ */
             display: block;
             transition: transform 0.3s ease;
         }
@@ -288,7 +288,7 @@
                     `;
                 }
 
-                /* 🌟 បង្ហាញតែកាតរូបភាពសុទ្ធសាធពេញកាតទាំងមូល ដោយដកអត្ថបទចេញទាំងស្រុង */
+                /* 🌟 បង្ហាញតែកាតរូបភាពសុទ្ធសាធពេញកាតទាំងស្រុង (គ្មានអត្ថបទ) ស្របតាមរូបរាងទម្រង់បន្ថែមទំនិញ */
                 grid.innerHTML += `
                     <div class="col-6 col-sm-4 col-md-3 col-lg-2">
                         <div class="product-card" onclick="addToCart(${p.id})" title="${p.name} - $${Number(p.price).toFixed(2)}">
