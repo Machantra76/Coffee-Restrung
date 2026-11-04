@@ -10,35 +10,17 @@
     <style>
         body { font-family: 'Kantumruy Pro', sans-serif; background-color: #f4f7fa; }
         
-        /* 🎨 កាតមេធំ៖ រួមបញ្ចូលគ្នាប៉ុន្តែរៀបចំស្ទាយស្អាត */
-        .product-card {
-            cursor: pointer;
-            transition: all 0.3s ease;
-            border: none;
-            border-radius: 18px;
-            background-color: #ffffff;
-            box-shadow: 0 4px 16px rgba(149, 157, 165, 0.08);
-            overflow: hidden; 
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-            padding: 8px;
-        }
-
-        .product-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
-        }
-        
-        /* 🖼️ កាតទី១៖ សម្រាប់រូបភាពសុទ្ធសាធ (ពេញផ្ទៃស្អាត) */
+        /* 🖼️ កាតទី១៖ សម្រាប់រូបភាពពេញស្អាត */
         .product-img-card {
             width: 100%;
-            height: 95px; 
-            background-color: #f8fafc;
-            border-radius: 12px;
+            height: 100px; 
+            background-color: #ffffff;
+            border-radius: 16px;
             overflow: hidden;
             position: relative;
-            margin-bottom: 8px;
+            border: none;
+            box-shadow: 0 4px 12px rgba(149, 157, 165, 0.08);
+            transition: all 0.3s ease;
         }
         
         .product-img-card img {
@@ -48,18 +30,26 @@
             transition: transform 0.3s ease;
         }
 
-        .product-card:hover .product-img-card img {
-            transform: scale(1.06);
-        }
-
-        /* 📝 កាតទី២៖ សម្រាប់អត្ថបទ តម្លៃ និង Category នៅផ្នែកខាងក្រោម */
+        /* 📝 កាតទី២៖ សម្រាប់អត្ថបទ តម្លៃ និង Category */
         .product-info-card {
             width: 100%;
+            background-color: #ffffff;
+            border-radius: 16px;
+            padding: 10px;
             text-align: center;
+            border: none;
+            box-shadow: 0 4px 12px rgba(149, 157, 165, 0.08);
+            transition: all 0.3s ease;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            flex-grow: 1;
+        }
+
+        /* Hover effect ពេលយក Mouse ទៅដាក់ពីលើ */
+        .product-item-wrapper:hover .product-img-card,
+        .product-item-wrapper:hover .product-info-card {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
         }
 
         /* Category Filter Buttons Style */
@@ -121,7 +111,7 @@
                 </div>
 
                 <!-- Product Grid List -->
-                <div class="row g-2" id="productsGrid">
+                <div class="row g-3" id="productsGrid">
                     <!-- Load dynamically -->
                 </div>
             </div>
@@ -295,12 +285,14 @@
                     `;
                 }
 
+                // 🌟 បែងចែកជា ២ កាតដាច់ពីគ្នា (កាតរូបភាព និងកាតអត្ថបទ) ស្ថិតក្នុង Container តែមួយ
                 grid.innerHTML += `
                     <div class="col-6 col-sm-4 col-md-3 col-lg-2">
-                        <div class="product-card" onclick="addToCart(${p.id})">
-                            <!-- កាតទី១៖ រូបភាពពេញ -->
+                        <div class="product-item-wrapper d-flex flex-column gap-2 h-100" onclick="addToCart(${p.id})" style="cursor: pointer;">
+                            <!-- កាតទី ១៖ រូបភាពពេញស្អាត -->
                             ${imgCardTag}
-                            <!-- កាតទី២៖ អត្ថបទ និងតម្លៃនៅខាងក្រោម -->
+                            
+                            <!-- កាតទី ២៖ អត្ថបទ តម្លៃ និង Category -->
                             <div class="product-info-card">
                                 <h6 class="fw-bold text-dark mb-1 text-truncate" style="font-size: 0.85rem;" title="${p.name}">${p.name}</h6>
                                 <div class="text-success fw-bold mb-1" style="font-size: 0.85rem;">$${Number(p.price).toFixed(2)}</div>
