@@ -8,62 +8,55 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;600&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Kantumruy Pro', sans-serif; background-color: #f8fafc; }
+        body { font-family: 'Kantumruy Pro', sans-serif; background-color: #f4f7fa; }
         
-        /* 🎨 រចនាបថកាតទំនិញស្ទាយ Pinterest */
+        /* 🎨 រចនាបថកាតដូចក្នុងរូបភាព (Partner / Grid Card Style) */
         .product-card {
             cursor: pointer;
-            transition: all 0.3s ease-in-out;
-            border: 2px solid #e2e8f0;
-            border-radius: 18px;
+            transition: all 0.3s ease;
+            border: none;
+            border-radius: 22px; /* ជ្រុងកោងខ្លាំងដូចក្នុងរូប */
             background-color: #ffffff;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+            box-shadow: 0 8px 24px rgba(149, 157, 165, 0.08); /* ស្រមោលស្រទន់អណ្តែត */
             overflow: hidden;
-            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 15px 15px 15px;
+            height: 100%;
         }
+
+        /* 🖱️ Effect ពេល hover លើកាត */
         .product-card:hover {
-            transform: translateY(-4px) scale(1.02);
-            border-color: #0d6efd;
-            box-shadow: 0 12px 25px rgba(13, 110, 253, 0.15);
+            transform: translateY(-5px);
+            box-shadow: 0 14px 28px rgba(0, 0, 0, 0.12);
         }
         
-        /* 🖼️ ប្រអប់រូបភាពទំហំថេរ និងដាក់ Padding ដើម្បីកុំឱ្យរូបភាពបែក ឬលាតខ្លាំងពេក */
+        /* 🖼️ ប្រអប់រូបភាពនៅចំកណ្តាលប្រអប់កាត */
         .product-img-wrapper {
             width: 100%;
-            height: 130px;
-            background-color: #f8fafc;
-            position: relative;
-            overflow: hidden;
+            height: 85px; /* កម្ពស់រូបភាពសមរម្យ */
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 10px;
+            margin-bottom: 10px;
         }
+        
         .product-img-wrapper img {
-            max-width: 100%;
+            max-width: 85%;
             max-height: 100%;
-            object-fit: contain; /* 🛠️ ប្រើ contain ដើម្បីបង្ហាញរូបភាពពេញលេញ ស្អាតមិនបែកទ្រង់ទ្រាយ */
+            object-fit: contain; /* រូបភាពតម្រូវ Auto-size នៅចំកណ្តាលមិនបែកទ្រង់ទ្រាយ */
             transition: transform 0.3s ease;
         }
+
         .product-card:hover .product-img-wrapper img {
-            transform: scale(1.05);
+            transform: scale(1.06);
         }
 
-        /* ⭐ ផ្លាកពិន្ទុលើរូបភាព (Rating Badge) */
-        .rating-badge {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            background-color: rgba(0, 0, 0, 0.65);
-            color: #ffffff;
-            font-size: 11px;
-            font-weight: 600;
-            padding: 2px 8px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            gap: 3px;
-            backdrop-filter: blur(4px);
+        .card-info {
+            text-align: center;
+            width: 100%;
         }
 
         @media (min-width: 992px) {
@@ -88,7 +81,7 @@
     </nav>
 
     <!-- Main Container -->
-    <div class="container-fluid py-3 px-2 px-md-3">
+    <div class="container-fluid py-4 px-2 px-md-3">
         <div class="row g-3">
             
             <!-- ខាងឆ្វេង៖ បញ្ជីផលិតផល -->
@@ -99,11 +92,13 @@
                         <p class="text-muted small mb-0">ចុចលើទំនិញដើម្បីបន្ថែមចូលកន្រ្តក | Click item to add to cart</p>
                     </div>
                     <!-- អត្រាប្តូរប្រាក់ -->
-                    <div class="bg-white px-3 py-1 rounded shadow-sm border small">
+                    <div class="bg-white px-3 py-1 rounded-3 shadow-sm border small">
                         <span class="fw-bold text-secondary">អត្រាប្តូរប្រាក់ / Rate:</span> 
-                        <span class="text-primary fw-bold">1$ = <input type="number" id="exchangeRate" value="4100" class="form-control form-control-sm d-inline-block text-center fw-bold text-primary p-0" style="width: 70px;" onchange="renderCart()"> Riel</span>
+                        <span class="text-primary fw-bold">1$ = <input type="number" id="exchangeRate" value="4100" class="form-control form-control-sm d-inline-block text-center fw-bold text-primary p-0 border-0 bg-transparent" style="width: 60px;" onchange="renderCart()"> Riel</span>
                     </div>
                 </div>
+
+                <!-- Product Grid List -->
                 <div class="row g-3" id="productsGrid">
                     <!-- Load dynamically -->
                 </div>
@@ -116,7 +111,7 @@
                         <h4 class="fw-bold text-dark mb-2 fs-5 fs-md-4"><i class="fa-solid fa-cart-shopping me-2"></i> កន្រ្តកវិក្កយបត្រ / Cart</h4>
                         
                         <!-- Cart Table -->
-                        <div class="cart-items-box border rounded p-1 mb-2 bg-light">
+                        <div class="cart-items-box border rounded-3 p-1 mb-2 bg-light">
                             <table class="table table-sm align-middle mb-0" style="font-size: 0.9rem;">
                                 <thead class="table-light">
                                     <tr>
@@ -153,7 +148,7 @@
                             </div>
                         </div>
 
-                        <div class="bg-light p-2 rounded mb-2 border">
+                        <div class="bg-light p-2 rounded-3 mb-2 border">
                             <div class="d-flex justify-content-between align-items-center">
                                 <span class="fw-bold text-dark small">ទឹកប្រាក់សរុប / Grand Total:</span>
                                 <div class="text-end">
@@ -178,7 +173,7 @@
                             </div>
                         </div>
 
-                        <div class="bg-success-subtle p-2 rounded mb-2 d-flex justify-content-between align-items-center border border-success-subtle">
+                        <div class="bg-success-subtle p-2 rounded-3 mb-2 d-flex justify-content-between align-items-center border border-success-subtle">
                             <span class="fw-bold text-success small">ប្រាក់អាប់សងវិញ / Change:</span>
                             <div class="text-end">
                                 <span id="changeUSD" class="fw-bold text-success">$0.00</span>
@@ -186,7 +181,7 @@
                             </div>
                         </div>
 
-                        <button class="btn btn-success w-100 py-2 fw-bold fs-6 shadow-sm" onclick="checkout()">
+                        <button class="btn btn-success w-100 py-2 fw-bold fs-6 shadow-sm rounded-3" onclick="checkout()">
                             <i class="fa-solid fa-check-circle me-1"></i> បង់ប្រាក់ និងចេញវិក្កយបត្រ / Checkout
                         </button>
                     </div>
@@ -239,27 +234,26 @@
 
                     products.forEach(p => {
                         let imgTag = `
-                            <div class="product-img-wrapper d-flex align-items-center justify-content-center text-secondary">
-                                <i class="fa-solid fa-image fs-2"></i>
+                            <div class="product-img-wrapper text-secondary">
+                                <i class="fa-solid fa-image fs-1"></i>
                             </div>`;
                         
                         if (p.image_url && p.image_url.trim() !== '') {
                             imgTag = `
                                 <div class="product-img-wrapper">
-                                    <div class="rating-badge"><i class="fa-solid fa-star text-warning"></i> 5.0</div>
                                     <img src="${p.image_url}" alt="${p.name}" onerror="this.src='https://via.placeholder.com/150?text=No+Img'">
                                 </div>
                             `;
                         }
 
                         grid.innerHTML += `
-                            <div class="col-6 col-sm-4 col-md-6 col-lg-4">
-                                <div class="card product-card h-100 bg-white shadow-sm" onclick="addToCart(${p.id})">
+                            <div class="col-6 col-sm-4 col-md-4 col-lg-3">
+                                <div class="product-card" onclick="addToCart(${p.id})">
                                     ${imgTag}
-                                    <div class="card-body p-2">
-                                        <h5 class="fw-bold text-dark fs-6 mb-1 text-truncate">${p.name}</h5>
-                                        <p class="text-success fw-bold mb-1 fs-6">$${Number(p.price).toFixed(2)}</p>
-                                        <span class="badge bg-light text-secondary border small">${p.category || 'General'}</span>
+                                    <div class="card-info">
+                                        <h6 class="fw-bold text-dark mb-1 text-truncate" style="font-size: 0.95rem;">${p.name}</h6>
+                                        <div class="text-success fw-bold fs-6 mb-1">$${Number(p.price).toFixed(2)}</div>
+                                        <span class="badge bg-light text-secondary border rounded-pill px-2 py-1" style="font-size: 0.75rem;">${p.category || 'General'}</span>
                                     </div>
                                 </div>
                             </div>
