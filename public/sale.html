@@ -10,36 +10,36 @@
     <style>
         body { font-family: 'Kantumruy Pro', sans-serif; background-color: #f4f7fa; }
         
-        /* 🎨 រចនាបថកាតតែមួយ ស្ទាយដូចរូបគំរូរបស់គេ */
+        /* 🎨 រចនាបថកាតតែមួយ ស្ទាយដូចរូបគំរូរបស់គេ (Single Card) */
         .product-card {
             cursor: pointer;
             transition: all 0.3s ease;
             border: none;
             border-radius: 20px; /* ជ្រុងកោងធំស្អាតដូចក្នុងរូប */
             background-color: #ffffff;
-            box-shadow: 0 4px 20px rgba(149, 157, 165, 0.08);
+            box-shadow: 0 4px 16px rgba(149, 157, 165, 0.08);
             overflow: hidden; 
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: space-between;
-            padding: 15px 12px 12px 12px; /* ទុកចន្លោះគែមជុំវិញស្អាត */
+            padding: 15px 12px 12px 12px; /* ទុកចន្លោះគែមជុំវិញក្នុងកាតតែមួយ */
             height: 100%;
         }
 
         .product-card:hover {
             transform: translateY(-4px);
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
         }
         
-        /* 🖼️ ប្រអប់រូបភាពនៅផ្នែកខាងលើ (កម្ពស់ខ្ពស់ល្មម និងមាន Padding ទប់កុំឱ្យជាប់គែមពេក) */
+        /* 🖼️ ប្រអប់រូបភាពនៅផ្នែកខាងលើ (កម្ពស់ល្មម មាន Padding ទប់ស្អាត) */
         .product-img-wrapper {
             width: 100%;
-            height: 130px; /* 🛠️ ពង្រីកកម្ពស់រូបភាពឱ្យខ្ពស់ស្អាតដូចក្នុងរូបគំរូ */
+            height: 120px; 
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
             padding: 5px;
         }
         
@@ -54,7 +54,7 @@
             transform: scale(1.06);
         }
 
-        /* 📝 ផ្នែកអត្ថបទនៅខាងក្រោម */
+        /* 📝 ផ្នែកអត្ថបទនៅខាងក្រោម ស្ថិតក្នុងកាតតែមួយ */
         .card-info {
             text-align: center;
             width: 100%;
@@ -293,7 +293,7 @@
                     `;
                 }
 
-                // 🌟 កាតតែមួយ រៀបចំរចនាសម្ព័ន្ធរូបភាពនៅខាងលើ និងអត្ថបទនៅខាងក្រោមស្អាតដូចរូបគំរូ
+                /* 🌟 រចនាសម្ព័ន្ធកាតតែមួយ (Single Card) រៀបចំរូបភាពលើ និងអត្ថបទក្រោមស្អាត */
                 grid.innerHTML += `
                     <div class="col-6 col-sm-4 col-md-3 col-lg-2">
                         <div class="product-card" onclick="addToCart(${p.id})">
