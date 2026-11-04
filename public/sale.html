@@ -10,60 +10,49 @@
     <style>
         body { font-family: 'Kantumruy Pro', sans-serif; background-color: #f8fafc; }
         
-        /* 🎨 រចនាបថកាតទំនិញស្ទាយ Pinterest + Hover Zoom & Border Highlight */
         .product-card {
             cursor: pointer;
             transition: all 0.3s ease-in-out;
-            border: 2px solid #e2e8f0; /* ស៊ុមស្តើងដំបូង */
+            border: 2px solid #e2e8f0;
             border-radius: 18px;
             background-color: #ffffff;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
             overflow: hidden;
             position: relative;
         }
-        
-        /* 🖱️ ពេលយក Mouse ដាក់លើ៖ Zoom ខ្លួនបន្តិច និងលេចពណ៌ព័ទ្ធជុំវិញស៊ុម */
         .product-card:hover {
-            transform: translateY(-5px) scale(1.02); /* Zoom រin/out បន្តិចឱ្យឃើញសង្កត់ធ្ងន់ */
-            border-color: #0d6efd; /* ប្តូរពណ៌ស៊ុមមកជាពណ៌ខៀវ Bootstrap (ឬប្ដូរតាមចិត្ត) */
-            box-shadow: 0 12px 25px rgba(13, 110, 253, 0.15); /* ស្រមោលពណ៌ខៀវស្រទន់ជុំវិញ */
+            transform: translateY(-4px) scale(1.02);
+            border-color: #0d6efd;
+            box-shadow: 0 12px 25px rgba(13, 110, 253, 0.15);
         }
         
-        /* 🖼️ ប្រអប់រូបភាពតូចជាងមុន (កម្ពស់ត្រឹម 100px) */
         .product-img-wrapper {
             width: 100%;
-            height: 100px; /* កាត់បន្ថយទំហំកម្ពស់ឱ្យតូចល្មមស្អាត */
-            background-color: #f8fafc;
+            height: 150px;
+            background-color: #f1f5f9;
             position: relative;
             overflow: hidden;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 5px;
         }
         .product-img-wrapper img {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain; /* ធានាថារូបភាពមិនដាច់ទ្រង់ទ្រាយ */
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
             transition: transform 0.3s ease;
         }
-
-        /* 🖼️ រូបភាព Zoom បន្តិចពេល Hover លើកាត */
         .product-card:hover .product-img-wrapper img {
             transform: scale(1.05);
         }
 
-        /* ⭐ ផ្លាកពិន្ទុលើរូបភាព (Rating Badge) */
         .rating-badge {
             position: absolute;
-            top: 8px;
-            left: 8px;
+            top: 10px;
+            left: 10px;
             background-color: rgba(0, 0, 0, 0.65);
             color: #ffffff;
-            font-size: 10px;
+            font-size: 11px;
             font-weight: 600;
-            padding: 2px 6px;
-            border-radius: 10px;
+            padding: 2px 8px;
+            border-radius: 12px;
             display: flex;
             align-items: center;
             gap: 3px;
