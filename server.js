@@ -209,6 +209,53 @@ app.get('/api/orders/history', async (req, res) => {
         res.status(500).json({ success: false, error: 'Database error: ' + err.message });
     }
 });
+// ទាញយកបញ្ជី Cashiers ទាំងអស់សម្រាប់ Admin ជ្រើសរើស
+app.get('/api/users/cashiers-list', async (req, res) => {
+    try {
+        const result = await pool.query("SELECT id, username, full_name FROM users WHERE role = 'Cashier' AND is_active = true ORDER BY id DESC");
+        res.json({ success: true, data: result.rows });
+    } catch (err) {
+        console.error('Get Cashiers List Error:', err);
+        res.status(500).json({ success: false, error: 'Database error: ' + err.message });
+    }
+});
+
+// ទាញយកសកម្មភាពលក់ និងប្រវត្តិវិក្កយបត្រតាម Cashier ម្នាក់ៗ
+app.get('/api/orders/cashier-activity/:cashierId', async (req, res) => {
+    const { cashierId } = req.params;
+    try {
+        let query = `
+            SELECT o.id, o.order_number, o.total_amount, o.payment_method, o.status, o.created_at, u.full_name as cashier_name 
+            FROM orders o
+            LEFT JOIN users u ON o.cashier_id = u.id OR o.user_id = u.id
+        `;
+        let queryParams = [];
+
+        if (cashierId && cashierId !== 'all') {
+            query += ` WHERE o.cashier_id = $1 OR o.user_id = $1`;
+            queryParams.push(cashierId);
+        }
+
+        query += ` ORDER BY o.id DESC`;
+
+        const result = await pool.query(query, queryParams);
+        const orders = result.rows;
+        
+        let grandTotal = 0;
+        orders.forEach(o => grandTotal += Number(o.total_amount || 0));
+
+        res.json({
+            success: true,
+            total_bills: orders.length,
+            grand_total: grandTotal,
+            orders: orders,
+            data: orders
+        });
+    } catch (err) {
+        console.error('Get Cashier Activity Error:', err);
+        res.status(500).json({ success: false, error: 'Database error: ' + err.message });
+    }
+});
 
 // Root Route
 app.get('/', (req, res) => {
