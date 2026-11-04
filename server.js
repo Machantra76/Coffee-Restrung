@@ -256,6 +256,18 @@ app.get('/api/orders/cashier-activity/:cashierId', async (req, res) => {
         res.status(500).json({ success: false, error: 'Database error: ' + err.message });
     }
 });
+// ================= INVENTORY / STOCK APIs =================
+
+// ទាញយកបញ្ជីស្តុកទំនិញទាំងអស់
+app.get('/api/inventory', async (req, res) => {
+    try {
+        const result = await pool.query('SELECT id, name, price, category, image_url FROM products ORDER BY id DESC');
+        res.json({ success: true, data: result.rows });
+    } catch (err) {
+        console.error('Get Inventory Error:', err);
+        res.status(500).json({ success: false, error: 'Database error: ' + err.message });
+    }
+});
 
 // Root Route
 app.get('/', (req, res) => {
