@@ -7,7 +7,7 @@ const { Pool } = require('pg');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// តភ្ជាប់ជាមួយ Cloud Database (Neon PostgreSQL)
+// តភ្ជាប់ជាមួយ Cloud Database (Neon PostgreSQL)[cite: 5, 6]
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: { rejectUnauthorized: false }
@@ -72,7 +72,7 @@ initDB();
 const userRoutes = require('./routes/users');
 app.use('/api/users', userRoutes);
 
-// ================= PRODUCT APIs =================
+// ================= PRODUCT APIs =================[cite: 5]
 
 app.get('/api/products', async (req, res) => {
     try {
@@ -130,7 +130,7 @@ app.delete('/api/products/:id', async (req, res) => {
     }
 });
 
-// ================= INVENTORY / STOCK APIs =================
+// ================= INVENTORY / STOCK APIs =================[cite: 5]
 
 app.put('/api/inventory/:id/stock', async (req, res) => {
     const { id } = req.params;
@@ -157,7 +157,7 @@ app.get('/api/inventory', async (req, res) => {
     }
 });
 
-// ================= ORDER APIs (With Strict Stock Validation & Deduction) =================
+// ================= ORDER APIs (With Strict Stock Validation & Deduction) =================[cite: 5]
 app.post('/api/orders', async (req, res) => {
     const { cashier_id, total_amount, payment_method, items } = req.body;
     
@@ -165,7 +165,7 @@ app.post('/api/orders', async (req, res) => {
     try {
         await client.query('BEGIN');
 
-        // ១. ពិនិត្យស្តុក និងទប់ស្កាត់មិនឱ្យលក់លើសចំនួនក្នុងឃ្លាំង
+        // ១. ពិនិត្យ និងទប់ស្កាត់មិនឱ្យលក់លើសចំនួនក្នុងឃ្លាំង
         if (items && items.length > 0) {
             for (let item of items) {
                 const checkStock = await client.query('SELECT stock_qty, name FROM products WHERE id = $1', [item.id]);
@@ -175,7 +175,7 @@ app.post('/api/orders', async (req, res) => {
 
                 const currentStock = checkStock.rows[0].stock_qty || 0;
                 
-                // ពិនិត្យមើលថាតើស្តុកគ្រប់គ្រាន់ឬអត់
+                // 🛑 លក្ខខណ្ឌពិនិត្យស្តុកយ៉ាងតឹងរ៉ឹង
                 if (currentStock < item.quantity) {
                     throw new Error(`ទំនិញ "${checkStock.rows[0].name}" ក្នុងស្តុកសល់តែ ${currentStock} ប៉ុណ្ណោះ មិនអាចលក់ចំនួន ${item.quantity} បានទេ!`);
                 }
@@ -188,7 +188,7 @@ app.post('/api/orders', async (req, res) => {
             }
         }
 
-        // ២. បង្កើត Order ថ្មី
+        // ២. បង្កើត Order ថ្មី[cite: 5]
         const orderQuery = `
             INSERT INTO orders (cashier_id, total_amount, payment_method, status, created_at) 
             VALUES ($1, $2, $3, 'Pending', CURRENT_TIMESTAMP) 
@@ -197,7 +197,7 @@ app.post('/api/orders', async (req, res) => {
         const orderResult = await client.query(orderQuery, [cashier_id, total_amount, payment_method || 'Cash']);
         const newOrderId = orderResult.rows[0].id;
 
-        // ៣. បញ្ចូលទិន្នន័យចូល order_items
+        // ៣. បញ្ចូលទិន្នន័យចូល order_items[cite: 5]
         if (items && items.length > 0) {
             for (let item of items) {
                 const itemQuery = `
@@ -305,7 +305,7 @@ app.get('/api/orders/cashier-activity/:cashierId', async (req, res) => {
     }
 });
 
-// Root Route
+// Root Route[cite: 5]
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
