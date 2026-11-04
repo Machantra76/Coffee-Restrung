@@ -18,7 +18,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// មុខងារបង្កើតតារាង Database (រួមទាំង users, products, orders, order_items, និង stock_in_history)
+// មុខងារបង្កើតតារាង Database
 async function initDB() {
     try {
         await pool.query(`
@@ -156,7 +156,6 @@ app.put('/api/inventory/:id/stock', async (req, res) => {
     }
 });
 
-// 📦 API សម្រាប់បន្ថែមស្តុកចូលថ្មី (Stock In) ព្រមទាំងកត់ត្រាកាលបរិច្ឆេទ និងតម្លៃដើម
 app.post('/api/inventory/stock-in', async (req, res) => {
     const { product_id, quantity_added, cost_price, note } = req.body;
 
@@ -220,7 +219,8 @@ app.get('/api/inventory', async (req, res) => {
     }
 });
 
-// ================= ORDER APIs (With Strict Stock Validation & Deduction) =================
+// ================= ORDER APIs =================
+
 app.post('/api/orders', async (req, res) => {
     const { cashier_id, total_amount, payment_method, items } = req.body;
     
@@ -228,7 +228,6 @@ app.post('/api/orders', async (req, res) => {
     try {
         await client.query('BEGIN');
 
-        // ១. ពិនិត្យស្តុក និងទប់ស្កាត់មិនឱ្យលក់លើសចំនួនក្នុងឃ្លាំង
         if (items && items.length > 0) {
             for (let item of items) {
                 const checkStock = await client.query('SELECT stock_qty, name FROM products WHERE id = $1', [item.id]);
@@ -249,7 +248,6 @@ app.post('/api/orders', async (req, res) => {
             }
         }
 
-        // ២. បង្កើត Order ថ្មី
         const orderQuery = `
             INSERT INTO orders (cashier_id, total_amount, payment_method, status, created_at) 
             VALUES ($1, $2, $3, 'Pending', CURRENT_TIMESTAMP) 
@@ -258,7 +256,6 @@ app.post('/api/orders', async (req, res) => {
         const orderResult = await client.query(orderQuery, [cashier_id, total_amount, payment_method || 'Cash']);
         const newOrderId = orderResult.rows[0].id;
 
-        // ៣. បញ្ចូលទិន្នន័យចូល order_items
         if (items && items.length > 0) {
             for (let item of items) {
                 const itemQuery = `
@@ -279,17 +276,37 @@ app.post('/api/orders', async (req, res) => {
     }
 });
 
+// 🍳 API សម្រាប់ផ្ទះបាយ (ទាញយកតែ Order ណាដែលមានមុខម្ហូប Category = 'Food' ប៉ុណ្ណោះ)
 app.get('/api/orders/kitchen', async (req, res) => {
     try {
-        const result = await pool.query(`
-            SELECT o.id, o.total_amount, o.payment_method, o.status, o.created_at, u.full_name as cashier_name
+        const orderQuery = `
+            SELECT DISTINCT o.id, o.total_amount, o.payment_method, o.status, o.created_at, u.full_name as cashier_name
             FROM orders o
             LEFT JOIN users u ON o.cashier_id = u.id
-            WHERE o.status IN ('Pending', 'Preparing') OR o.status IS NULL
+            WHERE (o.status IN ('Pending', 'Preparing') OR o.status IS NULL)
+              AND EXISTS (
+                  SELECT 1 FROM order_items oi
+                  JOIN products p ON oi.product_id = p.id
+                  WHERE oi.order_id = o.id AND p.category = 'Food'
+              )
             ORDER BY o.id ASC
-        `);
-        res.json({ success: true, data: result.rows });
+        `;
+        const orderResult = await pool.query(orderQuery);
+        const orders = orderResult.rows;
+
+        for (let order of orders) {
+            const itemsResult = await pool.query(`
+                SELECT p.name, oi.quantity, p.category
+                FROM order_items oi
+                JOIN products p ON oi.product_id = p.id
+                WHERE oi.order_id = $1
+            `, [order.id]);
+            order.items = itemsResult.rows;
+        }
+
+        res.json({ success: true, data: orders });
     } catch (err) {
+        console.error('Kitchen Orders Error:', err);
         res.status(500).json({ success: false, error: 'Database error' });
     }
 });
@@ -305,7 +322,6 @@ app.patch('/api/orders/:id/status', async (req, res) => {
     }
 });
 
-// 📊 ៥. ទាញយកប្រវត្តិការលក់ (Sales History) + Filter កាលបរិច្ឆេទ + គណនាប្រាក់ចំណេញសរុប និងប្រចាំថ្ងៃ (Daily Summary)
 app.get('/api/orders/history', async (req, res) => {
     const { fromDate, toDate } = req.query;
     try {
@@ -323,7 +339,6 @@ app.get('/api/orders/history', async (req, res) => {
 
         const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
 
-        // ១. ទាញយកបញ្ជីវិក្កយបត្រទាំងអស់
         const query = `
             SELECT o.id, o.total_amount, o.payment_method, o.status, o.created_at, u.full_name as cashier_name 
             FROM orders o
@@ -333,7 +348,6 @@ app.get('/api/orders/history', async (req, res) => {
         `;
         const result = await pool.query(query, params);
 
-        // ២. គណនាប្រាក់ចំណេញសរុប (Total Profit)
         const profitQuery = `
             SELECT COALESCE(SUM((oi.price - COALESCE(s.cost_price, 0)) * oi.quantity), 0) as total_profit
             FROM order_items oi
@@ -348,7 +362,6 @@ app.get('/api/orders/history', async (req, res) => {
         const profitResult = await pool.query(profitQuery, params);
         const totalProfit = parseFloat(profitResult.rows[0]?.total_profit || 0);
 
-        // ៣. 📊 グループ (Group) ទិន្នន័យសង្ខេបតាមថ្ងៃនីមួយៗ (Daily Breakdown)
         const dailyQuery = `
             SELECT 
                 DATE(o.created_at) as sale_date,
