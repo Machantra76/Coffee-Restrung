@@ -72,15 +72,15 @@
                             </select>
                         </div>
 
-                        <!-- ជម្រើសទី ១៖ ដាក់តាម Image URL (ផ្ដល់អនុសាសន៍ពេលប្រើលើ Render ដើម្បីការពារការបាត់រូប) -->
+                        <!-- ជម្រើសទី ១៖ ដាក់តាម Image URL -->
                         <div class="mb-2">
                             <label class="form-label small fw-bold">Image URL (ທາງເລືອກ Cloud Link)</label>
                             <input type="url" id="productImageUrlInput" class="form-control form-control-sm" placeholder="https://example.com/image.jpg" oninput="previewUrlImage(this.value)">
                         </div>
 
-                        <!-- ជម្រើសទី ២៖ ដាក់តាម File Upload -->
+                        <!-- ជម្រើសទី ២៖ ដាក់តាម File Upload (Base64) -->
                         <div class="mb-3">
-                            <label class="form-label small fw-bold">ឬ Upload Picture File (ຈາກកុំព្យូទ័រ/ទូរស័ព្ទ)</label>
+                            <label class="form-label small fw-bold">ឬ Upload Picture File (កម្លាំង Base64)</label>
                             <input type="file" id="productImageFile" class="form-control form-control-sm mb-2" accept="image/*" onchange="previewFileImage(event)">
                             
                             <div class="d-flex align-items-center gap-3">
@@ -88,7 +88,7 @@
                                     <span class="text-muted small text-center p-1" id="previewPlaceholder"><i class="fa-solid fa-image d-block fs-4 mb-1"></i>គ្មានរូប</span>
                                     <img id="previewImg" src="" class="d-none" alt="Preview">
                                 </div>
-                                <span class="text-muted small">រូបភាព Auto-size ស្វ័យប្រវត្តិ។</span>
+                                <span class="text-muted small">រូបភាពរក្សាទុកក្នុង Database ផ្ទាល់។</span>
                             </div>
                         </div>
 
@@ -140,6 +140,7 @@
     <script>
         let currentUser = null;
         let productsList = [];
+        let base64ImageString = ''; // រក្សាទុក Base64 String របស់រូបភាពដែលបាន Upload
 
         document.addEventListener('DOMContentLoaded', () => {
             currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
@@ -152,24 +153,26 @@
             loadProducts();
         });
 
-        // Preview រូបភាពពេល Upload File
+        // Preview និងបម្លែង File ទៅជា Base64
         function previewFileImage(event) {
             const file = event.target.files[0];
             if (file) {
                 const reader = new FileReader();
                 reader.onload = function(e) {
-                    showPreview(e.target.result);
+                    base64ImageString = e.target.result; // បាន Base64 String
+                    showPreview(base64ImageString);
                 }
                 reader.readAsDataURL(file);
-                document.getElementById('productImageUrlInput').value = ''; // សម្អាត URL input ចោលបើជ្រើសរើស File
+                document.getElementById('productImageUrlInput').value = ''; // សម្អាត URL input
             }
         }
 
         // Preview រូបភាពពេលវាយ Image URL
         function previewUrlImage(url) {
             if (url.trim() !== '') {
+                base64ImageString = url; // យក URL ផ្ទាល់
                 showPreview(url);
-                document.getElementById('productImageFile').value = ''; // សម្អាត File input ចោលបើវាយ URL
+                document.getElementById('productImageFile').value = ''; // សម្អាត File input
             }
         }
 
@@ -229,25 +232,28 @@
             e.preventDefault();
 
             const id = document.getElementById('productId').value;
-            const formData = new FormData();
+            const existingImageUrl = document.getElementById('existingImageUrl').value;
             
-            formData.append('barcode', document.getElementById('productBarcode').value);
-            formData.append('name', document.getElementById('productName').value);
-            formData.append('price', document.getElementById('productPrice').value);
-            formData.append('category', document.getElementById('productCategory').value);
-            formData.append('image_url_input', document.getElementById('productImageUrlInput').value);
-            formData.append('existing_image_url', document.getElementById('existingImageUrl').value);
+            // កំណត់ Image URL ចុងក្រោយ (បើមាន Base64 ថ្មីយកថ្មី បើអត់ទេយកសរបស់ចាស់)
+            const finalImageUrl = base64ImageString || existingImageUrl;
 
-            const fileInput = document.getElementById('productImageFile');
-            if (fileInput.files[0]) {
-                formData.append('image_file', fileInput.files[0]);
-            }
+            const productData = {
+                barcode: document.getElementById('productBarcode').value,
+                name: document.getElementById('productName').value,
+                price: parseFloat(document.getElementById('productPrice').value),
+                category: document.getElementById('productCategory').value,
+                image_url: finalImageUrl
+            };
 
             const method = id ? 'PUT' : 'POST';
             const endpoint = id ? `/api/products/${id}` : '/api/products';
 
             try {
-                const res = await fetch(endpoint, { method: method, body: formData });
+                const res = await fetch(endpoint, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(productData)
+                });
                 const result = await res.json();
 
                 if (res.ok && result.success) {
@@ -273,8 +279,8 @@
             document.getElementById('productPrice').value = product.price;
             document.getElementById('productCategory').value = product.category || 'General';
             document.getElementById('existingImageUrl').value = product.image_url || '';
+            base64ImageString = product.image_url || ''; // កំណត់ទុកស្រាប់
 
-            // បើ image_url ជា Link ខាងក្រៅ ឬ ជា uploads path
             if (product.image_url) {
                 if (product.image_url.startsWith('http')) {
                     document.getElementById('productImageUrlInput').value = product.image_url;
@@ -310,6 +316,7 @@
             document.getElementById('productForm').reset();
             document.getElementById('productId').value = '';
             document.getElementById('existingImageUrl').value = '';
+            base64ImageString = '';
             resetPreview();
             document.getElementById('formTitle').innerHTML = `<i class="fa-solid fa-plus-circle me-1 text-primary"></i> បន្ថែមមុខទំនិញថ្មី / Add Product`;
         }
