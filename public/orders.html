@@ -21,19 +21,47 @@
         </div>
     </nav>
 
-    <div class="container py-5">
+    <div class="container py-4">
+        <!-- Date Filter Section -->
+        <div class="card p-3 bg-white mb-4">
+            <div class="row g-3 align-items-end">
+                <div class="col-12 col-md-4">
+                    <label class="form-label fw-bold small text-secondary">ចាប់ពីថ្ងៃ (From Date):</label>
+                    <input type="date" id="fromDate" class="form-control">
+                </div>
+                <div class="col-12 col-md-4">
+                    <label class="form-label fw-bold small text-secondary">ដល់ថ្ងៃ (To Date):</label>
+                    <input type="date" id="toDate" class="form-control">
+                </div>
+                <div class="col-12 col-md-4 d-flex gap-2">
+                    <button class="btn btn-primary fw-bold w-100" onclick="loadOrdersHistory()">
+                        <i class="fa-solid fa-filter me-1"></i> ចម្រោះទិន្នន័យ (Filter)
+                    </button>
+                    <button class="btn btn-outline-secondary fw-bold" onclick="resetFilter()" title="កំណត់ឡើងវិញ">
+                        <i class="fa-solid fa-rotate me-1"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- Metric Summary Cards -->
         <div class="row g-4 mb-4">
-            <div class="col-md-6">
+            <div class="col-md-4">
                 <div class="card p-4 bg-primary text-white">
-                    <h5><i class="fa-solid fa-file-invoice me-2"></i> ចំនួនវិក្កយបត្រសរុប (Total Orders)</h5>
+                    <h5><i class="fa-solid fa-file-invoice me-2"></i> ចំនួនវិក្កយបត្រសរុប (Orders)</h5>
                     <h2 id="totalOrders" class="fw-bold display-6">0</h2>
                 </div>
             </div>
-            <div class="col-md-6">
+            <div class="col-md-4">
                 <div class="card p-4 bg-success text-white">
-                    <h5><i class="fa-solid fa-dollar-sign me-2"></i> ប្រាក់លក់បានសរុប (Total Revenue)</h5>
+                    <h5><i class="fa-solid fa-dollar-sign me-2"></i> ប្រាក់លក់បានសរុប (Revenue)</h5>
                     <h2 id="totalRevenue" class="fw-bold display-6">$0.00</h2>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card p-4 bg-warning text-dark">
+                    <h5><i class="fa-solid fa-chart-line me-2"></i> ប្រាក់ចំណេញសរុប (Profit)</h5>
+                    <h2 id="totalProfit" class="fw-bold display-6">$0.00</h2>
                 </div>
             </div>
         </div>
@@ -68,12 +96,27 @@
                 window.location.href = 'login.html';
                 return;
             }
+
+            // កំណត់ថ្ងៃបច្ចុប្បន្នជា Default សម្រាប់ From / To
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('fromDate').value = today;
+            document.getElementById('toDate').value = today;
+
             await loadOrdersHistory();
         });
 
         async function loadOrdersHistory() {
+            const fromDate = document.getElementById('fromDate').value;
+            const toDate = document.getElementById('toDate').value;
+
             try {
-                const res = await fetch('/api/orders/history');
+                let url = '/api/orders/history';
+                let queryParams = [];
+                if (fromDate) queryParams.push(`fromDate=${fromDate}`);
+                if (toDate) queryParams.push(`toDate=${toDate}`);
+                if (queryParams.length > 0) url += '?' + queryParams.join('&');
+
+                const res = await fetch(url);
                 const result = await res.json();
 
                 if (result.success) {
@@ -84,11 +127,14 @@
                     orders.forEach(o => revenue += Number(o.total_amount || 0));
                     document.getElementById('totalRevenue').innerText = `$${revenue.toFixed(2)}`;
 
+                    const totalProfit = Number(result.total_profit || 0);
+                    document.getElementById('totalProfit').innerText = `$${totalProfit.toFixed(2)}`;
+
                     const tbody = document.getElementById('reportsTableBody');
                     tbody.innerHTML = '';
 
                     if (orders.length === 0) {
-                        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">មិនទាន់មានកំណត់ត្រាប្រវត្តិការលក់នៅឡើយទេ។</td></tr>`;
+                        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">មិនមានកំណត់ត្រាប្រវត្តិការលក់ក្នុងចន្លោះថ្ងៃនេះទេ។</td></tr>`;
                         return;
                     }
 
@@ -110,6 +156,13 @@
             } catch (err) {
                 console.error('Error loading orders history:', err);
             }
+        }
+
+        function resetFilter() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('fromDate').value = today;
+            document.getElementById('toDate').value = today;
+            loadOrdersHistory();
         }
 
         function logout() {
