@@ -10,7 +10,7 @@
     <style>
         body { font-family: 'Kantumruy Pro', sans-serif; background-color: #f4f7fa; }
         
-        /* 🖼️ កាតទី១៖ សម្រាប់រូបភាពពេញស្អាត */
+        /* 🖼️ កាតទី១៖ រូបភាពពេញធំទំហំដើម */
         .product-img-card {
             width: 100%;
             height: 100px; 
@@ -26,23 +26,25 @@
         .product-img-card img {
             width: 100%;
             height: 100%;
-            object-fit: cover; /* ធ្វើឱ្យរូបភាពពេញប្រអប់ស្អាតល្អ */
+            object-fit: cover; 
             transition: transform 0.3s ease;
         }
 
-        /* 📝 កាតទី២៖ សម្រាប់អត្ថបទ តម្លៃ និង Category */
+        /* 📝 កាតទី២៖ អត្ថបទ តម្លៃ និង Category តូចល្មមស្មើនឹងអត្ថបទ (Compact Card) */
         .product-info-card {
             width: 100%;
             background-color: #ffffff;
-            border-radius: 16px;
-            padding: 10px;
+            border-radius: 12px;
+            padding: 6px 8px;
             text-align: center;
             border: none;
-            box-shadow: 0 4px 12px rgba(149, 157, 165, 0.08);
+            box-shadow: 0 2px 8px rgba(149, 157, 165, 0.06);
             transition: all 0.3s ease;
             display: flex;
-            flex-direction: column;
-            justify-content: space-between;
+            align-items: center;
+            justify-content: center;
+            gap: 6px; /*  khoảng cách giữa tên, giá និង category */
+            flex-wrap: wrap;
         }
 
         /* Hover effect ពេលយក Mouse ទៅដាក់ពីលើ */
@@ -285,18 +287,18 @@
                     `;
                 }
 
-                // 🌟 បែងចែកជា ២ កាតដាច់ពីគ្នា (កាតរូបភាព និងកាតអត្ថបទ) ស្ថិតក្នុង Container តែមួយ
+                // 🌟 កាតអត្ថបទត្រូវបានបង្រួមតូចល្មមស្មើនឹងអត្ថបទ (EX: a $1.00 Coffee)
                 grid.innerHTML += `
                     <div class="col-6 col-sm-4 col-md-3 col-lg-2">
-                        <div class="product-item-wrapper d-flex flex-column gap-2 h-100" onclick="addToCart(${p.id})" style="cursor: pointer;">
-                            <!-- កាតទី ១៖ រូបភាពពេញស្អាត -->
+                        <div class="product-item-wrapper d-flex flex-column gap-1.5 h-100" onclick="addToCart(${p.id})" style="cursor: pointer;">
+                            <!-- កាតទី ១៖ រូបភាពពេញធំទំហំដើម -->
                             ${imgCardTag}
                             
-                            <!-- កាតទី ២៖ អត្ថបទ តម្លៃ និង Category -->
+                            <!-- កាតទី ២៖ អត្ថបទ តម្លៃ និង Category តូចស្មើអត្ថបទ -->
                             <div class="product-info-card">
-                                <h6 class="fw-bold text-dark mb-1 text-truncate" style="font-size: 0.85rem;" title="${p.name}">${p.name}</h6>
-                                <div class="text-success fw-bold mb-1" style="font-size: 0.85rem;">$${Number(p.price).toFixed(2)}</div>
-                                <span class="badge bg-light text-secondary border rounded-pill px-2 py-1 align-self-center" style="font-size: 0.7rem;">${p.category || 'General'}</span>
+                                <span class="fw-bold text-dark text-truncate" style="font-size: 0.8rem; max-width: 50%;" title="${p.name}">${p.name}</span>
+                                <span class="text-success fw-bold" style="font-size: 0.8rem;">$${Number(p.price).toFixed(2)}</span>
+                                <span class="badge bg-light text-secondary border rounded-pill px-1.5 py-0.5" style="font-size: 0.65rem;">${p.category || 'General'}</span>
                             </div>
                         </div>
                     </div>
