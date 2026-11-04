@@ -7,7 +7,7 @@ const { Pool } = require('pg');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// តភ្ជាប់ជាមួយ Cloud Database (Neon PostgreSQL)[cite: 5, 6]
+// តភ្ជាប់ជាមួយ Cloud Database (Neon PostgreSQL)
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: { rejectUnauthorized: false }
@@ -18,7 +18,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// មុខងារបង្កើតតារាង Database
+// មុខងារបង្កើតតារាង Database (រួមទាំងតារាង stock_in_history ថ្មី)
 async function initDB() {
     try {
         await pool.query(`
@@ -59,6 +59,15 @@ async function initDB() {
                 quantity INT NOT NULL,
                 price NUMERIC(10, 2) NOT NULL
             );
+
+            CREATE TABLE IF NOT EXISTS stock_in_history (
+                id SERIAL PRIMARY KEY,
+                product_id INT REFERENCES products(id) ON DELETE CASCADE,
+                quantity_added INT NOT NULL,
+                cost_price NUMERIC(10, 2) DEFAULT 0,
+                note TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
         `);
         console.log('✅ Database tables initialized successfully!');
     } catch (err) {
@@ -72,7 +81,7 @@ initDB();
 const userRoutes = require('./routes/users');
 app.use('/api/users', userRoutes);
 
-// ================= PRODUCT APIs =================[cite: 5]
+// ================= PRODUCT APIs =================
 
 app.get('/api/products', async (req, res) => {
     try {
@@ -130,7 +139,7 @@ app.delete('/api/products/:id', async (req, res) => {
     }
 });
 
-// ================= INVENTORY / STOCK APIs =================[cite: 5]
+// ================= INVENTORY / STOCK APIs =================
 
 app.put('/api/inventory/:id/stock', async (req, res) => {
     const { id } = req.params;
@@ -147,6 +156,62 @@ app.put('/api/inventory/:id/stock', async (req, res) => {
     }
 });
 
+// 📦 API សម្រាប់បន្ថែមស្តុកចូលថ្មី (Stock In) ព្រមទាំងកត់ត្រាកាលបរិច្ឆេទ និងតម្លៃដើម
+app.post('/api/inventory/stock-in', async (req, res) => {
+    const { product_id, quantity_added, cost_price, note } = req.body;
+
+    if (!product_id || !quantity_added || quantity_added <= 0) {
+        return res.status(400).json({ success: false, error: 'Product ID and valid quantity are required' });
+    }
+
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+
+        // ១. បញ្ចូលប្រវត្តិស្តុកចូលថ្មីទៅក្នុងតារាង stock_in_history
+        const historyQuery = `
+            INSERT INTO stock_in_history (product_id, quantity_added, cost_price, note, created_at)
+            VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+            RETURNING *;
+        `;
+        const historyResult = await client.query(historyQuery, [
+            product_id, 
+            parseInt(quantity_added), 
+            parseFloat(cost_price) || 0, 
+            note || 'ស្តុកចូលថ្មី (Stock In)'
+        ]);
+
+        // ២. បូកបន្ថែមចំនួនស្តុក (`stock_qty`) ចូលទៅក្នុងតារាង products ដោយស្វ័យប្រវត្តិ
+        const updateProductQuery = `
+            UPDATE products 
+            SET stock_qty = stock_qty + $1 
+            WHERE id = $2 
+            RETURNING *;
+        `;
+        const productResult = await client.query(updateProductQuery, [parseInt(quantity_added), product_id]);
+
+        if (productResult.rows.length === 0) {
+            throw new Error('រកមិនឃើញផលិតផលនេះក្នុងប្រព័ន្ធទេ។');
+        }
+
+        await client.query('COMMIT');
+        res.status(201).json({ 
+            success: true, 
+            message: 'បានបន្ថែមស្តុកចូលថ្មីដោយជោគជ័យ!', 
+            data: {
+                product: productResult.rows[0],
+                stock_in_record: historyResult.rows[0]
+            }
+        });
+    } catch (err) {
+        await client.query('ROLLBACK');
+        console.error('Stock In Error:', err);
+        res.status(500).json({ success: false, error: 'Database error: ' + err.message });
+    } finally {
+        client.release();
+    }
+});
+
 app.get('/api/inventory', async (req, res) => {
     try {
         const result = await pool.query('SELECT id, name, price, category, stock_qty, image_url FROM products ORDER BY id DESC');
@@ -157,7 +222,7 @@ app.get('/api/inventory', async (req, res) => {
     }
 });
 
-// ================= ORDER APIs (With Strict Stock Validation & Deduction) =================[cite: 5]
+// ================= ORDER APIs (With Strict Stock Validation & Deduction) =================
 app.post('/api/orders', async (req, res) => {
     const { cashier_id, total_amount, payment_method, items } = req.body;
     
@@ -165,7 +230,6 @@ app.post('/api/orders', async (req, res) => {
     try {
         await client.query('BEGIN');
 
-        // ១. ពិនិត្យ និងទប់ស្កាត់មិនឱ្យលក់លើសចំនួនក្នុងឃ្លាំង
         if (items && items.length > 0) {
             for (let item of items) {
                 const checkStock = await client.query('SELECT stock_qty, name FROM products WHERE id = $1', [item.id]);
@@ -175,12 +239,10 @@ app.post('/api/orders', async (req, res) => {
 
                 const currentStock = checkStock.rows[0].stock_qty || 0;
                 
-                // 🛑 លក្ខខណ្ឌពិនិត្យស្តុកយ៉ាងតឹងរ៉ឹង
                 if (currentStock < item.quantity) {
                     throw new Error(`ទំនិញ "${checkStock.rows[0].name}" ក្នុងស្តុកសល់តែ ${currentStock} ប៉ុណ្ណោះ មិនអាចលក់ចំនួន ${item.quantity} បានទេ!`);
                 }
 
-                // កាត់បន្ថយចំនួនស្តុកចុះតាមចំនួនដែលបានលក់
                 await client.query(
                     'UPDATE products SET stock_qty = stock_qty - $1 WHERE id = $2',
                     [item.quantity, item.id]
@@ -188,7 +250,6 @@ app.post('/api/orders', async (req, res) => {
             }
         }
 
-        // ២. បង្កើត Order ថ្មី[cite: 5]
         const orderQuery = `
             INSERT INTO orders (cashier_id, total_amount, payment_method, status, created_at) 
             VALUES ($1, $2, $3, 'Pending', CURRENT_TIMESTAMP) 
@@ -197,7 +258,6 @@ app.post('/api/orders', async (req, res) => {
         const orderResult = await client.query(orderQuery, [cashier_id, total_amount, payment_method || 'Cash']);
         const newOrderId = orderResult.rows[0].id;
 
-        // ៣. បញ្ចូលទិន្នន័យចូល order_items[cite: 5]
         if (items && items.length > 0) {
             for (let item of items) {
                 const itemQuery = `
@@ -305,7 +365,7 @@ app.get('/api/orders/cashier-activity/:cashierId', async (req, res) => {
     }
 });
 
-// Root Route[cite: 5]
+// Root Route
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
