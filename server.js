@@ -135,6 +135,16 @@ app.put('/api/inventory/:id/stock', async (req, res) => {
         res.status(500).json({ success: false, error: 'Database error: ' + err.message });
     }
 });
+// ទាញយកបញ្ជីស្តុកទំនិញទាំងអស់ (ត្រូវមាន stock_qty)
+app.get('/api/inventory', async (req, res) => {
+    try {
+        const result = await pool.query('SELECT id, name, price, category, stock_qty, image_url FROM products ORDER BY id DESC');
+        res.json({ success: true, data: result.rows });
+    } catch (err) {
+        console.error('Get Inventory Error:', err);
+        res.status(500).json({ success: false, error: 'Database error: ' + err.message });
+    }
+});
 
 // ៤. លុបផលិតផល
 app.delete('/api/products/:id', async (req, res) => {
