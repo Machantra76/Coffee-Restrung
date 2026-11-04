@@ -33,8 +33,8 @@
     <div class="container-fluid py-4 px-3 px-md-4">
         <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
             <div>
-                <h3 class="fw-bold text-dark mb-0"><i class="fa-solid fa-bell me-2 text-primary"></i> បញ្ជីកុម្ម៉ង់កំពុងរង់ចាំ / Active Kitchen Orders</h3>
-                <p class="text-muted small mb-0">ទិន្នន័យអាប់ដេតស្វ័យប្រវត្តិ दर 5 វិនាទីម្តង | Auto-refreshes every 5s</p>
+                <h3 class="fw-bold text-dark mb-0"><i class="fa-solid fa-bell me-2 text-primary"></i> បញ្ជីកុម្ម៉ង់មុខម្ហូបកំពុងរង់ចាំ</h3>
+                <p class="text-muted small mb-0">ទិន្នន័យអាប់ដេតស្វ័យប្រវត្តិរៀងរាល់ ៥ វិនាទីម្តង</p>
             </div>
             <button class="btn btn-outline-primary btn-sm fw-bold" onclick="loadKitchenOrders()">
                 <i class="fa-solid fa-rotate me-1"></i> អាប់ដេតភ្លាមៗ / Refresh
@@ -53,7 +53,6 @@
         document.addEventListener('DOMContentLoaded', () => {
             currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
             
-            // 🛡️ Route Protection: ឱ្យចូលបានតែ Kitchen និង Admin ប៉ុណ្ណោះ
             if (!currentUser || (currentUser.role !== 'Kitchen' && currentUser.role !== 'Admin')) {
                 alert('Unauthorized Access! សម្រាប់តែផ្នែកផ្ទះបាយ និង Admin តែប៉ុណ្ណោះ។');
                 window.location.href = 'pos.html';
@@ -63,9 +62,7 @@
             document.getElementById('userDisplay').innerText = `${currentUser.role}: ${currentUser.full_name}`;
 
             loadKitchenOrders();
-
-            // Auto refresh រៀងរាល់ ៥ វិនាទីម្តង
-            setInterval(loadKitchenOrders, 5000);
+            setInterval(loadKitchenOrders, 5000); // Refresh រៀងរាល់ ៥ វិនាទី
         });
 
         async function loadKitchenOrders() {
@@ -81,8 +78,8 @@
                         grid.innerHTML = `
                             <div class="col-12 text-center py-5">
                                 <i class="fa-solid fa-circle-check text-success display-1 mb-3"></i>
-                                <h4 class="fw-bold text-muted">គ្មានបញ្ជាទិញរង់ចាំទេ! / No Pending Orders</h4>
-                                <p class="text-muted small">គ្រប់ម្ហូប និងភេសជ្ជៈត្រូវ បានធ្វើរួចរាល់អស់ហើយ</p>
+                                <h4 class="fw-bold text-muted">គ្មានបញ្ជាទិញម្ហូបអាហាររង់ចាំទេ!</h4>
+                                <p class="text-muted small">រាល់មុខម្ហូបទាំងអស់ត្រូវបានរៀបចំរួចរាល់ហើយ</p>
                             </div>
                         `;
                         return;
@@ -94,8 +91,21 @@
                         const borderClass = isPreparing ? 'border-preparing' : 'border-pending';
                         const badgeClass = isPreparing ? 'bg-primary' : 'bg-warning text-dark';
                         const statusText = isPreparing ? 'កំពុងធ្វើ / Preparing' : 'រង់ចាំ / Pending';
-
                         const orderTime = new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                        // 📋 បញ្ជីមុខម្ហូបក្នុង Order នេះ
+                        let itemsHtml = '<ul class="list-group list-group-flush small mb-3 bg-light rounded-3 overflow-hidden">';
+                        if (order.items && order.items.length > 0) {
+                            order.items.forEach(item => {
+                                itemsHtml += `
+                                    <li class="list-group-item d-flex justify-content-between align-items-center py-2 bg-transparent">
+                                        <span class="fw-bold text-dark"><i class="fa-solid fa-utensils me-1 text-secondary"></i> ${item.name}</span>
+                                        <span class="badge bg-danger rounded-pill px-2 py-1">x${item.quantity}</span>
+                                    </li>
+                                `;
+                            });
+                        }
+                        itemsHtml += '</ul>';
 
                         grid.innerHTML += `
                             <div class="col-12 col-sm-6 col-md-4 col-lg-3">
@@ -110,9 +120,11 @@
                                             <i class="fa-solid fa-user me-1"></i> Cashier: <b>${order.cashier_name || 'N/A'}</b>
                                         </div>
                                         <hr class="my-2">
-                                        <div class="mb-3">
-                                            <span class="fw-bold text-secondary small">ព័ត៌មានការទូទាត់៖</span>
-                                            <div class="fw-bold text-success fs-5">$${Number(order.total_amount).toFixed(2)} (${order.payment_method})</div>
+                                        
+                                        <!-- 🍲 បង្ហាញឈ្មោះមុខម្ហូប និងចំនួន -->
+                                        <div class="mb-2">
+                                            <span class="fw-bold text-secondary small mb-1 d-block">មុខម្ហូបត្រូវធ្វើ៖</span>
+                                            ${itemsHtml}
                                         </div>
                                     </div>
 
