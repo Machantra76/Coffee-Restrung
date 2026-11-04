@@ -140,7 +140,7 @@
     <script>
         let currentUser = null;
         let productsList = [];
-        let base64ImageString = ''; // រក្សាទុក Base64 String របស់រូបភាពដែលបាន Upload
+        let base64ImageString = ''; 
 
         document.addEventListener('DOMContentLoaded', () => {
             currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
@@ -153,26 +153,24 @@
             loadProducts();
         });
 
-        // Preview និងបម្លែង File ទៅជា Base64
         function previewFileImage(event) {
             const file = event.target.files[0];
             if (file) {
                 const reader = new FileReader();
                 reader.onload = function(e) {
-                    base64ImageString = e.target.result; // បាន Base64 String
+                    base64ImageString = e.target.result; 
                     showPreview(base64ImageString);
                 }
                 reader.readAsDataURL(file);
-                document.getElementById('productImageUrlInput').value = ''; // សម្អាត URL input
+                document.getElementById('productImageUrlInput').value = ''; 
             }
         }
 
-        // Preview រូបភាពពេលវាយ Image URL
         function previewUrlImage(url) {
             if (url.trim() !== '') {
-                base64ImageString = url; // យក URL ផ្ទាល់
+                base64ImageString = url; 
                 showPreview(url);
-                document.getElementById('productImageFile').value = ''; // សម្អាត File input
+                document.getElementById('productImageFile').value = ''; 
             }
         }
 
@@ -233,8 +231,6 @@
 
             const id = document.getElementById('productId').value;
             const existingImageUrl = document.getElementById('existingImageUrl').value;
-            
-            // កំណត់ Image URL ចុងក្រោយ (បើមាន Base64 ថ្មីយកថ្មី បើអត់ទេយកសរបស់ចាស់)
             const finalImageUrl = base64ImageString || existingImageUrl;
 
             const productData = {
@@ -257,7 +253,7 @@
                 const result = await res.json();
 
                 if (res.ok && result.success) {
-                    alert(id ? 'កែប្រែទំនិញបានជោគជ័យ!' : 'បន្ថែមទំនិញថ្មីបានជោគជ័យ!');
+                    alert(id ? 'កែប្រែទំនិញได้ជោគជ័យ!' : 'បន្ថែមទំនិញថ្មីได้ជោគជ័យ!');
                     resetForm();
                     loadProducts();
                 } else {
@@ -279,7 +275,7 @@
             document.getElementById('productPrice').value = product.price;
             document.getElementById('productCategory').value = product.category || 'General';
             document.getElementById('existingImageUrl').value = product.image_url || '';
-            base64ImageString = product.image_url || ''; // កំណត់ទុកស្រាប់
+            base64ImageString = product.image_url || ''; 
 
             if (product.image_url) {
                 if (product.image_url.startsWith('http')) {
