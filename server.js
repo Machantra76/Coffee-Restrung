@@ -58,16 +58,18 @@ async function initDB() {
                 order_id INT REFERENCES orders(id) ON DELETE CASCADE,
                 product_id INT,
                 quantity INT NOT NULL,
-                price NUMERIC(10, 2) NOT NULL
+                price NUMERIC(10, 2),
+                unit_price NUMERIC(10, 2)
             );
         `);
 
-        // ធានាថា column សំខាន់ៗមានស្រាប់
+        // ធានាថា column ទាំងអស់មានស្រាប់
         await pool.query(`
             ALTER TABLE orders ADD COLUMN IF NOT EXISTS cashier_id INTEGER;
             ALTER TABLE orders ADD COLUMN IF NOT EXISTS order_number VARCHAR(100);
             ALTER TABLE orders ADD COLUMN IF NOT EXISTS net_amount NUMERIC(10, 2);
             ALTER TABLE order_items ADD COLUMN IF NOT EXISTS price NUMERIC(10, 2);
+            ALTER TABLE order_items ADD COLUMN IF NOT EXISTS unit_price NUMERIC(10, 2);
         `);
 
         console.log('✅ Database tables and columns initialized successfully!');
@@ -149,7 +151,6 @@ app.post('/api/orders', async (req, res) => {
 
         const orderNumber = 'ORD-' + Date.now();
 
-        // ដាក់បញ្ចូលទាំង total_amount និង net_amount ស្របតាម struct database របស់បង
         const orderQuery = `
             INSERT INTO orders (order_number, cashier_id, total_amount, net_amount, payment_method, status, created_at) 
             VALUES ($1, $2, $3, $3, $4, 'Pending', CURRENT_TIMESTAMP) 
@@ -160,9 +161,10 @@ app.post('/api/orders', async (req, res) => {
 
         if (items && items.length > 0) {
             for (let item of items) {
+                // ដាក់បញ្ចូលទាំង price និង unit_price ព្រមគ្នាដើម្បីការពារកុំឱ្យติด Not-Null constraint
                 const itemQuery = `
-                    INSERT INTO order_items (order_id, product_id, quantity, price)
-                    VALUES ($1, $2, $3, $4)
+                    INSERT INTO order_items (order_id, product_id, quantity, price, unit_price)
+                    VALUES ($1, $2, $3, $4, $4)
                 `;
                 await client.query(itemQuery, [newOrderId, item.id, item.quantity, item.price]);
             }
