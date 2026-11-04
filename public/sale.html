@@ -10,48 +10,47 @@
     <style>
         body { font-family: 'Kantumruy Pro', sans-serif; background-color: #f4f7fa; }
         
-        /* 🎨 រចនាបថកាតដូចស្ទាយ Partner Grid Card */
+        /* 🎨 រចនាបថកាតដូចក្នុងរូបភាព */
         .product-card {
             cursor: pointer;
             transition: all 0.3s ease;
             border: none;
-            border-radius: 20px;
+            border-radius: 22px;
             background-color: #ffffff;
-            box-shadow: 0 6px 20px rgba(149, 157, 165, 0.08);
+            box-shadow: 0 8px 24px rgba(149, 157, 165, 0.08);
             overflow: hidden;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: space-between;
-            padding: 12px;
+            padding: 20px 15px 15px 15px;
             height: 100%;
         }
 
         .product-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+            transform: translateY(-5px);
+            box-shadow: 0 14px 28px rgba(0, 0, 0, 0.12);
         }
         
-        /* 🖼️ ប្រអប់រូបភាពតូចល្មមស្អាត (កម្ពស់ 95px) និងបំពេញពេញប្រអប់ស្អាត */
+        /* 🖼️ ពង្រីកប្រអប់រូបភាពឱ្យធំជាងមុន (កម្ពស់ 120px) */
         .product-img-wrapper {
-            width: 90%;
-            height: 90px; 
-            background-color: #f8fafc;
-            border-radius: 14px;
-            overflow: hidden;
-            position: relative;
-            margin-bottom: 8px;
+            width: 100%;
+            height: 120px; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 12px;
         }
         
         .product-img-wrapper img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
             transition: transform 0.3s ease;
         }
 
         .product-card:hover .product-img-wrapper img {
-            transform: scale(1.05);
+            transform: scale(1.06);
         }
 
         .card-info {
@@ -280,8 +279,8 @@
 
             list.forEach(p => {
                 let imgTag = `
-                    <div class="product-img-wrapper d-flex align-items-center justify-content-center text-secondary">
-                        <i class="fa-solid fa-image fs-3"></i>
+                    <div class="product-img-wrapper text-secondary">
+                        <i class="fa-solid fa-image fs-1"></i>
                     </div>`;
                 
                 if (p.image_url && p.image_url.trim() !== '') {
