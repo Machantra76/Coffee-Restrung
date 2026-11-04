@@ -10,7 +10,7 @@
     <style>
         body { font-family: 'Kantumruy Pro', sans-serif; background-color: #f4f7fa; }
         
-        /* 🎨 រចនាបថកាតទំនិញ៖ ដក Padding ចេញទាំងស្រុងដើម្បីឱ្យរូបភាពពេញគែមលើ */
+        /* 🎨 រចនាបថកាតទំនិញ៖ កំណត់ padding-top ជា 0 ដើម្បីឱ្យរូបភាពពេញគែមលើ */
         .product-card {
             cursor: pointer;
             transition: all 0.3s ease;
@@ -18,12 +18,12 @@
             border-radius: 20px;
             background-color: #ffffff;
             box-shadow: 0 4px 16px rgba(149, 157, 165, 0.08);
-            overflow: hidden; /* កាត់ផ្នែកដែលហៀរចេញតាមជ្រុងកោង */
+            overflow: hidden; 
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: space-between;
-            padding: 0px 0px 12px 0px; 
+            padding: 0px 0px 12px 0px !important; 
             height: 100%;
         }
 
@@ -32,22 +32,24 @@
             box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
         }
         
-        /* 🖼️ ប្រអប់រូបភាពពេញផ្ទៃខាងលើកាត (Full-width & Full-bleed) */
+        /* 🖼️ ប្រអប់រូបភាពពេញផ្ទៃខាងលើកាត */
         .product-img-wrapper {
-            width: 100%;
+            width: 100% !important;
             height: 110px; 
             background-color: #f8fafc;
             position: relative;
             overflow: hidden;
-            border-top-left-radius: 20px;  
-            border-top-right-radius: 20px;
-            margin-bottom: 10px; /* ចន្លោះពីជើងរូបភាពទៅអត្ថបទខាងក្រោម */
+            border-top-left-radius: 20px !important;  
+            border-top-right-radius: 20px !important;
+            margin: 0 !important;
+            margin-bottom: 10px !important;
         }
         
         .product-img-wrapper img {
             width: 100%;
             height: 100%;
-            object-fit: cover; /* 🛠️ ធ្វើឱ្យរូបភាពលាតសន្ធឹងពេញប្រអប់ស្អាតល្អ */
+            object-fit: cover; 
+            display: block;
             transition: transform 0.3s ease;
         }
 
