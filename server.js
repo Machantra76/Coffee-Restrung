@@ -7,14 +7,14 @@ const { Pool } = require('pg');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// តភ្ជាប់ជាមួយ Cloud Database (Neon PostgreSQL)[cite: 6]
+// តភ្ជាប់ជាមួយ Cloud Database (Neon PostgreSQL)
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: { rejectUnauthorized: false }
 });
 
 app.use(cors());
-app.use(express.json({ limit: '10mb' })); // ពង្រីកទំហំ JSON សម្រាប់ຮັບ Base64 String
+app.use(express.json({ limit: '10mb' })); 
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -72,9 +72,8 @@ initDB();
 const userRoutes = require('./routes/users');
 app.use('/api/users', userRoutes);
 
-// ================= PRODUCT APIs (Base64 Stored in Database) =================
+// ================= PRODUCT APIs =================
 
-// ១. ទាញយកបញ្ជីផលិតផលទាំងអស់
 app.get('/api/products', async (req, res) => {
     try {
         const result = await pool.query('SELECT * FROM products ORDER BY id DESC');
@@ -85,7 +84,6 @@ app.get('/api/products', async (req, res) => {
     }
 });
 
-// ២. បន្ថែមផលិតផលថ្មី
 app.post('/api/products', async (req, res) => {
     const { barcode, name, price, category, stock_qty, image_url } = req.body;
     
@@ -105,7 +103,6 @@ app.post('/api/products', async (req, res) => {
     }
 });
 
-// ៣. កែប្រែផលិតផល
 app.put('/api/products/:id', async (req, res) => {
     const { id } = req.params;
     const { barcode, name, price, category, image_url } = req.body;
@@ -122,9 +119,19 @@ app.put('/api/products/:id', async (req, res) => {
     }
 });
 
+app.delete('/api/products/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        await pool.query('DELETE FROM products WHERE id = $1', [id]);
+        res.json({ success: true, message: 'Product deleted successfully' });
+    } catch (err) {
+        console.error('Delete Product Error:', err);
+        res.status(500).json({ success: false, error: 'Database error' });
+    }
+});
+
 // ================= INVENTORY / STOCK APIs =================
 
-// កែសម្រួលចំនួនស្តុកទំនិញ
 app.put('/api/inventory/:id/stock', async (req, res) => {
     const { id } = req.params;
     const { stock_qty } = req.body;
@@ -140,7 +147,6 @@ app.put('/api/inventory/:id/stock', async (req, res) => {
     }
 });
 
-// ទាញយកបញ្ជីស្តុកទំនិញទាំងអស់ (រួមទាំង stock_qty)
 app.get('/api/inventory', async (req, res) => {
     try {
         const result = await pool.query('SELECT id, name, price, category, stock_qty, image_url FROM products ORDER BY id DESC');
@@ -151,19 +157,7 @@ app.get('/api/inventory', async (req, res) => {
     }
 });
 
-// ៤. លុបផលិតផល
-app.delete('/api/products/:id', async (req, res) => {
-    const { id } = req.params;
-    try {
-        await pool.query('DELETE FROM products WHERE id = $1', [id]);
-        res.json({ success: true, message: 'Product deleted successfully' });
-    } catch (err) {
-        console.error('Delete Product Error:', err);
-        res.status(500).json({ success: false, error: 'Database error' });
-    }
-});
-
-// ================= ORDER APIs (With Stock Deduction) =================
+// ================= ORDER APIs (With Strict Stock Validation & Deduction) =================
 app.post('/api/orders', async (req, res) => {
     const { cashier_id, total_amount, payment_method, items } = req.body;
     
@@ -171,7 +165,7 @@ app.post('/api/orders', async (req, res) => {
     try {
         await client.query('BEGIN');
 
-        // ១. ពិនិត្យ និងកាត់បន្ថយស្តុកទំនិញដោយស្វ័យប្រវត្តិ
+        // ១. ពិនិត្យស្តុក និងទប់ស្កាត់មិនឱ្យលក់លើសចំនួនក្នុងឃ្លាំង
         if (items && items.length > 0) {
             for (let item of items) {
                 const checkStock = await client.query('SELECT stock_qty, name FROM products WHERE id = $1', [item.id]);
@@ -181,12 +175,10 @@ app.post('/api/orders', async (req, res) => {
 
                 const currentStock = checkStock.rows[0].stock_qty || 0;
                 
-                // ប្រសិនបើចង់ទប់ស្កាត់ដាច់ខាតមិនឱ្យលក់លើសស្តុក សូមដកសញ្ញា Comment ខាងក្រោមចេញ៖
-                /*
+                // ពិនិត្យមើលថាតើស្តុកគ្រប់គ្រាន់ឬអត់
                 if (currentStock < item.quantity) {
-                    throw new Error(`ទំនិញ "${checkStock.rows[0].name}" ក្នុងស្តុកសល់តែ ${currentStock} ប៉ុណ្ណោះ!`);
+                    throw new Error(`ទំនិញ "${checkStock.rows[0].name}" ក្នុងស្តុកសល់តែ ${currentStock} ប៉ុណ្ណោះ មិនអាចលក់ចំនួន ${item.quantity} បានទេ!`);
                 }
-                */
 
                 // កាត់បន្ថយចំនួនស្តុកចុះតាមចំនួនដែលបានលក់
                 await client.query(
@@ -220,7 +212,7 @@ app.post('/api/orders', async (req, res) => {
         res.status(201).json({ success: true, message: 'Order created successfully and stock updated', order: orderResult.rows[0] });
     } catch (err) {
         await client.query('ROLLBACK');
-        res.status(500).json({ success: false, error: 'Database error: ' + err.message });
+        res.status(400).json({ success: false, error: err.message });
     } finally {
         client.release();
     }
@@ -252,7 +244,6 @@ app.patch('/api/orders/:id/status', async (req, res) => {
     }
 });
 
-// ៥. ទាញយកប្រវត្តិការលក់ទាំងអស់សម្រាប់ធ្វើ Report (Sales History)
 app.get('/api/orders/history', async (req, res) => {
     try {
         const result = await pool.query(`
@@ -268,7 +259,6 @@ app.get('/api/orders/history', async (req, res) => {
     }
 });
 
-// ទាញយកបញ្ជី Cashiers ទាំងអស់សម្រាប់ Admin ជ្រើសរើស
 app.get('/api/users/cashiers-list', async (req, res) => {
     try {
         const result = await pool.query("SELECT id, username, full_name FROM users WHERE role = 'Cashier' AND is_active = true ORDER BY id DESC");
@@ -279,7 +269,6 @@ app.get('/api/users/cashiers-list', async (req, res) => {
     }
 });
 
-// ទាញយកសកម្មភាពលក់ និងប្រវត្តិវិក្កយបត្រតាម Cashier ម្នាក់ៗ
 app.get('/api/orders/cashier-activity/:cashierId', async (req, res) => {
     const { cashierId } = req.params;
     try {
