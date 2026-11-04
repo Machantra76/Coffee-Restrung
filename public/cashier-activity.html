@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>សកម្មភាពលក់ | Sales Activity Monitoring</title>
+    <title>សកម្មភាពលក់ និងរបាយការណ៍ | Sales Activity & Reports Monitoring</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;600&display=swap" rel="stylesheet">
@@ -14,7 +14,7 @@
 </head>
 <body>
     <nav class="navbar navbar-dark bg-dark px-4 py-3 shadow-sm">
-        <span class="navbar-brand fw-bold fs-4"><i class="fa-solid fa-chart-line me-2"></i> សកម្មភាពលក់ប្រចាំវេន | Sales Activity</span>
+        <span class="navbar-brand fw-bold fs-4"><i class="fa-solid fa-chart-line me-2"></i> សកម្មភាពលក់ និងរបាយការណ៍ | Sales Activity</span>
         <div>
             <a href="pos.html" class="btn btn-outline-light btn-sm me-2"><i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ក្រោយ / Back</a>
             <button class="btn btn-danger btn-sm px-3 fw-bold" onclick="logout()"><i class="fa-solid fa-right-from-bracket me-1"></i> ចាកចេញ</button>
@@ -22,6 +22,7 @@
     </nav>
 
     <div class="container py-5">
+        <!-- Admin Selector Form -->
         <div class="row mb-4" id="adminSelectContainer" style="display: none;">
             <div class="col-md-6">
                 <div class="card p-3 bg-white">
@@ -33,6 +34,7 @@
             </div>
         </div>
 
+        <!-- Metric Summary Cards -->
         <div class="row g-4 mb-4">
             <div class="col-md-6">
                 <div class="card p-4 bg-primary text-white">
@@ -48,16 +50,18 @@
             </div>
         </div>
 
+        <!-- Sales History Table Card -->
         <div class="card p-4 bg-white">
-            <h4 class="fw-bold mb-3 text-dark"><i class="fa-solid fa-list-check me-2"></i> ប្រវត្តិវិក្កយបត្រ</h4>
+            <h4 class="fw-bold mb-3 text-dark"><i class="fa-solid fa-list-check me-2"></i> ប្រវត្តិវិក្កយបត្រ / Sales History</h4>
             <div class="table-responsive">
                 <table class="table table-hover align-middle">
                     <thead class="table-dark">
                         <tr>
-                            <th>#ID</th>
+                            <th>លេខវិក្កយបត្រ (#Invoice)</th>
                             <th>ទឹកប្រាក់ (Amount)</th>
                             <th>ទម្រង់បង់ប្រាក់ (Payment)</th>
-                            <th>ម៉ោងលក់ (Time)</th>
+                            <th>ស្ថានភាព (Status)</th>
+                            <th>កាលបរិច្ឆេទ / ម៉ោង (Date & Time)</th>
                         </tr>
                     </thead>
                     <tbody id="activityTableBody">
@@ -90,18 +94,19 @@
             try {
                 const res = await fetch('/api/users/cashiers-list');
                 const result = await res.json();
-                if (result.success && result.data.length > 0) {
+                if (result.success && result.data && result.data.length > 0) {
                     const select = document.getElementById('cashierSelect');
-                    select.innerHTML = '';
+                    select.innerHTML = '<option value="all">-- បង្ហាញ Cashiers ទាំងអស់ (All) --</option>';
                     result.data.forEach(c => {
                         select.innerHTML += `<option value="${c.id}">${c.full_name} (${c.username})</option>`;
                     });
-                    loadCashierActivity(result.data[0].id);
+                    loadCashierActivity('all');
                 } else {
-                    document.getElementById('activityTableBody').innerHTML = `<tr><td colspan="4" class="text-center text-muted">មិនទាន់មានគណនី Cashier ដែលActive ទេ។</td></tr>`;
+                    loadCashierActivity('all');
                 }
             } catch (err) {
                 console.error('Error loading cashiers list:', err);
+                loadCashierActivity('all');
             }
         }
 
@@ -112,25 +117,45 @@
 
         async function loadCashierActivity(cashierId) {
             try {
-                const res = await fetch(`/api/orders/cashier-activity/${cashierId}`);
+                let url = '/api/orders/history';
+                if (cashierId && cashierId !== 'all') {
+                    url = `/api/orders/cashier-activity/${cashierId}`;
+                }
+
+                const res = await fetch(url);
                 const result = await res.json();
+
                 if (result.success) {
-                    document.getElementById('totalBills').innerText = result.total_bills;
-                    document.getElementById('grandTotal').innerText = `$${Number(result.grand_total).toFixed(2)}`;
+                    const orders = result.data || result.orders || [];
+                    const totalBills = result.total_bills !== undefined ? result.total_bills : orders.length;
+                    
+                    let grandTotal = 0;
+                    if (result.grand_total !== undefined) {
+                        grandTotal = Number(result.grand_total);
+                    } else {
+                        orders.forEach(o => grandTotal += Number(o.total_amount || 0));
+                    }
+
+                    document.getElementById('totalBills').innerText = totalBills;
+                    document.getElementById('grandTotal').innerText = `$${grandTotal.toFixed(2)}`;
 
                     const tbody = document.getElementById('activityTableBody');
                     tbody.innerHTML = '';
-                    if (result.orders.length === 0) {
-                        tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">មិនទាន់មានកំណត់ត្រាការលក់សម្រាប់ Cashier នេះទេ។</td></tr>`;
+
+                    if (orders.length === 0) {
+                        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">មិនទាន់មានកំណត់ត្រាការលក់សម្រាប់ Cashier នេះទេ។</td></tr>`;
                         return;
                     }
 
-                    result.orders.forEach((o) => {
+                    orders.forEach((o) => {
+                        const invNo = o.order_number || `#${o.id}`;
+                        const status = o.status || 'Completed';
                         tbody.innerHTML += `
                             <tr>
-                                <td>#${o.id}</td>
+                                <td class="fw-bold">${invNo}</td>
                                 <td class="fw-bold text-success">$${Number(o.total_amount).toFixed(2)}</td>
-                                <td><span class="badge bg-secondary">${o.payment_method}</span></td>
+                                <td><span class="badge bg-secondary">${o.payment_method || 'Cash'}</span></td>
+                                <td><span class="badge bg-success">${status}</span></td>
                                 <td>${new Date(o.created_at).toLocaleString()}</td>
                             </tr>
                         `;
