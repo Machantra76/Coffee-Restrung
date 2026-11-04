@@ -10,62 +10,63 @@
     <style>
         body { font-family: 'Kantumruy Pro', sans-serif; background-color: #f4f7fa; }
         
-        /* 🎨 រចនាបថកាតតូចស្អាតដូចក្នុងរូបភាព */
+        /* 🎨 រចនាបថកាតទំនិញ */
         .product-card {
             cursor: pointer;
             transition: all 0.3s ease;
             border: none;
-            border-radius: 16px; /* ជ្រុងកោងសមរម្យ */
+            border-radius: 20px;
             background-color: #ffffff;
-            box-shadow: 0 4px 12px rgba(149, 157, 165, 0.08);
+            box-shadow: 0 6px 20px rgba(149, 157, 165, 0.08);
             overflow: hidden;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: space-between;
-            padding: 12px 8px 10px 8px; /* បន្ថយ Space សងខាងកុំឱ្យធំពេក */
+            padding: 0px 10px 12px 10px; /* ដក Padding លើចេញ */
             height: 100%;
         }
 
         .product-card:hover {
             transform: translateY(-4px);
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
         }
         
-      /* 🖼️ ប្រអប់រូបភាពទំហំថេរ និងបំពេញពេញប្រអប់ស្អាតល្អ */
-.product-img-wrapper {
-    width: 100%;
-    height: 70px; /* កម្ពស់ប្រអប់រូបភាព */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 6px;
-    overflow: hidden; /* កាត់យករូបភាពផ្នែកលើសចេញ កុំឱ្យធ្លាយប្រអប់ */
-    border-radius: 12px;
-}
-
-.product-img-wrapper img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover; /* 🛠️ បំពេញប្រអប់រូបភាពទាំងស្រុង ពេញលេញស្អាត */
-    transition: transform 0.3s ease;
-}
+        /* 🖼️ ប្រអប់រូបភាពពេញផ្ទៃផ្នែកខាងលើកាត */
+        .product-img-wrapper {
+            width: 100%;
+            height: 110px; 
+            background-color: #f8fafc;
+            position: relative;
+            overflow: hidden;
+            border-top-left-radius: 20px;
+            border-top-right-radius: 20px;
+            margin-bottom: 10px;
+        }
+        
+        .product-img-wrapper img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* 🛠️ បំពេញពេញផ្ទៃប្រអប់ស្អាត */
+            transition: transform 0.3s ease;
+        }
 
         .product-card:hover .product-img-wrapper img {
-            transform: scale(1.08);
+            transform: scale(1.05);
         }
 
         .card-info {
             text-align: center;
             width: 100%;
+            padding: 0 5px;
         }
 
         /* Category Filter Buttons Style */
         .category-btn {
             border-radius: 20px;
-            font-size: 0.8rem;
+            font-size: 0.85rem;
             font-weight: 600;
-            padding: 4px 12px;
+            padding: 6px 16px;
             transition: all 0.2s ease;
         }
 
@@ -91,12 +92,12 @@
     </nav>
 
     <!-- Main Container -->
-    <div class="container-fluid py-3 px-2 px-md-3">
-        <div class="row g-2">
+    <div class="container-fluid py-4 px-2 px-md-3">
+        <div class="row g-3">
             
             <!-- ខាងឆ្វេង៖ បញ្ជីផលិតផល និង Category Filter -->
             <div class="col-12 col-md-7 col-lg-8 products-container">
-                <div class="mb-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div class="mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
                     <div>
                         <h4 class="fw-bold text-dark fs-5 fs-md-4 mb-0"><i class="fa-solid fa-boxes-stacked me-2"></i> មុខទំនិញ / Menu Items</h4>
                         <p class="text-muted small mb-0">ចុចលើទំនិញដើម្បីបន្ថែមចូលកន្រ្តក | Click item to add to cart</p>
@@ -109,7 +110,7 @@
                 </div>
 
                 <!-- 🏷️ Category Filter Buttons -->
-                <div class="d-flex flex-wrap gap-1 mb-3" id="categoryButtons">
+                <div class="d-flex flex-wrap gap-2 mb-3" id="categoryButtons">
                     <button class="btn btn-dark category-btn active" onclick="filterCategory('All', this)">ទាំងអស់ / All</button>
                     <button class="btn btn-outline-dark category-btn" onclick="filterCategory('Coffee', this)">កាហ្វេ / Coffee</button>
                     <button class="btn btn-outline-dark category-btn" onclick="filterCategory('Tea', this)">តែ / Tea</button>
@@ -119,7 +120,7 @@
                 </div>
 
                 <!-- Product Grid List -->
-                <div class="row g-2" id="productsGrid">
+                <div class="row g-3" id="productsGrid">
                     <!-- Load dynamically -->
                 </div>
             </div>
@@ -281,7 +282,7 @@
 
             list.forEach(p => {
                 let imgTag = `
-                    <div class="product-img-wrapper text-secondary">
+                    <div class="product-img-wrapper d-flex align-items-center justify-content-center text-secondary">
                         <i class="fa-solid fa-image fs-3"></i>
                     </div>`;
                 
@@ -293,15 +294,14 @@
                     `;
                 }
 
-                /* 🌟 col-6 (ទូរស័ព្ទ ២ កាត), col-sm-4 (ថេប្លេត ៣ កាត), col-md-3 (កុំព្យូទ័រតូច ៤ កាត), col-lg-2 (កុំព្យូទ័រធំ ៦ កាតដូចក្នុងរូប) */
                 grid.innerHTML += `
-                    <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+                    <div class="col-6 col-sm-4 col-md-4 col-lg-3">
                         <div class="product-card" onclick="addToCart(${p.id})">
                             ${imgTag}
                             <div class="card-info">
-                                <h6 class="fw-bold text-dark mb-1 text-truncate" style="font-size: 0.82rem;" title="${p.name}">${p.name}</h6>
-                                <div class="text-success fw-bold mb-1" style="font-size: 0.85rem;">$${Number(p.price).toFixed(2)}</div>
-                                <span class="badge bg-light text-secondary border rounded-pill px-2 py-1" style="font-size: 0.68rem;">${p.category || 'General'}</span>
+                                <h6 class="fw-bold text-dark mb-1 text-truncate" style="font-size: 0.95rem;">${p.name}</h6>
+                                <div class="text-success fw-bold fs-6 mb-1">$${Number(p.price).toFixed(2)}</div>
+                                <span class="badge bg-light text-secondary border rounded-pill px-2 py-1" style="font-size: 0.75rem;">${p.category || 'General'}</span>
                             </div>
                         </div>
                     </div>
