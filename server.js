@@ -194,6 +194,21 @@ app.patch('/api/orders/:id/status', async (req, res) => {
         res.status(500).json({ success: false, error: 'Database error' });
     }
 });
+// ៥. ទាញយកប្រវត្តិការលក់ទាំងអស់សម្រាប់ធ្វើ Report (Sales History)
+app.get('/api/orders/history', async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT o.id, o.total_amount, o.payment_method, o.status, o.created_at, u.full_name as cashier_name 
+            FROM orders o
+            LEFT JOIN users u ON o.cashier_id = u.id
+            ORDER BY o.id DESC
+        `);
+        res.json({ success: true, data: result.rows });
+    } catch (err) {
+        console.error('Get Orders History Error:', err);
+        res.status(500).json({ success: false, error: 'Database error: ' + err.message });
+    }
+});
 
 // Root Route
 app.get('/', (req, res) => {
