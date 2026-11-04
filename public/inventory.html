@@ -32,7 +32,8 @@
                             <th>ឈ្មោះទំនិញ / មុខទំនិញ</th>
                             <th>ប្រភេទ (Category)</th>
                             <th>តម្លៃលក់ ($)</th>
-                            <th>ស្ថានភាពស្តុក</th>
+                            <th>ចំនួនក្នុងស្តុក (Stock Qty)</th>
+                            <th>សកម្មភាព (Action)</th>
                         </tr>
                     </thead>
                     <tbody id="inventoryTableBody">
@@ -61,24 +62,57 @@
                     const tbody = document.getElementById('inventoryTableBody');
                     tbody.innerHTML = '';
                     if (result.data.length === 0) {
-                        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">មិនទាន់មានទំនិញក្នុងស្តុកនៅឡើយទេ។</td></tr>`;
+                        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">មិនទាន់មានទំនិញក្នុងស្តុកនៅឡើយទេ។</td></tr>`;
                         return;
                     }
 
                     result.data.forEach(item => {
+                        const stockQty = item.stock_qty !== undefined ? item.stock_qty : 0;
+                        let stockBadge = `<span class="badge bg-success">${stockQty} ឯកតា</span>`;
+                        if (stockQty <= 5) {
+                            stockBadge = `<span class="badge bg-danger">${stockQty} ឯកតា (ជិតអស់!)</span>`;
+                        }
+
                         tbody.innerHTML += `
                             <tr>
                                 <td>#${item.id}</td>
                                 <td class="fw-bold">${item.name}</td>
                                 <td><span class="badge bg-secondary">${item.category || 'General'}</span></td>
                                 <td class="text-success fw-bold">$${Number(item.price).toFixed(2)}</td>
-                                <td><span class="badge bg-success">មានក្នុងស្តុក (Available)</span></td>
+                                <td>${stockBadge}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary" onclick="updateStock(${item.id}, ${stockQty})">
+                                        <i class="fa-solid fa-pen-to-square me-1"></i> កែប្រែស្តុក
+                                    </button>
+                                </td>
                             </tr>
                         `;
                     });
                 }
             } catch (err) {
                 console.error('Error loading inventory:', err);
+            }
+        }
+
+        async function updateStock(id, currentQty) {
+            const newQty = prompt('បញ្ចូលចំនួនស្តុកថ្មី (Enter new stock quantity):', currentQty);
+            if (newQty !== null && newQty.trim() !== '') {
+                try {
+                    const res = await fetch(`/api/inventory/${id}/stock`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ stock_qty: newQty })
+                    });
+                    const result = await res.json();
+                    if (result.success) {
+                        alert('បានអាប់ដេតចំនួនស្តុកដោយជោគជ័យ!');
+                        loadInventory();
+                    } else {
+                        alert('បរាជ័យក្នុងការអាប់ដេត: ' + result.error);
+                    }
+                } catch (err) {
+                    console.error('Error updating stock:', err);
+                }
             }
         }
 
