@@ -14,11 +14,11 @@ const pool = new Pool({
 });
 
 app.use(cors());
-app.use(express.json({ limit: '10mb' })); 
+app.use(express.json({ limit: '10mb' })); // ពង្រីកទំហំ JSON សម្រាប់ຮັບ Base64 String
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// មុខងារបង្កើត និងពិនិត្យតារាង Database ស្វ័យប្រវត្តិ
+// មុខងារបង្កើតតារាង Database
 async function initDB() {
     try {
         await pool.query(`
@@ -44,10 +44,8 @@ async function initDB() {
 
             CREATE TABLE IF NOT EXISTS orders (
                 id SERIAL PRIMARY KEY,
-                order_number VARCHAR(100),
-                cashier_id INT,
+                cashier_id INT REFERENCES users(id),
                 total_amount NUMERIC(10, 2) NOT NULL,
-                net_amount NUMERIC(10, 2),
                 payment_method VARCHAR(50) DEFAULT 'Cash',
                 status VARCHAR(50) DEFAULT 'Pending',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -58,21 +56,10 @@ async function initDB() {
                 order_id INT REFERENCES orders(id) ON DELETE CASCADE,
                 product_id INT,
                 quantity INT NOT NULL,
-                price NUMERIC(10, 2),
-                unit_price NUMERIC(10, 2)
+                price NUMERIC(10, 2) NOT NULL
             );
         `);
-
-        // ធានាថា column ទាំងអស់មានស្រាប់
-        await pool.query(`
-            ALTER TABLE orders ADD COLUMN IF NOT EXISTS cashier_id INTEGER;
-            ALTER TABLE orders ADD COLUMN IF NOT EXISTS order_number VARCHAR(100);
-            ALTER TABLE orders ADD COLUMN IF NOT EXISTS net_amount NUMERIC(10, 2);
-            ALTER TABLE order_items ADD COLUMN IF NOT EXISTS price NUMERIC(10, 2);
-            ALTER TABLE order_items ADD COLUMN IF NOT EXISTS unit_price NUMERIC(10, 2);
-        `);
-
-        console.log('✅ Database tables and columns initialized successfully!');
+        console.log('✅ Database tables initialized successfully!');
     } catch (err) {
         console.error('❌ Database initialization error:', err);
     }
@@ -84,7 +71,9 @@ initDB();
 const userRoutes = require('./routes/users');
 app.use('/api/users', userRoutes);
 
-// ================= PRODUCT APIs =================
+// ================= PRODUCT APIs (Base64 Stored in Database) =================
+
+// ១. ទាញយកបញ្ជីផលិតផលទាំងអស់
 app.get('/api/products', async (req, res) => {
     try {
         const result = await pool.query('SELECT * FROM products ORDER BY id DESC');
@@ -95,6 +84,7 @@ app.get('/api/products', async (req, res) => {
     }
 });
 
+// ២. បន្ថែមផលិតផលថ្មី (รับ Base64 ឬ URL ຜ່ານ JSON)
 app.post('/api/products', async (req, res) => {
     const { barcode, name, price, category, image_url } = req.body;
     
@@ -114,6 +104,7 @@ app.post('/api/products', async (req, res) => {
     }
 });
 
+// ៣. កែប្រែផលិតផល
 app.put('/api/products/:id', async (req, res) => {
     const { id } = req.params;
     const { barcode, name, price, category, image_url } = req.body;
@@ -130,6 +121,7 @@ app.put('/api/products/:id', async (req, res) => {
     }
 });
 
+// ៤. លុបផលិតផល
 app.delete('/api/products/:id', async (req, res) => {
     const { id } = req.params;
     try {
@@ -149,22 +141,19 @@ app.post('/api/orders', async (req, res) => {
     try {
         await client.query('BEGIN');
 
-        const orderNumber = 'ORD-' + Date.now();
-
         const orderQuery = `
-            INSERT INTO orders (order_number, cashier_id, total_amount, net_amount, payment_method, status, created_at) 
-            VALUES ($1, $2, $3, $3, $4, 'Pending', CURRENT_TIMESTAMP) 
-            RETURNING id, order_number, total_amount, created_at
+            INSERT INTO orders (cashier_id, total_amount, payment_method, status, created_at) 
+            VALUES ($1, $2, $3, 'Pending', CURRENT_TIMESTAMP) 
+            RETURNING id, total_amount, created_at
         `;
-        const orderResult = await client.query(orderQuery, [orderNumber, cashier_id || null, total_amount, payment_method || 'Cash']);
+        const orderResult = await client.query(orderQuery, [cashier_id, total_amount, payment_method || 'Cash']);
         const newOrderId = orderResult.rows[0].id;
 
         if (items && items.length > 0) {
             for (let item of items) {
-                // ដាក់បញ្ចូលទាំង price និង unit_price ព្រមគ្នាដើម្បីការពារកុំឱ្យติด Not-Null constraint
                 const itemQuery = `
-                    INSERT INTO order_items (order_id, product_id, quantity, price, unit_price)
-                    VALUES ($1, $2, $3, $4, $4)
+                    INSERT INTO order_items (order_id, product_id, quantity, price)
+                    VALUES ($1, $2, $3, $4)
                 `;
                 await client.query(itemQuery, [newOrderId, item.id, item.quantity, item.price]);
             }
@@ -174,7 +163,6 @@ app.post('/api/orders', async (req, res) => {
         res.status(201).json({ success: true, message: 'Order created successfully', order: orderResult.rows[0] });
     } catch (err) {
         await client.query('ROLLBACK');
-        console.error('Checkout Error:', err);
         res.status(500).json({ success: false, error: 'Database error: ' + err.message });
     } finally {
         client.release();
@@ -184,7 +172,7 @@ app.post('/api/orders', async (req, res) => {
 app.get('/api/orders/kitchen', async (req, res) => {
     try {
         const result = await pool.query(`
-            SELECT o.id, o.order_number, o.total_amount, o.payment_method, o.status, o.created_at, u.full_name as cashier_name
+            SELECT o.id, o.total_amount, o.payment_method, o.status, o.created_at, u.full_name as cashier_name
             FROM orders o
             LEFT JOIN users u ON o.cashier_id = u.id
             WHERE o.status IN ('Pending', 'Preparing') OR o.status IS NULL
