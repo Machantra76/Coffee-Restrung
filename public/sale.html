@@ -10,7 +10,7 @@
     <style>
         body { font-family: 'Kantumruy Pro', sans-serif; background-color: #f4f7fa; }
         
-        /* 🎨 កាតទំនិញតែមួយ (Single Card Design) */
+        /* 🎨 រចនាបថកាតទំនិញ (រូបភាពពេញផ្ទៃផ្នែកខាងលើកាត) */
         .product-card {
             cursor: pointer;
             transition: all 0.3s ease;
@@ -22,7 +22,8 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 0px 0px 12px 0px; /* គ្មាន Padding លើ ដើម្បីឱ្យរូបភាពកៀនគែមស្អាត */
+            justify-content: space-between;
+            padding: 0px 0px 12px 0px !important; 
             height: 100%;
         }
 
@@ -31,22 +32,24 @@
             box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
         }
         
-        /* 🖼️ ប្រអប់រូបភាពនៅផ្នែកខាងលើកាត */
+        /* 🖼️ ប្រអប់រូបភាពពេញផ្ទៃខាងលើកាត */
         .product-img-wrapper {
-            width: 100%;
-            height: 110px; 
+            width: 100% !important;
+            height: 120px; 
             background-color: #f8fafc;
             position: relative;
             overflow: hidden;
-            border-top-left-radius: 20px;  
-            border-top-right-radius: 20px;
-            margin-bottom: 10px;
+            border-top-left-radius: 20px !important;  
+            border-top-right-radius: 20px !important;
+            margin: 0 !important;
+            margin-bottom: 10px !important;
         }
         
         .product-img-wrapper img {
             width: 100%;
             height: 100%;
             object-fit: cover; 
+            display: block;
             transition: transform 0.3s ease;
         }
 
@@ -54,7 +57,6 @@
             transform: scale(1.06);
         }
 
-        /* 📝 ផ្នែកអត្ថបទនៅខាងក្រោមក្នុងកាតតែមួយ */
         .card-info {
             text-align: center;
             width: 100%;
@@ -120,7 +122,7 @@
                 </div>
 
                 <!-- Product Grid List -->
-                <div class="row g-3" id="productsGrid">
+                <div class="row g-2" id="productsGrid">
                     <!-- Load dynamically -->
                 </div>
             </div>
@@ -294,7 +296,6 @@
                     `;
                 }
 
-                /* 🌟 រចនាសម្ព័ន្ធកាតតែមួយ (Single Card) មានរូបភាពលើ និងអត្ថបទក្រោមស្អាត */
                 grid.innerHTML += `
                     <div class="col-6 col-sm-4 col-md-3 col-lg-2">
                         <div class="product-card" onclick="addToCart(${p.id})">
