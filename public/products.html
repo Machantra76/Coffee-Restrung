@@ -61,26 +61,29 @@
                             <input type="number" step="0.01" id="productPrice" class="form-control form-control-sm" placeholder="ឧ. 2.50" required>
                         </div>
 
+                        <!-- 🏷️ អាចវាយ Category ថ្មីដោយដៃ ឬរើសពីបញ្ជីចាស់ -->
                         <div class="mb-2">
-                            <label class="form-label small fw-bold">ប្រភេទ / Category</label>
-                            <select id="productCategory" class="form-select form-select-sm">
-                                <option value="Coffee">កាហ្វេ / Coffee</option>
-                                <option value="Tea">តែ / Tea</option>
-                                <option value="Beverage">ភេសជ្ជៈ / Beverage</option>
-                                <option value="Food">ម្ហូបអាហារ / Food</option>
-                                <option value="General">ទូទៅ / General</option>
-                            </select>
+                            <label class="form-label small fw-bold">ប្រភេទ / Category (*)</label>
+                            <input type="text" id="productCategory" class="form-control form-control-sm" list="categoryList" placeholder="រើស ឬវាយបញ្ចូល Category ថ្មី" required>
+                            <datalist id="categoryList">
+                                <option value="Coffee">
+                                <option value="Tea">
+                                <option value="Beverage">
+                                <option value="Food">
+                                <option value="General">
+                            </datalist>
+                            <div class="form-text small text-muted" style="font-size: 0.75rem;">អាចជ្រើសរើសពីបញ្ជី ឬវាយបញ្ចូលឈ្មោះ Category ថ្មីដោយផ្ទាល់។</div>
                         </div>
 
                         <!-- ជម្រើសទី ១៖ ដាក់តាម Image URL -->
                         <div class="mb-2">
-                            <label class="form-label small fw-bold">Image URL (ທາງເລືອກ Cloud Link)</label>
+                            <label class="form-label small fw-bold">Image URL (ជម្រើស Cloud Link)</label>
                             <input type="url" id="productImageUrlInput" class="form-control form-control-sm" placeholder="https://example.com/image.jpg" oninput="previewUrlImage(this.value)">
                         </div>
 
                         <!-- ជម្រើសទី ២៖ ដាក់តាម File Upload (Base64) -->
                         <div class="mb-3">
-                            <label class="form-label small fw-bold">ឬ Upload Picture File (កម្លាំង Base64)</label>
+                            <label class="form-label small fw-bold">ឬ Upload Picture File (រូបភាព Base64)</label>
                             <input type="file" id="productImageFile" class="form-control form-control-sm mb-2" accept="image/*" onchange="previewFileImage(event)">
                             
                             <div class="d-flex align-items-center gap-3">
@@ -197,6 +200,9 @@
                         return;
                     }
 
+                    // ទាញយក Category ដែលមានស្រាប់ក្នុង Database ដើម្បីបញ្ចូលក្នុង datalist ស្វ័យប្រវត្តិ
+                    updateCategoryDatalist(productsList);
+
                     productsList.forEach(p => {
                         const imgTag = p.image_url 
                             ? `<img src="${p.image_url}" class="product-img-thumb shadow-sm" onerror="this.src='https://via.placeholder.com/50?text=No+Img'">`
@@ -226,6 +232,22 @@
             }
         }
 
+        function updateCategoryDatalist(products) {
+            const datalist = document.getElementById('categoryList');
+            const categories = new Set(['Coffee', 'Tea', 'Beverage', 'Food', 'General']);
+            
+            products.forEach(p => {
+                if (p.category && p.category.trim() !== '') {
+                    categories.add(p.category.trim());
+                }
+            });
+
+            datalist.innerHTML = '';
+            categories.forEach(cat => {
+                datalist.innerHTML += `<option value="${cat}">`;
+            });
+        }
+
         async function saveProduct(e) {
             e.preventDefault();
 
@@ -237,7 +259,7 @@
                 barcode: document.getElementById('productBarcode').value,
                 name: document.getElementById('productName').value,
                 price: parseFloat(document.getElementById('productPrice').value),
-                category: document.getElementById('productCategory').value,
+                category: document.getElementById('productCategory').value.trim() || 'General',
                 image_url: finalImageUrl
             };
 
@@ -253,7 +275,7 @@
                 const result = await res.json();
 
                 if (res.ok && result.success) {
-                    alert(id ? 'កែប្រែទំនិញได้ជោគជ័យ!' : 'បន្ថែមទំនិញថ្មីได้ជោគជ័យ!');
+                    alert(id ? 'កែប្រែទំនិញបានជោគជ័យ!' : 'បន្ថែមទំនិញថ្មីបានជោគជ័យ!');
                     resetForm();
                     loadProducts();
                 } else {
