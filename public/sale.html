@@ -302,9 +302,21 @@
                     `;
                 }
 
+                // 🌟 កំណត់ពណ៌ Badge ស្តុក
+                const stockQty = p.stock_qty !== undefined ? p.stock_qty : 0;
+                let stockBadgeClass = 'bg-success';
+                if (stockQty <= 0) {
+                    stockBadgeClass = 'bg-danger';
+                } else if (stockQty <= 5) {
+                    stockBadgeClass = 'bg-warning text-dark';
+                }
+
                 grid.innerHTML += `
                     <div class="col-6 col-sm-4 col-md-3 col-lg-2">
-                        <div class="product-card" onclick="addToCart(${p.id})">
+                        <div class="product-card position-relative" onclick="addToCart(${p.id})">
+                            <span class="position-absolute top-0 start-0 m-2 badge ${stockBadgeClass} shadow-sm" style="z-index: 5; font-size: 0.75rem;">
+                                ស្តុក: ${stockQty}
+                            </span>
                             ${imgTag}
                             <div class="product-overlay-info">
                                 <span class="text-white fw-bold text-truncate" style="font-size: 0.8rem; max-width: 65%;" title="${p.name}">${p.name}</span>
@@ -417,7 +429,6 @@
             }
         }
 
-        // 🛑 មុខងារបង់ប្រាក់ Checkout ដែលបានកែសម្រួលដើម្បីចាប់យកសារ Error មក Alert
         async function checkout() {
             if (cart.length === 0) {
                 alert('សូមជ្រើសរើសទំនិញយ៉ាងហោចណាស់មួយ! / Please select at least one item!');
@@ -459,7 +470,7 @@
                     document.getElementById('discountPercent').value = '0';
                     document.getElementById('vatToggle').checked = false;
                     renderCart();
-                    await loadProducts(); // Refresh ស្តុក
+                    await loadProducts(); // Refresh ស្តុក និងបញ្ជីទំនិញឡើងវិញ
                 } else {
                     alert('⚠️ មិនអាចលក់បានទេ: ' + result.error);
                 }
