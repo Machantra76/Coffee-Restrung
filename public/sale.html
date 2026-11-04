@@ -117,14 +117,9 @@
                     </div>
                 </div>
 
-                <!-- 🏷️ Category Filter Buttons -->
+                <!-- 🏷️ Category Filter Buttons (បង្កើតឡើងដោយស្វ័យប្រវត្តិពី Database) -->
                 <div class="d-flex flex-wrap gap-2 mb-3" id="categoryButtons">
-                    <button class="btn btn-dark category-btn active" onclick="filterCategory('All', this)">ទាំងអស់ / All</button>
-                    <button class="btn btn-outline-dark category-btn" onclick="filterCategory('Coffee', this)">កាហ្វេ / Coffee</button>
-                    <button class="btn btn-outline-dark category-btn" onclick="filterCategory('Tea', this)">តែ / Tea</button>
-                    <button class="btn btn-outline-dark category-btn" onclick="filterCategory('Beverage', this)">ភេសជ្ជៈ / Beverage</button>
-                    <button class="btn btn-outline-dark category-btn" onclick="filterCategory('Food', this)">ម្ហូបអាហារ / Food</button>
-                    <button class="btn btn-outline-dark category-btn" onclick="filterCategory('General', this)">ទូទៅ / General</button>
+                    <!-- Dynamic Rendered Buttons -->
                 </div>
 
                 <!-- Product Grid List -->
@@ -254,11 +249,35 @@
                 const result = await res.json();
                 if (result.success) {
                     products = result.data;
+                    generateCategoryButtons(products); // 🌟 បង្កើតប៊ូតុង Category ស្វ័យប្រវត្តិ
                     displayProducts(products);
                 }
             } catch (err) {
                 console.error('Error loading products:', err);
             }
+        }
+
+        // 🌟 មុខងារបង្កើតប៊ូតុង Category ស្វ័យប្រវត្តិពី Database
+        function generateCategoryButtons(list) {
+            const container = document.getElementById('categoryButtons');
+            const categories = new Set();
+            
+            list.forEach(p => {
+                if (p.category && p.category.trim() !== '') {
+                    categories.add(p.category.trim());
+                }
+            });
+
+            container.innerHTML = `
+                <button class="btn ${currentCategory === 'All' ? 'btn-dark' : 'btn-outline-dark'} category-btn" onclick="filterCategory('All', this)">ទាំងអស់ / All</button>
+            `;
+
+            categories.forEach(cat => {
+                const activeClass = currentCategory === cat ? 'btn-dark' : 'btn-outline-dark';
+                container.innerHTML += `
+                    <button class="btn ${activeClass} category-btn" onclick="filterCategory('${cat}', this)">${cat}</button>
+                `;
+            });
         }
 
         function filterCategory(category, btnElement) {
@@ -284,7 +303,7 @@
             grid.innerHTML = '';
 
             if (list.length === 0) {
-                grid.innerHTML = `<div class="col-12 text-center text-muted py-5">មិនមានទំនិញក្នុងប្រភេទនេះទេ។</div>`;
+                grid.innerHTML = `<div class="col-12 text-center text-muted py-5">មិនទាន់មានទំនិញក្នុងប្រភេទនេះទេ។</div>`;
                 return;
             }
 
@@ -302,7 +321,6 @@
                     `;
                 }
 
-                // 🌟 កំណត់ពណ៌ Badge ស្តុក
                 const stockQty = p.stock_qty !== undefined ? p.stock_qty : 0;
                 let stockBadgeClass = 'bg-success';
                 if (stockQty <= 0) {
@@ -470,9 +488,9 @@
                     document.getElementById('discountPercent').value = '0';
                     document.getElementById('vatToggle').checked = false;
                     renderCart();
-                    await loadProducts(); // Refresh ស្តុក និងបញ្ជីទំនិញឡើងវិញ
+                    await loadProducts(); 
                 } else {
-                    alert('⚠️ មិនអាចលក់បានទេ: ' + result.error);
+                    alert('⚠️ មិនអាចលក់ได้ទេ: ' + result.error);
                 }
             } catch (err) {
                 console.error('Checkout Error:', err);
