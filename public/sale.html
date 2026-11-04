@@ -27,21 +27,22 @@
             box-shadow: 0 12px 25px rgba(13, 110, 253, 0.15);
         }
         
-        /* 🖼️ ប្រអប់រូបភាពមានទំហំថេរស្អាត (កម្ពស់ 150px) មិនAuto តាមរូបភាពទេ */
+        /* 🖼️ ប្រអប់រូបភាពទំហំថេរ និងដាក់ Padding ដើម្បីកុំឱ្យរូបភាពបែក ឬលាតខ្លាំងពេក */
         .product-img-wrapper {
             width: 100%;
-            height: 150px;
-            background-color: #f1f5f9;
+            height: 130px;
+            background-color: #f8fafc;
             position: relative;
             overflow: hidden;
             display: flex;
             align-items: center;
             justify-content: center;
+            padding: 10px;
         }
         .product-img-wrapper img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover; /* រូបភាព Auto size ពេញប្រអប់ស្អាត */
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain; /* 🛠️ ប្រើ contain ដើម្បីបង្ហាញរូបភាពពេញលេញ ស្អាតមិនបែកទ្រង់ទ្រាយ */
             transition: transform 0.3s ease;
         }
         .product-card:hover .product-img-wrapper img {
