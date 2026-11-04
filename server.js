@@ -18,7 +18,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// មុខងារបង្កើតតារាង Database (រួមទាំងតារាង stock_in_history ថ្មី)
+// មុខងារបង្កើតតារាង Database (រួមទាំងតារាង stock_in_history)
 async function initDB() {
     try {
         await pool.query(`
@@ -156,7 +156,6 @@ app.put('/api/inventory/:id/stock', async (req, res) => {
     }
 });
 
-// 📦 API សម្រាប់បន្ថែមស្តុកចូលថ្មី (Stock In) ព្រមទាំងកត់ត្រាកាលបរិច្ឆេទ និងតម្លៃដើម
 app.post('/api/inventory/stock-in', async (req, res) => {
     const { product_id, quantity_added, cost_price, note } = req.body;
 
@@ -168,7 +167,6 @@ app.post('/api/inventory/stock-in', async (req, res) => {
     try {
         await client.query('BEGIN');
 
-        // ១. បញ្ចូលប្រវត្តិស្តុកចូលថ្មីទៅក្នុងតារាង stock_in_history
         const historyQuery = `
             INSERT INTO stock_in_history (product_id, quantity_added, cost_price, note, created_at)
             VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
@@ -181,7 +179,6 @@ app.post('/api/inventory/stock-in', async (req, res) => {
             note || 'ស្តុកចូលថ្មី (Stock In)'
         ]);
 
-        // ២. បូកបន្ថែមចំនួនស្តុក (`stock_qty`) ចូលទៅក្នុងតារាង products ដោយស្វ័យប្រវត្តិ
         const updateProductQuery = `
             UPDATE products 
             SET stock_qty = stock_qty + $1 
@@ -222,7 +219,8 @@ app.get('/api/inventory', async (req, res) => {
     }
 });
 
-// ================= ORDER APIs (With Strict Stock Validation & Deduction) =================
+// ================= ORDER APIs =================
+
 app.post('/api/orders', async (req, res) => {
     const { cashier_id, total_amount, payment_method, items } = req.body;
     
@@ -304,15 +302,54 @@ app.patch('/api/orders/:id/status', async (req, res) => {
     }
 });
 
+// 📊 ៥. ទាញយកប្រវត្តិការលក់ ( Sales History ) + Filter កាលបរិច្ឆេទ + គណនាប្រាក់ចំណេញ (Profit)
 app.get('/api/orders/history', async (req, res) => {
+    const { fromDate, toDate } = req.query;
     try {
-        const result = await pool.query(`
+        let whereClauses = [];
+        let params = [];
+
+        if (fromDate) {
+            params.push(`${fromDate} 00:00:00`);
+            whereClauses.push(`o.created_at >= $${params.length}`);
+        }
+        if (toDate) {
+            params.push(`${toDate} 23:59:59`);
+            whereClauses.push(`o.created_at <= $${params.length}`);
+        }
+
+        const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+
+        // Query ប្រវត្តិ Order
+        const query = `
             SELECT o.id, o.total_amount, o.payment_method, o.status, o.created_at, u.full_name as cashier_name 
             FROM orders o
             LEFT JOIN users u ON o.cashier_id = u.id
+            ${whereSql}
             ORDER BY o.id DESC
-        `);
-        res.json({ success: true, data: result.rows });
+        `;
+        const result = await pool.query(query, params);
+
+        // Query គណនាប្រាក់ចំណេញសរុប ( ផ្អែកលើ order_items និងតម្លៃដើមមធ្យមចុងក្រោយក្នុង stock_in_history )
+        const profitQuery = `
+            SELECT COALESCE(SUM((oi.price - COALESCE(s.cost_price, 0)) * oi.quantity), 0) as total_profit
+            FROM order_items oi
+            JOIN orders o ON oi.order_id = o.id
+            LEFT JOIN (
+                SELECT DISTINCT ON (product_id) product_id, cost_price 
+                FROM stock_in_history 
+                ORDER BY product_id, created_at DESC
+            ) s ON oi.product_id = s.product_id
+            ${whereSql}
+        `;
+        const profitResult = await pool.query(profitQuery, params);
+        const totalProfit = parseFloat(profitResult.rows[0]?.total_profit || 0);
+
+        res.json({ 
+            success: true, 
+            data: result.rows,
+            total_profit: totalProfit
+        });
     } catch (err) {
         console.error('Get Orders History Error:', err);
         res.status(500).json({ success: false, error: 'Database error: ' + err.message });
