@@ -10,7 +10,7 @@
     <style>
         body { font-family: 'Kantumruy Pro', sans-serif; background-color: #f4f7fa; }
         
-        /* 🎨 រចនាបថកាតស្ទាយដូចក្នុងរូបគំរូ */
+        /* 🎨 រចនាបថកាតទំនិញ (រូបភាពពេញផ្ទៃផ្នែកខាងលើកាត) */
         .product-card {
             cursor: pointer;
             transition: all 0.3s ease;
@@ -18,12 +18,12 @@
             border-radius: 20px;
             background-color: #ffffff;
             box-shadow: 0 4px 16px rgba(149, 157, 165, 0.08);
-            overflow: hidden;
+            overflow: hidden; /* កាត់ផ្នែកដែលហៀរចេញ ដើម្បីឱ្យត្រូវតាមជ្រុងកោងកាត */
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: space-between;
-            padding: 15px 10px 12px 10px;
+            padding: 0px 0px 12px 0px; /* 🛠️ កំណត់ Padding លើ និងសងខាងជា 0px ដើម្បីឱ្យរូបភាពកៀនគែមពេញកាត */
             height: 100%;
         }
 
@@ -32,21 +32,22 @@
             box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
         }
         
-        /* 🖼️ ប្រអប់រូបភាពនៅចំកណ្តាល មាន Padding ជុំវិញស្អាតដូចក្នុងរូបគំរូ */
+        /* 🖼️ ប្រអប់រូបភាពលាតសន្ធឹងកៀនគែមលើ */
         .product-img-wrapper {
             width: 100%;
-            height: 85px; 
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 8px;
-            padding: 5px;
+            height: 105px; 
+            background-color: #f8fafc;
+            position: relative;
+            overflow: hidden;
+            border-top-left-radius: 20px;  /* កោងជ្រុងខាងលើស្មើនឹងកាត */
+            border-top-right-radius: 20px;
+            margin-bottom: 10px;
         }
         
         .product-img-wrapper img {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain; /* រូបភាពបង្ហាញពេញលេញ មិនបែក និងមិនបាំងជិតគែម */
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* 🛠️ ធ្វើឱ្យរូបភាពបំពេញពេញប្រអប់ស្អាត */
             transition: transform 0.3s ease;
         }
 
@@ -57,6 +58,7 @@
         .card-info {
             text-align: center;
             width: 100%;
+            padding: 0 10px;
         }
 
         /* Category Filter Buttons Style */
@@ -280,7 +282,7 @@
 
             list.forEach(p => {
                 let imgTag = `
-                    <div class="product-img-wrapper text-secondary">
+                    <div class="product-img-wrapper d-flex align-items-center justify-content-center text-secondary">
                         <i class="fa-solid fa-image fs-3"></i>
                     </div>`;
                 
@@ -292,7 +294,6 @@
                     `;
                 }
 
-                /* 🌟 col-6 (ទូរស័ព្ទ ២ កាត), col-sm-4 (ថេប្លេត ៣ កាត), col-md-3 (កុំព្យូទ័រតូច ៤ កាត), col-lg-2 (កុំព្យូទ័រធំ ៦ កាតដូចក្នុងរូបគំរូ) */
                 grid.innerHTML += `
                     <div class="col-6 col-sm-4 col-md-3 col-lg-2">
                         <div class="product-card" onclick="addToCart(${p.id})">
