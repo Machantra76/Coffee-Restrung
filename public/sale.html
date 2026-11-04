@@ -10,7 +10,6 @@
     <style>
         body { font-family: 'Kantumruy Pro', sans-serif; background-color: #f4f7fa; }
         
-        /* 🎨 រចនាបថកាតទំនិញ៖ មានរូបភាពពេញ និងអត្ថបទ Overlay ពីលើច្បាស់ស្អាត */
         .product-card {
             cursor: pointer;
             transition: all 0.3s ease;
@@ -25,7 +24,7 @@
             align-items: center;
             justify-content: center;
             padding: 0px !important; 
-            height: 140px; /* បន្ថែមកម្ពស់បន្តិចដើម្បីដាក់អត្ថបទ */
+            height: 140px;
         }
 
         .product-card:hover {
@@ -33,7 +32,6 @@
             box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
         }
         
-        /* 🖼️ ប្រអប់រូបភាពលាតសន្ធឹងពេញកាតទាំងមូល */
         .product-img-wrapper {
             width: 100% !important;
             height: 100% !important; 
@@ -47,7 +45,7 @@
         .product-img-wrapper img {
             width: 100% !important;
             height: 100% !important;
-            object-fit: contain !important; /* 🛠️ រក្សារូបភាពឱ្យពេញលេញ មិនដាច់គែម មិនដាច់ក្បាលកន្ទុយ */
+            object-fit: contain !important;
             display: block;
             background-color: #ffffff;
             transition: transform 0.3s ease;
@@ -57,13 +55,12 @@
             transform: scale(1.06);
         }
 
-        /* 📝 ផ្នែកអត្ថបទ Overlay ពីលើផ្នែកខាងក្រោមនៃរូបភាព (អក្សរច្បាស់ មានផ្ទៃខ្នងស្រអាប់ស្រាល) */
         .product-overlay-info {
             position: absolute;
             bottom: 0;
             left: 0;
             right: 0;
-            background: rgba(0, 0, 0, 0.65); /* ផ្ទៃខាងក្រោយក្រមៅល្មមឱ្យអក្សរលេចធ្លោច្បាស់ */
+            background: rgba(0, 0, 0, 0.65);
             backdrop-filter: blur(2px);
             padding: 4px 8px;
             display: flex;
@@ -73,7 +70,6 @@
             border-bottom-right-radius: 16px;
         }
 
-        /* Category Filter Buttons Style */
         .category-btn {
             border-radius: 20px;
             font-size: 0.85rem;
@@ -306,7 +302,6 @@
                     `;
                 }
 
-                /* 🌟 បង្ហាញរូបភាពពេញលេញ (មិនដាច់គែម) និងមានអត្ថបទ (ឈ្មោះ និងតម្លៃ) Overlay ពីលើផ្នែកខាងក្រោមច្បាស់ស្អាត */
                 grid.innerHTML += `
                     <div class="col-6 col-sm-4 col-md-3 col-lg-2">
                         <div class="product-card" onclick="addToCart(${p.id})">
@@ -422,6 +417,7 @@
             }
         }
 
+        // 🛑 មុខងារបង់ប្រាក់ Checkout ដែលបានកែសម្រួលដើម្បីចាប់យកសារ Error មក Alert
         async function checkout() {
             if (cart.length === 0) {
                 alert('សូមជ្រើសរើសទំនិញយ៉ាងហោចណាស់មួយ! / Please select at least one item!');
@@ -453,17 +449,19 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(orderData)
                 });
+                
                 const result = await res.json();
 
-                if (res.ok && result.success) {
+                if (result.success) {
                     alert(`បង់ប្រាក់បានជោគជ័យ! លេខវិក្កយបត្រ #${result.order.id} \nPayment Successful! Invoice #${result.order.id}`);
                     cart = [];
                     document.getElementById('amountReceived').value = '';
                     document.getElementById('discountPercent').value = '0';
                     document.getElementById('vatToggle').checked = false;
                     renderCart();
+                    await loadProducts(); // Refresh ស្តុក
                 } else {
-                    alert('បរាជ័យក្នុងការទូទាត់ប្រាក់៖ ' + (result.error || 'Database error'));
+                    alert('⚠️ មិនអាចលក់បានទេ: ' + result.error);
                 }
             } catch (err) {
                 console.error('Checkout Error:', err);
