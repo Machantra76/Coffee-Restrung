@@ -120,6 +120,21 @@ app.put('/api/products/:id', async (req, res) => {
         res.status(500).json({ success: false, error: 'Database error: ' + dbErr.message });
     }
 });
+// កែសម្រួលចំនួនស្តុកទំនិញ
+app.put('/api/inventory/:id/stock', async (req, res) => {
+    const { id } = req.params;
+    const { stock_qty } = req.body;
+    try {
+        const result = await pool.query(
+            'UPDATE products SET stock_qty = $1 WHERE id = $2 RETURNING *',
+            [parseInt(stock_qty) || 0, id]
+        );
+        res.json({ success: true, data: result.rows[0] });
+    } catch (err) {
+        console.error('Update Stock Error:', err);
+        res.status(500).json({ success: false, error: 'Database error: ' + err.message });
+    }
+});
 
 // ៤. លុបផលិតផល
 app.delete('/api/products/:id', async (req, res) => {
