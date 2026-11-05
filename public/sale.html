@@ -579,14 +579,19 @@
             generateDynamicQR();
         }
 
-        // 🔔 មុខងារឆែកមើល Order ថ្មីពីភ្ញៀវស្កែន QR
+        // 🔔 មុខងារឆែកមើល Order ថ្មីពីភ្ញៀវស្កែន QR (ត្រួតពិនិត្យយកតែ Order ណាដែលគ្មាន cashier_id)
         async function checkCustomerPendingOrders() {
             try {
                 const res = await fetch('/api/orders/customer-pending');
                 const result = await res.json();
                 if (result.success && result.data.length > 0) {
-                    currentPendingOrder = result.data[0];
-                    showPendingOrderPopup(currentPendingOrder);
+                    // 🔍 ជ្រើសរើសយកតែ Order ណាដែលគ្មាន cashier_id (មានន័យថាជា Order របស់ភ្ញៀវស្កែន QR)
+                    const customerOrders = result.data.filter(order => !order.cashier_id);
+                    
+                    if (customerOrders.length > 0) {
+                        currentPendingOrder = customerOrders[0];
+                        showPendingOrderPopup(currentPendingOrder);
+                    }
                 }
             } catch (err) {
                 console.error('Error checking pending orders:', err);
