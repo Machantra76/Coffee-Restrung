@@ -103,12 +103,23 @@
         }
         .cart-items-box { max-height: 220px; overflow-y: auto; }
 
-        /* 🖨️ Print Styles */
+       /* 🖨️ Print Styles សម្រាប់ម៉ាស៊ីនព្រិន្ទ POS 80mm */
         @media print {
             body * { visibility: hidden; }
             #printableInvoice, #printableInvoice * { visibility: visible; }
-            #printableInvoice { position: absolute; left: 0; top: 0; width: 100%; }
+            #printableInvoice { 
+                position: absolute; 
+                left: 0; 
+                top: 0; 
+                width: 80mm !important; /* កំណត់ទទឹង 80mm ស្ដង់ដារម៉ាស៊ីន POS */
+                margin: 0;
+                padding: 5mm;
+            }
             .no-print { display: none !important; }
+            @page {
+                size: 80mm auto; /* ទំហំក្រដាសរមូរ 80mm */
+                margin: 0;
+            }
         }
     </style>
 </head>
