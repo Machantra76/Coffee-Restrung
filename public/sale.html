@@ -132,7 +132,7 @@
             </span>
             <div class="d-flex align-items-center gap-2 flex-wrap">
                 <span id="cashierDisplay" class="text-white small fw-bold bg-secondary px-3 py-1 rounded-pill"></span>
-                <button class="btn btn-outline-warning btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#qrModal">
+                <button class="btn btn-outline-warning btn-sm fw-bold position-relative" data-bs-toggle="modal" data-bs-target="#qrModal">
                     <i class="fa-solid fa-qrcode me-1"></i> QR សម្រាប់ភ្ញៀវ Order
                 </button>
                 <a href="pos.html" class="btn btn-outline-light btn-sm"><i class="fa-solid fa-house me-1"></i> ម៉ឺនុយមេ / Menu</a>
@@ -265,6 +265,44 @@
         </div>
     </div>
 
+    <!-- 🔔 팝업 Modal សម្រាប់ជូនដំណឹង QR Order ចូលមកថ្មី -->
+    <div class="modal fade" id="pendingOrderModal" data-bs-backdrop="static" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title fw-bold"><i class="fa-solid fa-bell fa-shake me-2"></i> មាន Order ថ្មីពីភ្ញៀវស្កែនម៉ឺនុយ!</h5>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning py-2 mb-2 small fw-bold text-center">
+                        តុ: <span id="popupTableNo" class="text-danger fs-6"></span>
+                    </div>
+                    <div style="max-height: 200px; overflow-y: auto;" class="border rounded p-2 bg-light mb-2">
+                        <table class="table table-sm mb-0 small">
+                            <thead>
+                                <tr>
+                                    <th>មុខទំនិញ</th>
+                                    <th class="text-center">ចំនួន</th>
+                                    <th class="text-end">តម្លៃ ($)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="popupOrderItems">
+                                <!-- Loaded dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="d-flex justify-content-between fw-bold mb-3">
+                        <span>ទឹកប្រាក់សរុប:</span>
+                        <span id="popupTotalAmount" class="text-success fs-5"></span>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-secondary w-50 py-2 fw-bold" onclick="dismissPopupAlert()">បិទសំឡេង (Snooze)</button>
+                        <button class="btn btn-success w-50 py-2 fw-bold" onclick="acceptCustomerOrder()"><i class="fa-solid fa-check me-1"></i> ទទួលយក Order (Accept)</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- 🪑 Modal រើសលេខតុ និងបង្កើតកាតតុថ្មី -->
     <div class="modal fade" id="tableModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
@@ -274,13 +312,11 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <!-- ប្រអប់សម្រាប់បន្ថែមតុថ្មី -->
                     <div class="input-group mb-3">
                         <input type="text" id="newTableNameInput" class="form-control" placeholder="វាយឈ្មោះតុថ្មី (ឧ. តុ VIP 1)">
                         <button class="btn btn-primary fw-bold" type="button" onclick="addNewTableCard()"><i class="fa-solid fa-plus me-1"></i> បន្ថែមតុថ្មី</button>
                     </div>
                     <hr>
-                    <!-- បញ្ជីកាតតុ -->
                     <div class="row g-2" id="tableGrid" style="max-height: 250px; overflow-y: auto;">
                         <!-- Render តុស្វ័យប្រវត្តិ -->
                     </div>
@@ -400,9 +436,11 @@
         let currentUser = null;
         let finalCalculatedTotal = 0;
         let receiptModalObj = null;
+        let pendingOrderModalObj = null;
+        let currentPendingOrder = null;
+        let soundInterval = null;
 
-        // បញ្ជីតុចាប់ផ្តើម (អាចបន្ថែមសេរី)
-        let customTables = ['តុទី ១ (Table 1)', 'តុទី ២ (Table 2)', 'តុទី ៣ (Table 3)', 'តុទី ៤ (Table 4)', 'តុទី ៥ (Table 5)', 'តុទី ៦ (Table 6)', 'តុទី ៧ (Table 7)', 'តុទី ៨ (Table 8)'];
+        let customTables = ['តុទី ១ (Table 1)', 'តុទី ២ (Table 2)', 'តុទី ៣ (Table 3)', 'តុទី ៤ (Table 4)', 'តុទី ៥ (Table 5)', 'តុទី ៦ (Table 6)', 'តុទី ៧ (Table 7)', 'តុទី 8 (Table 8)'];
 
         document.addEventListener('DOMContentLoaded', async () => {
             currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
@@ -413,10 +451,129 @@
 
             document.getElementById('cashierDisplay').innerText = `Cashier: ${currentUser.full_name}`;
             receiptModalObj = new bootstrap.Modal(document.getElementById('receiptModal'));
+            pendingOrderModalObj = new bootstrap.Modal(document.getElementById('pendingOrderModal'));
 
             renderTableCards();
             await loadProducts();
+
+            // 🔄 បើកមុខងារ Auto-Check QR Orders រៀងរាល់ 3 វិនាទីស្វ័យប្រវត្តិ
+            setInterval(checkCustomerPendingOrders, 3000);
         });
+
+        // 🔔 មុខងារឆែកមើល Order ថ្មីពីភ្ញៀវស្កែន QR
+        async function checkCustomerPendingOrders() {
+            try {
+                const res = await fetch('/api/orders/customer-pending');
+                const result = await res.json();
+                if (result.success && result.data.length > 0) {
+                    // យក Order ដំបូងបង្អស់មកបង្ហាញផ្ទាំង Alert
+                    currentPendingOrder = result.data[0];
+                    showPendingOrderPopup(currentPendingOrder);
+                }
+            } catch (err) {
+                console.error('Error checking pending orders:', err);
+            }
+        }
+
+        // 🔊 បង្ហាញ Popup Modal ព្រមទាំងបន្លឺសំឡេងរោទ៍រៀងរាល់ 3-5 វិនាទី
+        function showPendingOrderPopup(order) {
+            // បើ Modal កំពុងបើកហើយ មិនបាច់បើកជាន់គ្នាទេ
+            const modalElement = document.getElementById('pendingOrderModal');
+            if (modalElement.classList.contains('show')) return;
+
+            document.getElementById('popupTableNo').innerText = order.table_no || 'តុទូទៅ';
+            document.getElementById('popupTotalAmount').innerText = `$${Number(order.total_amount).toFixed(2)}`;
+            
+            const itemsTbody = document.getElementById('popupOrderItems');
+            itemsTbody.innerHTML = '';
+            order.items.forEach(item => {
+                itemsTbody.innerHTML += `
+                    <tr>
+                        <td>${item.name}</td>
+                        <td class="text-center">${item.quantity}</td>
+                        <td class="text-end">$${Number(item.price).toFixed(2)}</td>
+                    </tr>
+                `;
+            });
+
+            pendingOrderModalObj.show();
+            startAlertSound();
+        }
+
+        // 🔊 Web Audio API សម្រាប់បង្កើតសំឡេងប៊ីប/កណ្ដឹងរោទ៍ Alert
+        function playBeepSound() {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // កម្រិតសំឡេង
+                gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                
+                oscillator.start();
+                oscillator.stop(audioCtx.currentTime + 0.4); // រោទ៍រយៈពេល 0.4 វិនាទី
+            } catch (e) {
+                console.log('Audio not supported or blocked by browser');
+            }
+        }
+
+        function startAlertSound() {
+            if (soundInterval) clearInterval(soundInterval);
+            playBeepSound(); // លេងភ្លាមៗមួយដង
+            soundInterval = setInterval(() => {
+                playBeepSound();
+            }, 3500); // រោទ៍រៀងរាល់ 3.5 វិនាទីរហូតដល់ចុចបិទ ឬ Accept
+        }
+
+        function stopAlertSound() {
+            if (soundInterval) {
+                clearInterval(soundInterval);
+                soundInterval = null;
+            }
+        }
+
+        function dismissPopupAlert() {
+            stopAlertSound();
+            pendingOrderModalObj.hide();
+        }
+
+        // ✅ មុខងារចុចទទួលយក Order (Accept)
+        async function acceptCustomerOrder() {
+            if (!currentPendingOrder) return;
+
+            try {
+                const res = await fetch(`/api/orders/${currentPendingOrder.id}/accept`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const result = await res.json();
+
+                if (result.success) {
+                    stopAlertSound();
+                    pendingOrderModalObj.hide();
+                    
+                    // ដាក់បញ្ចូលទំនិញចូលទៅក្នុង Cart របស់ POS ស្រេចដើម្បីគិតលុយបន្តបើចង់
+                    document.getElementById('tableInput').value = currentPendingOrder.table_no || 'តុទូទៅ';
+                    cart = currentPendingOrder.items.map(i => ({
+                        id: i.product_id || i.id,
+                        name: i.name,
+                        price: Number(i.price),
+                        quantity: i.quantity
+                    }));
+                    renderCart();
+                    alert('✅ បានទទួលយក Order នេះដោយជោគជ័យ និងបញ្ជូនទៅផ្ទះបាយរួចរាល់!');
+                } else {
+                    alert('⚠️ មានបញ្ហា: ' + result.error);
+                }
+            } catch (err) {
+                console.error('Accept Order Error:', err);
+                alert('មានបញ្ហាក្នុងការតភ្ជាប់ទៅកាន់ Server!');
+            }
+        }
 
         function renderTableCards() {
             const tableGrid = document.getElementById('tableGrid');
@@ -676,9 +833,11 @@
             }
 
             const paymentMethod = document.getElementById('paymentMethod').value;
+            const tableNo = document.getElementById('tableInput').value || 'Walk-in';
 
             const orderData = {
                 cashier_id: currentUser.id,
+                table_no: tableNo,
                 total_amount: finalCalculatedTotal,
                 payment_method: paymentMethod,
                 items: cart.map(item => ({
@@ -701,11 +860,11 @@
                     showReceiptModal(result.order.id, paymentMethod, receivedUSD);
                     await loadProducts(); 
                 } else {
-                    alert('⚠️ មិនអាចលក់បានទេ: ' + result.error);
+                    alert('⚠️ មិនអាចលក់ได้ទេ: ' + result.error);
                 }
             } catch (err) {
                 console.error('Checkout Error:', err);
-                alert('មានបញ្ហាក្នុងការតភ្ជាប់ទៅកាន់ Server! / Connection error!');
+                alert('មានបញ្ហាក្នុងការតភ្ជាប់ទៅកាន់ Server!');
             }
         }
 
