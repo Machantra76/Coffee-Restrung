@@ -660,12 +660,8 @@
             stopAlertSound();
             pendingOrderModalObj.hide();
         }
-
-      async function acceptCustomerOrder() {
+async function acceptCustomerOrder() {
             if (!currentPendingOrder) return;
-
-            // 🔍 ឆែកមើលទិន្នន័យពិតប្រាកដក្នុង Console F12 ដើម្បីដឹងថា API ផ្ញើមកអីខ្លះ
-            console.log("Current Pending Order Data:", currentPendingOrder);
 
             try {
                 const res = await fetch(`/api/orders/${currentPendingOrder.id}/accept`, {
@@ -682,9 +678,9 @@
                     renderTableCards();
                     generateDynamicQR(currentPendingOrder.table_no);
 
-                    // 🛠️ Map យក ID យ៉ាងហោចណាស់ក៏មិនឱ្យ undefined ដែរ (ទាញ product_id, id ឬ index)
+                    // 🛠️ ឆែកគ្រប់ Field ที่เป็นไปបានទាំងអស់សម្រាប់ ID របស់ទំនិញ ដើម្បីការពារដាច់ខាតមិនឱ្យ undefined
                     cart = currentPendingOrder.items.map((i, index) => ({
-                        id: i.product_id || i.id || i.itemId || index + 1,
+                        id: i.id || i.product_id || i.menu_id || i.item_id || (index + 1),
                         name: i.name || 'មុខទំនិញ',
                         price: Number(i.price || 0),
                         quantity: Number(i.quantity || 1)
