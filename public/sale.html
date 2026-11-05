@@ -452,6 +452,7 @@
         let currentPendingOrder = null;
         let soundInterval = null;
         let lastKitchenStatusMap = {}; // 🔔 សម្រាប់តាមដាន Status ពីផ្ទះបាយ
+        let acceptedOrderId = null; // 🎯 ចាំទុក ID របស់ Order មកពី QR
 
         let customTables = ['តុទី ១ (Table 1)', 'តុទី ២ (Table 2)', 'តុទី ៣ (Table 3)', 'តុទី ៤ (Table 4)', 'តុទី ៥ (Table 5)', 'តុទី ៦ (Table 6)', 'តុទី ៧ (Table 7)', 'តុទី ៨ (Table 8)'];
 
@@ -585,7 +586,6 @@
                 const res = await fetch('/api/orders/customer-pending');
                 const result = await res.json();
                 if (result.success && result.data.length > 0) {
-                    // 🔍 ជ្រើសរើសយកតែ Order ណាដែលគ្មាន cashier_id (មានន័យថាជា Order របស់ភ្ញៀវស្កែន QR)
                     const customerOrders = result.data.filter(order => !order.cashier_id);
                     
                     if (customerOrders.length > 0) {
@@ -660,7 +660,8 @@
             stopAlertSound();
             pendingOrderModalObj.hide();
         }
-async function acceptCustomerOrder() {
+
+        async function acceptCustomerOrder() {
             if (!currentPendingOrder) return;
 
             try {
@@ -674,11 +675,13 @@ async function acceptCustomerOrder() {
                     stopAlertSound();
                     pendingOrderModalObj.hide();
                     
+                    // 🎯 ចាំទុក ID របស់ QR Order នេះ
+                    acceptedOrderId = currentPendingOrder.id;
+
                     document.getElementById('tableInput').value = currentPendingOrder.table_no || 'តុទូទៅ';
                     renderTableCards();
                     generateDynamicQR(currentPendingOrder.table_no);
 
-                    // 🛠️ Force យក product_id ឬ id ហើយបើគ្មានទេ គឺ assign លេខបម្រុងទុក (Fallback) ដើម្បីកុំឱ្យ undefined ដាច់ខាត
                     cart = currentPendingOrder.items.map((i, index) => {
                         const validId = Number(i.product_id || i.id || i.menu_id || (index + 1));
                         return {
@@ -962,29 +965,46 @@ async function acceptCustomerOrder() {
             const paymentMethod = document.getElementById('paymentMethod').value;
             const tableNo = document.getElementById('tableInput').value || 'Walk-in';
 
-            const orderData = {
-                cashier_id: currentUser.id,
-                table_no: tableNo,
-                total_amount: finalCalculatedTotal,
-                payment_method: paymentMethod,
-                items: cart.map(item => ({
-                    id: item.id,
-                    quantity: item.quantity,
-                    price: item.price
-                }))
-            };
-
             try {
-                const res = await fetch('/api/orders', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(orderData)
-                });
-                
-                const result = await res.json();
+                let res, result;
+
+                if (acceptedOrderId) {
+                    // 📌 បង់ប្រាក់សម្រាប់ QR Order ที่ມີស្រាប់ (មិនបាច់កាត់ស្តុកซ้ำ)
+                    res = await fetch(`/api/orders/${acceptedOrderId}/pay`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            payment_method: paymentMethod,
+                            total_amount: finalCalculatedTotal
+                        })
+                    });
+                    result = await res.json();
+                } else {
+                    // 📌 ការលក់ធម្មតា (Walk-in)
+                    const orderData = {
+                        cashier_id: currentUser.id,
+                        table_no: tableNo,
+                        total_amount: finalCalculatedTotal,
+                        payment_method: paymentMethod,
+                        items: cart.map(item => ({
+                            id: item.id,
+                            quantity: item.quantity,
+                            price: item.price
+                        }))
+                    };
+
+                    res = await fetch('/api/orders', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(orderData)
+                    });
+                    result = await res.json();
+                }
 
                 if (result.success) {
-                    showReceiptModal(result.order.id, paymentMethod, receivedUSD);
+                    const finalId = acceptedOrderId ? acceptedOrderId : (result.order ? result.order.id : '00');
+                    acceptedOrderId = null; // Reset វិញក្រោយបង់ប្រាក់រួច
+                    showReceiptModal(finalId, paymentMethod, receivedUSD);
                     await loadProducts(); 
                 } else {
                     alert('⚠️ មិនអាចលក់បានទេ: ' + result.error);
