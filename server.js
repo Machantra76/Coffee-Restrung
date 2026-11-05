@@ -417,10 +417,16 @@ app.post('/api/orders', async (req, res) => {
 
             const orderQuery = `
                 INSERT INTO orders (cashier_id, table_no, total_amount, payment_method, status, created_at) 
-                VALUES ($1, $2, $3, NULL, $5, CURRENT_TIMESTAMP) 
+                VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP) 
                 RETURNING id, total_amount, created_at, status
             `;
-            const orderResult = await client.query(orderQuery, [cashier_id || null, table_no || 'Walk-in', addedAmount, payment_method || 'Cash', initialStatus]);
+            const orderResult = await client.query(orderQuery, [
+                cashier_id || null, 
+                table_no || 'Walk-in', 
+                addedAmount, 
+                payment_method || null, 
+                initialStatus
+            ]);
             targetOrderId = orderResult.rows[0].id;
 
             if (items && items.length > 0) {
