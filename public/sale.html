@@ -486,7 +486,6 @@
             pendingOrderModalObj = new bootstrap.Modal(document.getElementById('pendingOrderModal'));
             tableModalObj = new bootstrap.Modal(document.getElementById('tableModal'));
 
-            // 🔍 ទាញយកលេខតុពី URL parameters (ຖ້າມີ)
             const urlParams = new URLSearchParams(window.location.search);
             const tableFromUrl = urlParams.get('table');
             if (tableFromUrl) {
@@ -729,43 +728,50 @@
             await loadActiveTablesInModal();
         }
 
+        // 🔄 ទាញយក Active Tables ពី API ថ្មី ដែលទោះបីជាផ្ទះបាយចុច Completed ក៏តុមិនបាត់ដែរ
         async function loadActiveTablesInModal() {
-    const activeGrid = document.getElementById('activeTableGrid');
-    activeGrid.innerHTML = `<div class="col-12 text-muted small">กำลังពិនិត្យមើលតុដែលមានភ្ញៀវ...</div>`;
+            const activeGrid = document.getElementById('activeTableGrid');
+            activeGrid.innerHTML = `<div class="col-12 text-muted small">កំពុងពិនិត្យមើលតុដែលមានភ្ញៀវ...</div>`;
 
-    try {
-        // 🔄 ហៅទៅកាន់ API Active Tables ថ្មីដែលមិនបាត់ពេលផ្ទះបាយចុច Completed
-        const res = await fetch('/api/orders/active-tables');
-        const result = await res.json();
+            try {
+                const res = await fetch('/api/orders/active-tables');
+                const result = await res.json();
 
-        activeGrid.innerHTML = '';
-        if (result.success && result.data && result.data.length > 0) {
-            const activeOrders = result.data.filter(o => o.table_no && o.table_no !== 'Walk-in');
+                activeGrid.innerHTML = '';
+                if (result.success && result.data && result.data.length > 0) {
+                    const activeOrders = result.data.filter(o => o.table_no && o.table_no !== 'Walk-in');
 
-            if (activeOrders.length === 0) {
-                activeGrid.innerHTML = `<div class="col-12 text-muted small">គ្មានតុណាដែលមានភ្ញៀវញ៉ាំបច្ចុប្បន្នទេ។</div>`;
-                return;
+                    if (activeOrders.length === 0) {
+                        activeGrid.innerHTML = `<div class="col-12 text-muted small">គ្មានតុណាដែលមានភ្ញៀវញ៉ាំបច្ចុប្បន្នទេ។</div>`;
+                        return;
+                    }
+
+                    activeOrders.forEach(order => {
+                        let statusBadge = `<span class="badge bg-warning text-dark mt-1" style="font-size: 0.65rem;">កំពុងធ្វើ (Preparing)</span>`;
+                        if (order.status === 'Completed') {
+                            statusBadge = `<span class="badge bg-success mt-1" style="font-size: 0.65rem;">ម្ហូបរួចរាល់ (Ready)</span>`;
+                        }
+
+                        activeGrid.innerHTML += `
+                            <div class="col-4 col-md-3">
+                                <div class="table-card active-order" onclick="selectActiveTable(${order.id}, '${order.table_no}')">
+                                    <i class="fa-solid fa-utensils fs-4 mb-1 text-danger"></i>
+                                    <div class="fw-bold small">${order.table_no}</div>
+                                    <span class="badge bg-danger mt-1" style="font-size: 0.65rem;">Order #${order.id}</span>
+                                    ${statusBadge}
+                                </div>
+                            </div>
+                        `;
+                    });
+                } else {
+                    activeGrid.innerHTML = `<div class="col-12 text-muted small">គ្មានតុណាដែលមានភ្ញៀវញ៉ាំបច្ចុប្បន្នទេ។</div>`;
+                }
+            } catch (err) {
+                console.error('Error loading active tables:', err);
+                activeGrid.innerHTML = `<div class="col-12 text-danger small">មានបញ្ហាក្នុងការទាញយកទិន្នន័យតុ។</div>`;
             }
-
-            activeOrders.forEach(order => {
-                activeGrid.innerHTML += `
-                    <div class="col-4 col-md-3">
-                        <div class="table-card active-order" onclick="selectActiveTable(${order.id}, '${order.table_no}')">
-                            <i class="fa-solid fa-fire fs-4 mb-1 text-danger"></i>
-                            <div class="fw-bold small">${order.table_no}</div>
-                            <span class="badge bg-danger mt-1" style="font-size: 0.65rem;">Order #${order.id} ($${Number(order.total_amount).toFixed(2)})</span>
-                        </div>
-                    </div>
-                `;
-            });
-        } else {
-            activeGrid.innerHTML = `<div class="col-12 text-muted small">គ្មានតុណាដែលមានភ្ញៀវញ៉ាំបច្ចុប្បន្នទេ។</div>`;
         }
-    } catch (err) {
-        console.error('Error loading active tables:', err);
-        activeGrid.innerHTML = `<div class="col-12 text-danger small">មានបញ្ហាក្នុងការទាញយកទិន្នន័យតុ។</div>`;
-    }
-}
+
         async function selectActiveTable(orderId, tableName) {
             try {
                 const res = await fetch(`/api/orders/${orderId}/items`);
