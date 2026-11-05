@@ -289,7 +289,7 @@ app.get('/api/inventory', async (req, res) => {
     }
 });
 
-// 🪑 API សម្រាប់ទាញយកតុដែលមាន Order កំពុងសកម្ម ( Active Tables ) ផ្អែកលើការមិនទាន់បង់ប្រាក់
+// 🪑 API សម្រាប់ទាញយកតុដែលមាន Order កំពុងសកម្ម (Active Tables) ផ្អែកលើការមិនទាន់បង់ប្រាក់
 app.get('/api/orders/active-tables', async (req, res) => {
     try {
         const query = `
@@ -326,7 +326,7 @@ app.get('/api/orders/:id/items', async (req, res) => {
 
 // ================= ORDER & QR ORDERING APIs =================
 
-// 1. API សម្រាប់ភ្ញៀវកុម្ម៉ង់ម្ហូប (Handle ទាំង Order ថ្មី និង Order បន្ថែមជាន់តុដែលមិនទាន់គិតលុយ)
+// 1. API សម្រាប់ភ្ញៀវកុម្ម៉ង់ម្ហូប
 app.post('/api/orders', async (req, res) => {
     const { cashier_id, table_no, total_amount, payment_method, items } = req.body;
     
@@ -464,7 +464,7 @@ app.post('/api/orders', async (req, res) => {
     }
 });
 
-// 2. API សម្រាប់ Sales Dashboard ឆែកមើល Order ថ្មីៗដែលរង់ចាំការรับ (status = 'Customer_Pending')
+// 2. API សម្រាប់ Sales Dashboard ឆែកមើល Order ថ្មីៗที่รង់ចាំการรับ (status = 'Customer_Pending')
 app.get('/api/orders/customer-pending', async (req, res) => {
     try {
         const orderQuery = `
