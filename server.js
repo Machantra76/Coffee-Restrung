@@ -309,7 +309,7 @@ app.get('/api/orders/:id/items', async (req, res) => {
 
 // ================= ORDER & QR ORDERING APIs =================[cite: 11]
 
-// 1. API សម្រាប់ភ្ញៀវកុម្ម៉ង់ម្ហូប (អាប់ដេត៖ បើមានទំនិញជាន់គ្នា វានឹង Mix/Merge បញ្ចូលគ្នាជាជួរតែមួយស្វ័យប្រវត្តិ)
+// 1. API សម្រាប់ភ្ញៀវកុម្ម៉ង់ម្ហូប
 app.post('/api/orders', async (req, res) => {
     const { cashier_id, table_no, total_amount, payment_method, items } = req.body;
     
@@ -353,20 +353,17 @@ app.post('/api/orders', async (req, res) => {
                         [item.quantity, item.id]
                     );
 
-                    // 🔍 ឆែកមើលថាតើក្នុង order_items មាន product_id នេះស្រាប់ក្នុង Order ID ហ្នឹងហើយឬនៅ?
                     const checkExistingItem = await client.query(
                         `SELECT id, quantity FROM order_items WHERE order_id = $1 AND product_id = $2`,
                         [targetOrderId, item.id]
                     );
 
                     if (checkExistingItem.rows.length > 0) {
-                        // បើមានរួចហើយ គឺ Mix/Merge បន្ថែមចំនួនបរិមាណ (quantity) ចូលគ្នាជាជួរតែមួយ
                         await client.query(
                             `UPDATE order_items SET quantity = quantity + $1 WHERE id = $2`,
                             [item.quantity, checkExistingItem.rows[0].id]
                         );
                     } else {
-                        // បើជាទំនិញថ្មី គឺ Insert ជាជួរថ្មីធម្មតា
                         await client.query(
                             `INSERT INTO order_items (order_id, product_id, quantity, price) VALUES ($1, $2, $3, $4)`,
                             [targetOrderId, item.id, item.quantity, item.price]
@@ -375,14 +372,12 @@ app.post('/api/orders', async (req, res) => {
                 }
             }
 
-            // បូកទឹកប្រាក់សរុប (total_amount) បន្ថែម និងប្តូរ status ទៅ 'Customer_Pending' វិញ
             await client.query(
                 `UPDATE orders SET total_amount = total_amount + $1, status = 'Customer_Pending' WHERE id = $2`,
                 [addedAmount, targetOrderId]
             );
 
         } else {
-            // ករណីបង្កើត Invoice ថ្មី
             if (items && items.length > 0) {
                 for (let item of items) {
                     const checkStock = await client.query('SELECT stock_qty, name FROM products WHERE id = $1', [item.id]);
@@ -446,7 +441,7 @@ app.post('/api/orders', async (req, res) => {
     }
 });
 
-// 2. API សម្រាប់ Sales Dashboard ឆែកមើល Order ថ្មីៗដែលរង់ចាំការទទួលយក (status = 'Customer_Pending')[cite: 11]
+// 2. API សម្រាប់ Sales Dashboard ឆែកមើល Order ថ្មីៗដែលរង់ចាំการรับ (status = 'Customer_Pending')[cite: 11]
 app.get('/api/orders/customer-pending', async (req, res) => {
     try {
         const orderQuery = `
@@ -489,6 +484,22 @@ app.post('/api/orders/:id/accept', async (req, res) => {
         res.json({ success: true, message: 'បានទទួលយក Order នេះដោយជោគជ័យ!' });
     } catch (err) {
         console.error('Accept Order Error:', err);
+        res.status(500).json({ success: false, error: 'Database error' });
+    }
+});
+
+// 💰 4. API សម្រាប់បង់ប្រាក់ និងបញ្ចប់ Order មកពី QR ដែលមានស្រាប់ (បន្ថែមใหม่ตรงนี้)
+app.post('/api/orders/:id/pay', async (req, res) => {
+    const { id } = req.params;
+    const { payment_method, total_amount } = req.body;
+    try {
+        await pool.query(
+            `UPDATE orders SET payment_method = $1, total_amount = $2, status = 'Completed' WHERE id = $3`,
+            [payment_method || 'Cash', parseFloat(total_amount) || 0, id]
+        );
+        res.json({ success: true, message: 'បានបង់ប្រាក់ និងបញ្ចប់វិក្កយបត្រជោគជ័យ!' });
+    } catch (err) {
+        console.error('Pay Order Error:', err);
         res.status(500).json({ success: false, error: 'Database error' });
     }
 });
@@ -543,7 +554,7 @@ app.put('/api/orders/:id/items', async (req, res) => {
     }
 });
 
-// 🍳 API សម្រាប់ផ្ទះបាយ (ទាញយកเฉพาะ Order ណាដែល Sale បាន Accept ហើយ និងជាប្រភេទ Food)[cite: 11]
+// 🍳 API សម្រាប់ផ្ទះបាយ[cite: 11]
 app.get('/api/orders/kitchen', async (req, res) => {
     try {
         const orderQuery = `
