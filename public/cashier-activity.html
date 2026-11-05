@@ -10,11 +10,24 @@
     <style>
         body { font-family: 'Kantumruy Pro', sans-serif; background-color: #f1f5f9; }
         .card { border: none; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        
+        /* 🖨️ Print Styles សម្រាប់ម៉ាស៊ីន POS (80mm) */
         @media print {
             body * { visibility: hidden; }
-            #printModalBody, #printModalBody * { visibility: visible; }
-            #printModalBody { position: absolute; left: 0; top: 0; width: 100%; }
+            #printableInvoice, #printableInvoice * { visibility: visible; }
+            #printableInvoice { 
+                position: absolute; 
+                left: 0 !important; 
+                top: 0 !important; 
+                width: 80mm !important; 
+                margin: 0 !important;
+                padding: 2mm !important;
+            }
             .no-print { display: none !important; }
+            @page {
+                size: 80mm auto;
+                margin: 0mm;
+            }
         }
     </style>
 </head>
@@ -64,6 +77,7 @@
                     <thead class="table-dark">
                         <tr>
                             <th>លេខវិក្កយបត្រ (#Invoice)</th>
+                            <th>អ្នកគិតលុយ (Cashier)</th>
                             <th>ទឹកប្រាក់ (Amount)</th>
                             <th>ទម្រង់បង់ប្រាក់ (Payment)</th>
                             <th>ស្ថានភាព (Status)</th>
@@ -79,47 +93,58 @@
         </div>
     </div>
 
-    <!-- Modal សម្រាប់ Print / View Invoice -->
+    <!-- 🖨️ Modal បង្ហាញវិក្កយបត្រសម្រាប់ Print (ទាញយកទម្រង់ដូច sale.html) -->
     <div class="modal fade" id="invoiceModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow rounded-4">
-                <div class="modal-header bg-dark text-white">
-                    <h5 class="modal-title fw-bold"><i class="fa-solid fa-print me-2"></i> ព័ត៌មានវិក្កយបត្រ / Invoice Details</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body p-4" id="printModalBody">
+                <div class="modal-body p-4" id="printableInvoice">
                     <div class="text-center mb-3">
-                        <h4 class="fw-bold">POS SYSTEM INVOICE</h4>
-                        <p class="text-muted small mb-1">អរគុណសម្រាប់ការអញ្ជើញមកុដ!</p>
-                        <hr>
+                        <h4 class="fw-bold mb-1">☕ COFFEE & RESTAURANT</h4>
+                        <p class="text-muted small mb-1">វិក្កយបត្រលក់ប្រាក់ / POS INVOICE</p>
+                        <span id="receiptTableBadge" class="badge bg-dark">តុទូទៅ</span>
+                        <hr class="my-2">
                     </div>
                     <div class="d-flex justify-content-between small mb-2">
-                        <span>វិក្កយបត្រលេខ: <strong id="modalInvNo"></strong></span>
-                        <span id="modalDate"></span>
+                        <span>វិក្កយបត្រ #: <strong id="recInvoiceNo">#00</strong></span>
+                        <span id="recDate"></span>
+                    </div>
+                    <div class="d-flex justify-content-between small mb-3">
+                        <span>អ្នកគិតលុយ: <strong id="recCashier"></strong></span>
+                        <span>ទម្រង់បង់: <strong id="recPayment"></strong></span>
                     </div>
                     <div class="table-responsive mb-3">
-                        <table class="table table-sm">
+                        <table class="table table-sm align-middle">
                             <thead class="table-light">
-                                <tr>
-                                    <th>មុខទំនិញ</th>
+                                <tr class="small">
+                                    <th>ទំនិញ</th>
                                     <th class="text-center">ចំនួន</th>
                                     <th class="text-end">តម្លៃ ($)</th>
+                                    <th class="text-end">សរុប</th>
                                 </tr>
                             </thead>
-                            <tbody id="modalItemsBody">
+                            <tbody id="recItemsBody">
                                 <!-- Items -->
                             </tbody>
                         </table>
                     </div>
-                    <div class="d-flex justify-content-between fw-bold fs-5 border-top pt-2">
-                        <span>សរុបទឹកប្រាក់ (Total):</span>
-                        <span class="text-success" id="modalTotalAmount">$0.00</span>
+                    <div class="border-top pt-2 small">
+                        <div class="d-flex justify-content-between fw-bold fs-6 border-top mt-2 pt-2">
+                            <span>សរុបទាំងអស់ (Grand Total):</span>
+                            <div class="text-end">
+                                <span class="text-success" id="recGrandTotal">$0.00</span><br>
+                                <span class="text-dark small" id="recGrandTotalRiel">0 រៀល</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-center mt-4 text-muted small">
+                        <p class="mb-1">🙏 សូមអរគុណ និងជម្រាបលា!</p>
+                        <p style="font-size: 0.75rem;">Thank you! Please come again.</p>
                     </div>
                 </div>
                 <div class="modal-footer no-print">
-                    <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">បិទ</button>
+                    <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">បិទ (Close)</button>
                     <button type="button" class="btn btn-primary fw-bold px-4" onclick="window.print()">
-                        <i class="fa-solid fa-print me-1"></i> បោះពុម្ព (Print)
+                        <i class="fa-solid fa-print me-1"></i> បោះពុម្ព (Print Invoice)
                     </button>
                 </div>
             </div>
@@ -233,16 +258,18 @@
                     tbody.innerHTML = '';
 
                     if (allOrdersData.length === 0) {
-                        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">មិនទាន់មានកំណត់ត្រាការលក់សម្រាប់ Cashier នេះទេ។</td></tr>`;
+                        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-3">មិនទាន់មានកំណត់ត្រាការលក់សម្រាប់ Cashier នេះទេ។</td></tr>`;
                         return;
                     }
 
                     allOrdersData.forEach((o) => {
                         const invNo = o.order_number || `#${o.id}`;
                         const status = o.status || 'Completed';
+                        const cashier = o.cashier_name || 'បុគ្គលិក';
                         tbody.innerHTML += `
                             <tr>
                                 <td class="fw-bold">${invNo}</td>
+                                <td class="small">${cashier}</td>
                                 <td class="fw-bold text-success">$${Number(o.total_amount).toFixed(2)}</td>
                                 <td><span class="badge bg-secondary">${o.payment_method || 'Cash'}</span></td>
                                 <td><span class="badge bg-success">${status}</span></td>
@@ -269,37 +296,47 @@
             const order = allOrdersData.find(o => o.id === orderId);
             if (!order) return;
 
-            document.getElementById('modalInvNo').innerText = order.order_number || `#${order.id}`;
-            document.getElementById('modalDate').innerText = new Date(order.created_at).toLocaleString();
-            document.getElementById('modalTotalAmount').innerText = `$${Number(order.total_amount).toFixed(2)}`;
+            const exchangeRate = 4100;
+            const grandTotalUSD = Number(order.total_amount || 0);
+            const grandTotalRiel = Math.round(grandTotalUSD * exchangeRate);
 
-            const itemsBody = document.getElementById('modalItemsBody');
-            itemsBody.innerHTML = `<tr><td colspan="3" class="text-center">កំពុងទាញយកទិន្នន័យ...</td></tr>`;
+            document.getElementById('recInvoiceNo').innerText = order.order_number || `#${order.id}`;
+            document.getElementById('recDate').innerText = new Date(order.created_at).toLocaleString();
+            document.getElementById('recCashier').innerText = order.cashier_name || currentUser.full_name;
+            document.getElementById('recPayment').innerText = order.payment_method || 'Cash';
+            document.getElementById('recGrandTotal').innerText = `$${grandTotalUSD.toFixed(2)}`;
+            document.getElementById('recGrandTotalRiel').innerText = `${grandTotalRiel.toLocaleString()} រៀល`;
+
+            const itemsBody = document.getElementById('recItemsBody');
+            itemsBody.innerHTML = `<tr><td colspan="4" class="text-center">កំពុងទាញយកទិន្នន័យ...</td></tr>`;
             invoiceModalObj.show();
 
             try {
-                const res = await fetch('/api/orders/kitchen'); // ឬទាញយក items តាម order id ប្រសិនបើមាន API ជាក់លាក់
+                const res = await fetch('/api/orders/kitchen');
                 const result = await res.json();
                 if (result.success) {
                     const found = result.data.find(o => o.id === orderId);
-                    if (found && found.items) {
+                    if (found && found.items && found.items.length > 0) {
                         itemsBody.innerHTML = '';
                         found.items.forEach(i => {
+                            const itemPrice = Number(i.price || 0);
+                            const itemTotal = itemPrice * i.quantity;
                             itemsBody.innerHTML += `
                                 <tr>
                                     <td>${i.name}</td>
                                     <td class="text-center">${i.quantity}</td>
-                                    <td class="text-end">$${Number(i.price || 0).toFixed(2)}</td>
+                                    <td class="text-end">$${itemPrice.toFixed(2)}</td>
+                                    <td class="text-end">$${itemTotal.toFixed(2)}</td>
                                 </tr>
                             `;
                         });
                     } else {
-                        itemsBody.innerHTML = `<tr><td colspan="3" class="text-center text-muted">មិនមានទិន្នន័យមុខទំនិញលម្អិត។</td></tr>`;
+                        itemsBody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">មិនមានទិន្នន័យមុខទំនិញលម្អិត។</td></tr>`;
                     }
                 }
             } catch (err) {
                 console.error('Error loading items:', err);
-                itemsBody.innerHTML = `<tr><td colspan="3" class="text-center text-danger">បរាជ័យក្នុងការទាញយកទិន្នន័យ។</td></tr>`;
+                itemsBody.innerHTML = `<tr><td colspan="4" class="text-center text-danger">បរាជ័យក្នុងការទាញយកទិន្នន័យ។</td></tr>`;
             }
         }
 
