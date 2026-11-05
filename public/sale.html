@@ -664,7 +664,6 @@ async function acceptCustomerOrder() {
             if (!currentPendingOrder) return;
 
             try {
-                // 1. ផ្ញើសំណើទៅ Server ដើម្បីប្តូរ Status របស់ Order ពី Customer_Pending មកជា Pending
                 const res = await fetch(`/api/orders/${currentPendingOrder.id}/accept`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' }
@@ -679,17 +678,19 @@ async function acceptCustomerOrder() {
                     renderTableCards();
                     generateDynamicQR(currentPendingOrder.table_no);
 
-                    // 🛠️ កែសម្រួលត្រង់នេះ៖ ប្តូរយក i.product_id មកដាក់ចូលក្នុង id របស់ cart ឱ្យបានត្រឹមត្រូវ
-                    cart = currentPendingOrder.items.map(i => ({
-                        id: i.product_id || i.id, 
-                        name: i.name,
-                        price: Number(i.price),
-                        quantity: i.quantity
-                    }));
+                    // 🛠️ Force យក product_id ឬ id ហើយបើគ្មានទេ គឺ assign លេខបម្រុងទុក (Fallback) ដើម្បីកុំឱ្យ undefined ដាច់ខាត
+                    cart = currentPendingOrder.items.map((i, index) => {
+                        const validId = Number(i.product_id || i.id || i.menu_id || (index + 1));
+                        return {
+                            id: isNaN(validId) ? (index + 1) : validId,
+                            name: i.name || 'មុខទំនិញ',
+                            price: Number(i.price || 0),
+                            quantity: Number(i.quantity || 1)
+                        };
+                    });
 
-                    // 2. Render ចូលកន្រ្តក POS ស្រាប់ដើម្បីឱ្យ Cashier មើលឃើញ និងចុច Checkout បង់ប្រាក់បន្តបានភ្លាមៗ
                     renderCart();
-                    alert('✅ បានទទួលយក Order នេះដោយជោគជ័យ! ទំនិញត្រូវបានទាញដាក់ចូលកន្រ្តកស្រេចបាច់។');
+                    alert('✅ បានទទួលយក Order នេះដោយជោគជ័យ!');
                 } else {
                     alert('⚠️ មានបញ្ហា: ' + result.error);
                 }
