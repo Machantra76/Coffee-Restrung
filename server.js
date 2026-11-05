@@ -7,7 +7,7 @@ const { Pool } = require('pg');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// តភ្ជាប់ជាមួយ Cloud Database (Neon PostgreSQL)
+// តភ្ជាប់ជាមួយ Cloud Database (Neon PostgreSQL)[cite: 5]
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: { rejectUnauthorized: false }
@@ -18,7 +18,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// មុខងារបង្កើតតារាង Database
+// មុខងារបង្កើត និងត្រួតពិនិត្យតារាង Database
 async function initDB() {
     try {
         await pool.query(`
@@ -71,6 +71,13 @@ async function initDB() {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         `);
+
+        // 🛠️ បន្ថែមស្វ័យប្រវត្តិ (ALTER TABLE) ករណីតារាងមានស្រាប់តែខ្វះ Column ថ្មី
+        await pool.query(`
+            ALTER TABLE products ADD COLUMN IF NOT EXISTS cost_price NUMERIC(10, 2) DEFAULT 0;
+            ALTER TABLE products ADD COLUMN IF NOT EXISTS unit VARCHAR(50) DEFAULT 'ដប';
+        `);
+
         console.log('✅ Database tables initialized successfully!');
     } catch (err) {
         console.error('❌ Database initialization error:', err);
@@ -299,7 +306,7 @@ app.post('/api/orders', async (req, res) => {
     }
 });
 
-// 🍳 API សម្រាប់ផ្ទះបាយ (ទាញយកតែ Order ណាដែលមានមុខម្ហូប Category = 'Food' ប៉ុណ្ណោះ)
+// 🍳 API សម្រាប់ផ្ទះបាយ (ទាញយកតែ Order ណាដែលមានមុខម្ហូប Category = 'Food' ប៉ុណ្ណោះ)[cite: 5]
 app.get('/api/orders/kitchen', async (req, res) => {
     try {
         const orderQuery = `
