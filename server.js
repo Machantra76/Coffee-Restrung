@@ -168,6 +168,46 @@ app.delete('/api/products/:id', async (req, res) => {
         res.status(500).json({ success: false, error: 'Database error' });
     }
 });
+// 🗑️ API សម្រាប់លុបវិក្កយបត្រ និងបូកស្តុកសងវិញ
+app.delete('/api/orders/:id', async (req, res) => {
+    const { id } = req.params;
+    const client = await pool.connect();
+
+    try {
+        await client.query('BEGIN');
+
+        // ១. ទាញយក items ក្នុងវិក្កយបត្រនោះ ដើម្បីយកមកបូកសងស្តុកវិញ
+        const itemsResult = await client.query('SELECT product_id, quantity FROM order_items WHERE order_id = $1', [id]);
+        
+        for (let item of itemsResult.rows) {
+            if (item.product_id) {
+                await client.query(
+                    'UPDATE products SET stock_qty = stock_qty + $1 WHERE id = $2',
+                    [item.quantity, item.product_id]
+                );
+            }
+        }
+
+        // ២. លុប order_items មុន (ព្រោះជាប់ Foreign Key)
+        await client.query('DELETE FROM order_items WHERE order_id = $1', [id]);
+
+        // ៣. លុប orders ចេញ
+        const deleteOrderRes = await client.query('DELETE FROM orders WHERE id = $1 RETURNING *', [id]);
+
+        if (deleteOrderRes.rowCount === 0) {
+            throw new Error('រកមិនឃើញវិក្កយបត្រនេះទេ។');
+        }
+
+        await client.query('COMMIT');
+        res.json({ success: true, message: 'លុបវិក្កយបត្រ និងបូកស្តុកសងវិញបានជោគជ័យ!' });
+    } catch (err) {
+        await client.query('ROLLBACK');
+        console.error('Delete Order Error:', err);
+        res.status(500).json({ success: false, error: err.message });
+    } finally {
+        client.release();
+    }
+});
 
 // ================= INVENTORY / STOCK APIs =================
 
