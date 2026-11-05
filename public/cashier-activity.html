@@ -77,6 +77,7 @@
                     <thead class="table-dark">
                         <tr>
                             <th>លេខវិក្កយបត្រ (#Invoice)</th>
+                            <th>លេខតុ (Table)</th>
                             <th>អ្នកគិតលុយ (Cashier)</th>
                             <th>ទឹកប្រាក់ (Amount)</th>
                             <th>ទម្រង់បង់ប្រាក់ (Payment)</th>
@@ -306,17 +307,19 @@
                     tbody.innerHTML = '';
 
                     if (allOrdersData.length === 0) {
-                        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-3">មិនទាន់មានកំណត់ត្រាការលក់សម្រាប់ Cashier នេះទេ។</td></tr>`;
+                        tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-3">មិនទាន់មានកំណត់ត្រាការលក់ទេ។</td></tr>`;
                         return;
                     }
 
                     allOrdersData.forEach((o) => {
                         const invNo = o.order_number || `#${o.id}`;
+                        const tableNo = o.table_no || 'តុទូទៅ';
                         const status = o.status || 'Completed';
                         const cashier = o.cashier_name || 'បុគ្គលិក';
                         tbody.innerHTML += `
                             <tr>
                                 <td class="fw-bold">${invNo}</td>
+                                <td><span class="badge bg-info text-dark">${tableNo}</span></td>
                                 <td class="small">${cashier}</td>
                                 <td class="fw-bold text-success">$${Number(o.total_amount).toFixed(2)}</td>
                                 <td><span class="badge bg-secondary">${o.payment_method || 'Cash'}</span></td>
@@ -349,6 +352,7 @@
             const grandTotalRiel = Math.round(grandTotalUSD * exchangeRate);
 
             document.getElementById('recInvoiceNo').innerText = order.order_number || `#${order.id}`;
+            document.getElementById('receiptTableBadge').innerText = order.table_no || 'តុទូទៅ';
             document.getElementById('recDate').innerText = new Date(order.created_at).toLocaleString();
             document.getElementById('recCashier').innerText = order.cashier_name || currentUser.full_name;
             document.getElementById('recPayment').innerText = order.payment_method || 'Cash';
