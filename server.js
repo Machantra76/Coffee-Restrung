@@ -288,7 +288,23 @@ app.get('/api/inventory', async (req, res) => {
         res.status(500).json({ success: false, error: 'Database error: ' + err.message });
     }
 });
-
+// 🪑 API សម្រាប់ទាញយកតុដែលមាន Order កំពុងសកម្ម (Active Tables) ដែលមិនទាន់ Completed 
+app.get('/api/orders/active-tables', async (req, res) => {
+    try {
+        const query = `
+            SELECT DISTINCT id, table_no, total_amount, status, created_at
+            FROM orders
+            WHERE status IN ('Customer_Pending', 'Pending', 'Preparing', 'Completed')
+              AND payment_method IS NULL OR status != 'Completed'
+            ORDER BY id ASC
+        `;
+        const result = await pool.query(query);
+        res.json({ success: true, data: result.rows });
+    } catch (err) {
+        console.error('Get Active Tables Error:', err);
+        res.status(500).json({ success: false, error: 'Database error' });
+    }
+});
 // 📦 API សម្រាប់ទាញយកមុខទំនិញលម្អិតតាម Order ID[cite: 11]
 app.get('/api/orders/:id/items', async (req, res) => {
     const { id } = req.params;
