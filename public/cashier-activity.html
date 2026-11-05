@@ -93,7 +93,7 @@
         </div>
     </div>
 
-    <!-- 🖨️ Modal បង្ហាញវិក្កយបត្រសម្រាប់ Print (ទាញយកទម្រង់ដូច sale.html) -->
+    <!-- 🖨️ Modal បង្ហាញវិក្កយបត្រសម្រាប់ Print (ទំហំ 80mm) -->
     <div class="modal fade" id="invoiceModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow rounded-4">
@@ -312,27 +312,25 @@
             invoiceModalObj.show();
 
             try {
-                const res = await fetch('/api/orders/kitchen');
+                // 🌟 ហៅ API ថ្មីទាញយកទំនិញតាម Order ID ផ្ទាល់
+                const res = await fetch(`/api/orders/${orderId}/items`);
                 const result = await res.json();
-                if (result.success) {
-                    const found = result.data.find(o => o.id === orderId);
-                    if (found && found.items && found.items.length > 0) {
-                        itemsBody.innerHTML = '';
-                        found.items.forEach(i => {
-                            const itemPrice = Number(i.price || 0);
-                            const itemTotal = itemPrice * i.quantity;
-                            itemsBody.innerHTML += `
-                                <tr>
-                                    <td>${i.name}</td>
-                                    <td class="text-center">${i.quantity}</td>
-                                    <td class="text-end">$${itemPrice.toFixed(2)}</td>
-                                    <td class="text-end">$${itemTotal.toFixed(2)}</td>
-                                </tr>
-                            `;
-                        });
-                    } else {
-                        itemsBody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">មិនមានទិន្នន័យមុខទំនិញលម្អិត។</td></tr>`;
-                    }
+                if (result.success && result.items && result.items.length > 0) {
+                    itemsBody.innerHTML = '';
+                    result.items.forEach(i => {
+                        const itemPrice = Number(i.price || 0);
+                        const itemTotal = itemPrice * i.quantity;
+                        itemsBody.innerHTML += `
+                            <tr>
+                                <td>${i.name}</td>
+                                <td class="text-center">${i.quantity}</td>
+                                <td class="text-end">$${itemPrice.toFixed(2)}</td>
+                                <td class="text-end">$${itemTotal.toFixed(2)}</td>
+                            </tr>
+                        `;
+                    });
+                } else {
+                    itemsBody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">មិនមានទិន្នន័យមុខទំនិញលម្អិត។</td></tr>`;
                 }
             } catch (err) {
                 console.error('Error loading items:', err);
