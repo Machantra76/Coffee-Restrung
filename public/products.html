@@ -53,18 +53,24 @@
 
                         <div class="mb-2">
                             <label class="form-label small fw-bold">ឈ្មោះទំនិញ / Product Name (*)</label>
-                            <input type="text" id="productName" class="form-control form-control-sm" placeholder="ឧ. Coffee Latte" required>
+                            <input type="text" id="productName" class="form-control form-control-sm" placeholder="ឧ. កាហ្វេទឹកដោះគោ" required>
                         </div>
 
-                        <div class="mb-2">
-                            <label class="form-label small fw-bold">តម្លៃ ($) / Price ($) (*)</label>
-                            <input type="number" step="0.01" id="productPrice" class="form-control form-control-sm" placeholder="ឧ. 2.50" required>
+                        <div class="row">
+                            <div class="col-6 mb-2">
+                                <label class="form-label small fw-bold">តម្លៃលក់ ($) / Price (*)</label>
+                                <input type="number" step="0.01" id="productPrice" class="form-control form-control-sm" placeholder="ឧ. 2.50" required>
+                            </div>
+                            <div class="col-6 mb-2">
+                                <label class="form-label small fw-bold">តម្លៃទិញចូល ($) / Cost</label>
+                                <input type="number" step="0.01" id="productCostPrice" class="form-control form-control-sm" placeholder="ឧ. 1.50">
+                            </div>
                         </div>
 
-                        <!-- 🏷️ អាចវាយ Category ថ្មីដោយដៃ ឬរើសពីបញ្ជីចាស់ -->
+                        <!-- ប្រភេទ / Category -->
                         <div class="mb-2">
                             <label class="form-label small fw-bold">ប្រភេទ / Category (*)</label>
-                            <input type="text" id="productCategory" class="form-control form-control-sm" list="categoryList" placeholder="រើស ឬវាយបញ្ចូល Category ថ្មី" required>
+                            <input type="text" id="productCategory" class="form-control form-control-sm" list="categoryList" placeholder="ឧ. Coffee, Food..." required>
                             <datalist id="categoryList">
                                 <option value="Coffee">
                                 <option value="Tea">
@@ -72,18 +78,26 @@
                                 <option value="Food">
                                 <option value="General">
                             </datalist>
-                            <div class="form-text small text-muted" style="font-size: 0.75rem;">អាចជ្រើសរើសពីបញ្ជី ឬវាយបញ្ចូលឈ្មោះ Category ថ្មីដោយផ្ទាល់។</div>
                         </div>
 
-                        <!-- ជម្រើសទី ១៖ ដាក់តាម Image URL -->
+                        <!-- 📏 ឯកតា / Unit (ដប, កែវ, ចាន, កំប៉ុង...) -->
                         <div class="mb-2">
-                            <label class="form-label small fw-bold">Image URL (ជម្រើស Cloud Link)</label>
-                            <input type="url" id="productImageUrlInput" class="form-control form-control-sm" placeholder="https://example.com/image.jpg" oninput="previewUrlImage(this.value)">
+                            <label class="form-label small fw-bold">ឯកតា / Unit (*)</label>
+                            <input type="text" id="productUnit" class="form-control form-control-sm" list="unitList" placeholder="រើស ឬវាយបញ្ចូល Unit ថ្មី" required>
+                            <datalist id="unitList">
+                                <option value="ដប">
+                                <option value="កែវ">
+                                <option value="ចាន">
+                                <option value="កំប៉ុង">
+                                <option value="កញ្ចប់">
+                                <option value="កេស">
+                            </datalist>
+                            <div class="form-text small text-muted" style="font-size: 0.75rem;">អាចជ្រើសរើស ឬវាយបញ្ចូលឈ្មោះឯកតាផ្ទាល់ (ឧ. ដប, កែវ, ចាន...)។</div>
                         </div>
 
-                        <!-- ជម្រើសទី ២៖ ដាក់តាម File Upload (Base64) -->
+                        <!-- Upload Picture File (Base64) -->
                         <div class="mb-3">
-                            <label class="form-label small fw-bold">ឬ Upload Picture File (រូបភាព Base64)</label>
+                            <label class="form-label small fw-bold">Upload Picture File (រូបភាព Base64)</label>
                             <input type="file" id="productImageFile" class="form-control form-control-sm mb-2" accept="image/*" onchange="previewFileImage(event)">
                             
                             <div class="d-flex align-items-center gap-3">
@@ -125,12 +139,13 @@
                                     <th>បាកូដ</th>
                                     <th>ឈ្មោះទំនិញ</th>
                                     <th>ប្រភេទ</th>
-                                    <th class="text-end">តម្លៃ ($)</th>
+                                    <th>ឯកតា</th>
+                                    <th class="text-end">តម្លៃលក់</th>
                                     <th class="text-end">សកម្មភាព</th>
                                 </tr>
                             </thead>
                             <tbody id="productsTableBody">
-                                <tr><td colspan="6" class="text-center text-muted py-4">កំពុងទាញយកទិន្នន័យ...</td></tr>
+                                <tr><td colspan="7" class="text-center text-muted py-4">កំពុងទាញយកទិន្នន័យ...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -165,15 +180,6 @@
                     showPreview(base64ImageString);
                 }
                 reader.readAsDataURL(file);
-                document.getElementById('productImageUrlInput').value = ''; 
-            }
-        }
-
-        function previewUrlImage(url) {
-            if (url.trim() !== '') {
-                base64ImageString = url; 
-                showPreview(url);
-                document.getElementById('productImageFile').value = ''; 
             }
         }
 
@@ -196,12 +202,11 @@
                     tbody.innerHTML = '';
 
                     if (productsList.length === 0) {
-                        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">មិនទាន់មានទំនិញក្នុង Database ទេ។</td></tr>`;
+                        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">មិនទាន់មានទំនិញក្នុង Database ទេ។</td></tr>`;
                         return;
                     }
 
-                    // ទាញយក Category ដែលមានស្រាប់ក្នុង Database ដើម្បីបញ្ចូលក្នុង datalist ស្វ័យប្រវត្តិ
-                    updateCategoryDatalist(productsList);
+                    updateCategoryAndUnitDatalists(productsList);
 
                     productsList.forEach(p => {
                         const imgTag = p.image_url 
@@ -214,6 +219,7 @@
                                 <td class="small font-monospace text-muted">${p.barcode || '---'}</td>
                                 <td class="fw-bold text-dark">${p.name}</td>
                                 <td><span class="badge bg-light text-dark border">${p.category || 'General'}</span></td>
+                                <td><span class="badge bg-secondary">${p.unit || 'ដប'}</span></td>
                                 <td class="text-end fw-bold text-success">$${Number(p.price).toFixed(2)}</td>
                                 <td class="text-end">
                                     <button class="btn btn-sm btn-outline-warning me-1" onclick="editProduct(${p.id})">
@@ -232,20 +238,23 @@
             }
         }
 
-        function updateCategoryDatalist(products) {
-            const datalist = document.getElementById('categoryList');
+        function updateCategoryAndUnitDatalists(products) {
+            const catDatalist = document.getElementById('categoryList');
+            const unitDatalist = document.getElementById('unitList');
+            
             const categories = new Set(['Coffee', 'Tea', 'Beverage', 'Food', 'General']);
+            const units = new Set(['ដប', 'កែវ', 'ចាន', 'កំប៉ុង', 'កញ្ចប់', 'កេស']);
             
             products.forEach(p => {
-                if (p.category && p.category.trim() !== '') {
-                    categories.add(p.category.trim());
-                }
+                if (p.category && p.category.trim() !== '') categories.add(p.category.trim());
+                if (p.unit && p.unit.trim() !== '') units.add(p.unit.trim());
             });
 
-            datalist.innerHTML = '';
-            categories.forEach(cat => {
-                datalist.innerHTML += `<option value="${cat}">`;
-            });
+            catDatalist.innerHTML = '';
+            categories.forEach(cat => { catDatalist.innerHTML += `<option value="${cat}">`; });
+
+            unitDatalist.innerHTML = '';
+            units.forEach(u => { unitDatalist.innerHTML += `<option value="${u}">`; });
         }
 
         async function saveProduct(e) {
@@ -258,8 +267,10 @@
             const productData = {
                 barcode: document.getElementById('productBarcode').value,
                 name: document.getElementById('productName').value,
-                price: parseFloat(document.getElementById('productPrice').value),
+                price: parseFloat(document.getElementById('productPrice').value) || 0,
+                cost_price: parseFloat(document.getElementById('productCostPrice').value) || 0,
                 category: document.getElementById('productCategory').value.trim() || 'General',
+                unit: document.getElementById('productUnit').value.trim() || 'ដប',
                 image_url: finalImageUrl
             };
 
@@ -295,14 +306,13 @@
             document.getElementById('productBarcode').value = product.barcode || '';
             document.getElementById('productName').value = product.name;
             document.getElementById('productPrice').value = product.price;
+            document.getElementById('productCostPrice').value = product.cost_price || 0;
             document.getElementById('productCategory').value = product.category || 'General';
+            document.getElementById('productUnit').value = product.unit || 'ដប';
             document.getElementById('existingImageUrl').value = product.image_url || '';
             base64ImageString = product.image_url || ''; 
 
             if (product.image_url) {
-                if (product.image_url.startsWith('http')) {
-                    document.getElementById('productImageUrlInput').value = product.image_url;
-                }
                 showPreview(product.image_url);
             } else {
                 resetPreview();
