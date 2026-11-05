@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>បញ្ជាទិញម្ហូប និងភេសជ្ជៈតាមទូរសព្ទ (Customer Self-Order)</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Kantumruy Pro', sans-serif; background-color: #f8f9fa; }
+        .product-card {
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+            border-radius: 12px;
+            background-color: #ffffff;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            overflow: hidden;
+            height: 130px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            position: relative;
+        }
+        .product-card:hover { transform: translateY(-3px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .product-img-wrapper {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 35px;
+            overflow: hidden;
+            background: #fff;
+        }
+        .product-img-wrapper img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        .product-info {
+            background: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            padding: 4px 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 2;
+            font-size: 0.8rem;
+        }
+        .category-btn {
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            padding: 5px 15px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-dark bg-dark px-3 py-2 shadow-sm sticky-top">
+        <div class="container-fluid d-flex justify-content-between align-items-center">
+            <span class="navbar-brand fw-bold fs-6">
+                <i class="fa-solid fa-utensils me-1 text-warning"></i> ម៉ឺនុយបញ្ជាទិញ (<span id="tableTitleDisplay">តុទី ១</span>)
+            </span>
+            <button class="btn btn-outline-warning btn-sm position-relative fw-bold" data-bs-toggle="modal" data-bs-target="#cartModal">
+                <i class="fa-solid fa-cart-shopping me-1"></i> កន្រ្តក
+                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="cartBadge">0</span>
+            </button>
+        </div>
+    </nav>
+
+    <div class="container py-3">
+        <!-- ជ្រើសរើសលេខតុ -->
+        <div class="mb-3 bg-white p-2 rounded-3 shadow-sm border d-flex justify-content-between align-items-center">
+            <span class="small fw-bold text-secondary"><i class="fa-solid fa-chair me-1"></i> លេខតុរបស់អ្នក:</span>
+            <select id="customerTableSelect" class="form-select form-select-sm w-auto fw-bold text-primary" onchange="updateTable()">
+                <option value="តុទី ១ (Table 1)">តុទី ១</option>
+                <option value="តុទី ២ (Table 2)">តុទី ២</option>
+                <option value="តុទី ៣ (Table 3)">តុទី ៣</option>
+                <option value="តុទី ៤ (Table 4)">តុទី ៤</option>
+                <option value="តុទី ៥ (Table 5)">តុទី ៥</option>
+                <option value="តុទី ៦ (Table 6)">តុទី ៦</option>
+            </select>
+        </div>
+
+        <!-- Category Buttons -->
+        <div class="d-flex flex-wrap gap-2 mb-3" id="categoryButtons">
+            <!-- Render dynamically -->
+        </div>
+
+        <!-- Product Grid -->
+        <div class="row g-2" id="productsGrid">
+            <!-- Render products -->
+        </div>
+    </div>
+
+    <!-- 🛒 Modal កន្រ្តកទំនិញរបស់ភ្ញៀវ -->
+    <div class="modal fade" id="cartModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content border-0 shadow rounded-4">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title fw-bold"><i class="fa-solid fa-cart-shopping me-2"></i> កន្រ្តកទំនិញរបស់អ្នក</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle">
+                            <thead class="table-light">
+                                <tr class="small">
+                                    <th>ទំនិញ</th>
+                                    <th class="text-center">ចំនួន</th>
+                                    <th class="text-end">តម្លៃ</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="customerCartBody">
+                                <tr><td colspan="4" class="text-center text-muted py-3 small">កន្រ្តកទទេ</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="d-flex justify-content-between fw-bold fs-6 border-top pt-2">
+                        <span>ទឹកប្រាក់សរុប (Total):</span>
+                        <span class="text-success" id="customerCartTotal">$0.00</span>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">បិទ</button>
+                    <button type="button" class="btn btn-success fw-bold px-4" onclick="submitCustomerOrder()">
+                        <i class="fa-solid fa-paper-plane me-1"></i> បញ្ជាទិញ (Confirm Order)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let products = [];
+        let customerCart = [];
+        let currentCategory = 'All';
+        let selectedTable = 'តុទី ១ (Table 1)';
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadProducts();
+        });
+
+        function updateTable() {
+            selectedTable = document.getElementById('customerTableSelect').value;
+            document.getElementById('tableTitleDisplay').innerText = selectedTable;
+        }
+
+        async function loadProducts() {
+            try {
+                const res = await fetch('/api/products');
+                const result = await res.json();
+                if (result.success) {
+                    products = result.data;
+                    generateCategoryButtons(products);
+                    displayProducts(products);
+                }
+            } catch (err) {
+                console.error('Error loading products:', err);
+            }
+        }
+
+        function generateCategoryButtons(list) {
+            const container = document.getElementById('categoryButtons');
+            const categories = new Set();
+            list.forEach(p => { if (p.category) categories.add(p.category.trim()); });
+
+            container.innerHTML = `<button class="btn ${currentCategory === 'All' ? 'btn-dark' : 'btn-outline-dark'} category-btn" onclick="filterCategory('All', this)">ទាំងអស់</button>`;
+            categories.forEach(cat => {
+                container.innerHTML += `<button class="btn ${currentCategory === cat ? 'btn-dark' : 'btn-outline-dark'} category-btn" onclick="filterCategory('${cat}', this)">${cat}</button>`;
+            });
+        }
+
+        function filterCategory(category, btn) {
+            currentCategory = category;
+            document.querySelectorAll('.category-btn').forEach(b => {
+                b.classList.remove('btn-dark'); b.classList.add('btn-outline-dark');
+            });
+            btn.classList.remove('btn-outline-dark'); btn.classList.add('btn-dark');
+
+            if (category === 'All') displayProducts(products);
+            else displayProducts(products.filter(p => p.category === category));
+        }
+
+        function displayProducts(list) {
+            const grid = document.getElementById('productsGrid');
+            grid.innerHTML = '';
+            if (list.length === 0) {
+                grid.innerHTML = `<div class="col-12 text-center text-muted py-5">មិនមានមុខទំនិញទេ។</div>`;
+                return;
+            }
+
+            list.forEach(p => {
+                let imgTag = `<div class="product-img-wrapper d-flex align-items-center justify-content-center text-secondary"><i class="fa-solid fa-image fs-3"></i></div>`;
+                if (p.image_url && p.image_url.trim() !== '') {
+                    imgTag = `<div class="product-img-wrapper"><img src="${p.image_url}" alt="${p.name}"></div>`;
+                }
+                grid.innerHTML += `
+                    <div class="col-6 col-sm-4 col-md-3">
+                        <div class="product-card" onclick="addToCustomerCart(${p.id})">
+                            ${imgTag}
+                            <div class="product-info">
+                                <span class="text-truncate" style="max-width: 65%;">${p.name}</span>
+                                <span class="text-warning fw-bold">$${Number(p.price).toFixed(2)}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function addToCustomerCart(productId) {
+            const product = products.find(p => p.id === productId);
+            if (!product) return;
+            const exist = customerCart.find(i => i.id === productId);
+            if (exist) exist.quantity += 1;
+            else customerCart.push({ id: product.id, name: product.name, price: Number(product.price), quantity: 1 });
+            renderCustomerCart();
+        }
+
+        function renderCustomerCart() {
+            const tbody = document.getElementById('customerCartBody');
+            tbody.innerHTML = '';
+            let total = 0, count = 0;
+
+            if (customerCart.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-3 small">កន្រ្តកទទេ</td></tr>`;
+                document.getElementById('customerCartTotal').innerText = `$0.00`;
+                document.getElementById('cartBadge').innerText = '0';
+                return;
+            }
+
+            customerCart.forEach((item, index) => {
+                let sub = item.price * item.quantity;
+                total += sub;
+                count += item.quantity;
+                tbody.innerHTML += `
+                    <tr>
+                        <td class="small fw-bold">${item.name}</td>
+                        <td class="text-center">
+                            <button class="btn btn-sm btn-outline-secondary py-0 px-1" onclick="customerCart[${index}].quantity > 1 ? customerCart[${index}].quantity-- : customerCart.splice(${index}, 1); renderCustomerCart();">-</button>
+                            <span class="mx-1 small">${item.quantity}</span>
+                            <button class="btn btn-sm btn-outline-secondary py-0 px-1" onclick="customerCart[${index}].quantity++; renderCustomerCart();">+</button>
+                        </td>
+                        <td class="text-end small">$${sub.toFixed(2)}</td>
+                        <td class="text-end">
+                            <button class="btn btn-sm text-danger p-0" onclick="customerCart.splice(${index}, 1); renderCustomerCart();"><i class="fa-solid fa-trash"></i></button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            document.getElementById('customerCartTotal').innerText = `$${total.toFixed(2)}`;
+            document.getElementById('cartBadge').innerText = count;
+        }
+
+        async function submitCustomerOrder() {
+            if (customerCart.length === 0) {
+                alert('សូមជ្រើសរើសមុខម្ហូបយ៉ាងហោចណាស់មួយ!');
+                return;
+            }
+
+            let grandTotal = customerCart.reduce((sum, i) => sum + (i.price * i.quantity), 0);
+            
+            // បញ្ជូនទិន្នន័យចូល API /api/orders (កត់ត្រាជា Table Name ក្នុងវិក្កយបត្រ ឬកត់ជា Customer Order)
+            const orderData = {
+                cashier_id: 1, // កំណត់ ID បុគ្គលិក ឬប្រព័ន្ធទទួលស្វ័យប្រវត្តិ
+                total_amount: grandTotal,
+                payment_method: 'KHQR',
+                items: customerCart.map(i => ({ id: i.id, quantity: i.quantity, price: i.price }))
+            };
+
+            try {
+                const res = await fetch('/api/orders', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(orderData)
+                });
+                const result = await res.json();
+                if (result.success) {
+                    alert(`✅ បញ្ជាទិញបានជោគជ័យសម្រាប់ "${selectedTable}"! សូមរង់ចាំបន្តិច ម្ហូបនឹងរៀបចំជូន។`);
+                    customerCart = [];
+                    renderCustomerCart();
+                    bootstrap.Modal.getInstance(document.getElementById('cartModal')).hide();
+                } else {
+                    alert('⚠️ បរាជ័យ៖ ' + result.error);
+                }
+            } catch (err) {
+                console.error('Order error:', err);
+                alert('មានបញ្ហាក្នុងការតភ្ជាប់ទៅកាន់ Server!');
+            }
+        }
+    </script>
+</body>
+</html>
