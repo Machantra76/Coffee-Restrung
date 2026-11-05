@@ -132,7 +132,7 @@
             </span>
             <div class="d-flex align-items-center gap-2 flex-wrap">
                 <span id="cashierDisplay" class="text-white small fw-bold bg-secondary px-3 py-1 rounded-pill"></span>
-                <button class="btn btn-outline-warning btn-sm fw-bold position-relative" data-bs-toggle="modal" data-bs-target="#qrModal">
+                <button class="btn btn-outline-warning btn-sm fw-bold position-relative" data-bs-toggle="modal" data-bs-target="#qrModal" onclick="generateDynamicQR()">
                     <i class="fa-solid fa-qrcode me-1"></i> QR សម្រាប់ភ្ញៀវ Order
                 </button>
                 <a href="pos.html" class="btn btn-outline-light btn-sm"><i class="fa-solid fa-house me-1"></i> ម៉ឺនុយមេ / Menu</a>
@@ -177,7 +177,7 @@
                         <div class="mb-2 d-flex justify-content-between align-items-center bg-light p-2 rounded-3 border">
                             <label for="tableInput" class="fw-bold small text-secondary mb-0"><i class="fa-solid fa-chair me-1"></i> លេខតុ / Table:</label>
                             <div class="d-flex align-items-center gap-1">
-                                <input type="text" id="tableInput" class="form-control form-control-sm fw-bold text-primary text-center" value="តុទី ១ (Table 1)" style="width: 130px;" oninput="renderTableCards()">
+                                <input type="text" id="tableInput" class="form-control form-control-sm fw-bold text-primary text-center" value="តុទី ១ (Table 1)" style="width: 130px;" oninput="onTableInputChange()">
                                 <button class="btn btn-sm btn-outline-primary py-0 px-2" data-bs-toggle="modal" data-bs-target="#tableModal" title="ជ្រើសរើសតុ"><i class="fa-solid fa-list"></i></button>
                             </div>
                         </div>
@@ -325,22 +325,34 @@
         </div>
     </div>
 
-    <!-- 📱 Modal QR Code សម្រាប់ភ្ញៀវ Order -->
+    <!-- 📱 Modal QR Code សម្រាប់ភ្ញៀវ Order (Dynamic QR per Selected Table) -->
     <div class="modal fade" id="qrModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow rounded-4 text-center p-3">
                 <div class="modal-header border-0">
-                    <h5 class="modal-title fw-bold"><i class="fa-solid fa-qrcode me-2 text-primary"></i> QR Code សម្រាប់ភ្ញៀវမှာទំនិញ</h5>
+                    <div>
+                        <h5 class="modal-title fw-bold text-primary mb-0"><i class="fa-solid fa-qrcode me-2"></i> QR Code សម្រាប់ភ្ញៀវမှာទំនិញ</h5>
+                        <span id="qrTableTitleBadge" class="badge bg-danger mt-1">តុទី ១ (Table 1)</span>
+                    </div>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <p class="text-muted small">សូមស្កែន QR Code នេះដើម្បីបើកមីនុយបញ្ជាទិញតាមទូរសព្ទដៃរបស់ភ្ញៀវ៖</p>
-                    <div class="bg-light p-3 d-inline-block rounded-4 shadow-sm mb-3">
-                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=https://coffee-restrung.onrender.com/customer-order.html" alt="Customer QR" class="img-fluid rounded">
+                    <p class="text-muted small mb-2">ស្កែន QR Code នេះដើម្បីបើកម៉ឺនុយបញ្ជាទិញភ្ជាប់ជាមួយលេខតុនេះស្វ័យប្រវត្តិ៖</p>
+                    <div class="bg-light p-3 d-inline-block rounded-4 shadow-sm mb-3 position-relative">
+                        <img id="qrImageDisplay" src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=https://coffee-restrung.onrender.com/customer-order.html?table=%E1%9E%8F%E1%9E%BB%E1%9E%91%E1%9E%AF%E1%9E%9B%E1%9E%B6" alt="Customer QR" class="img-fluid rounded" style="width: 180px; height: 180px;">
                     </div>
-                    <div class="input-group input-group-sm mb-2">
-                        <input type="text" id="customerOrderLink" class="form-control text-center" value="https://coffee-restrung.onrender.com/customer-order.html" readonly>
-                        <button class="btn btn-outline-primary" onclick="copyOrderLink()"><i class="fa-solid fa-copy"></i> ចម្លងតំណ</button>
+                    
+                    <div class="input-group input-group-sm mb-3">
+                        <input type="text" id="customerOrderLink" class="form-control text-center bg-light" value="" readonly>
+                        <button class="btn btn-outline-primary fw-bold" onclick="copyOrderLink()"><i class="fa-solid fa-copy me-1"></i> ចម្លងតំណ</button>
+                    </div>
+
+                    <!-- ជ្រើសរើសតុភ្លាមៗលើ Modal QR -->
+                    <div class="border-top pt-2">
+                        <label class="form-label small fw-bold text-secondary mb-1">ប្តូរតុដើម្បី Gen QR ផ្សេងទៀត៖</label>
+                        <select id="qrTableSelector" class="form-select form-select-sm fw-bold text-center text-primary" onchange="changeQrTableFromModal(this.value)">
+                            <!-- Render dynamic tables -->
+                        </select>
                     </div>
                 </div>
             </div>
@@ -440,7 +452,7 @@
         let currentPendingOrder = null;
         let soundInterval = null;
 
-        let customTables = ['តុទី ១ (Table 1)', 'តុទី ២ (Table 2)', 'តុទី ៣ (Table 3)', 'តុទី ៤ (Table 4)', 'តុទី ៥ (Table 5)', 'តុទី ៦ (Table 6)', 'តុទី ៧ (Table 7)', 'តុទី 8 (Table 8)'];
+        let customTables = ['តុទី ១ (Table 1)', 'តុទី ២ (Table 2)', 'តុទី ៣ (Table 3)', 'តុទី ៤ (Table 4)', 'តុទី ៥ (Table 5)', 'តុទី ៦ (Table 6)', 'តុទី ៧ (Table 7)', 'តុទី ៨ (Table 8)'];
 
         document.addEventListener('DOMContentLoaded', async () => {
             currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
@@ -455,10 +467,43 @@
 
             renderTableCards();
             await loadProducts();
+            generateDynamicQR();
 
             // 🔄 បើកមុខងារ Auto-Check QR Orders រៀងរាល់ 3 វិនាទីស្វ័យប្រវត្តិ
             setInterval(checkCustomerPendingOrders, 3000);
         });
+
+        // 🔗 Dynamic QR Code Generator តាមលេខតុដែលបានជ្រើសរើស
+        function generateDynamicQR(selectedTableName = null) {
+            const currentTable = selectedTableName || document.getElementById('tableInput').value.trim() || 'តុទូទៅ';
+            const baseUrl = `${window.location.protocol}//${window.location.host}/customer-order.html`;
+            const fullTableUrl = `${baseUrl}?table=${encodeURIComponent(currentTable)}`;
+            
+            const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(fullTableUrl)}`;
+
+            document.getElementById('qrImageDisplay').src = qrApiUrl;
+            document.getElementById('customerOrderLink').value = fullTableUrl;
+            document.getElementById('qrTableTitleBadge').innerText = currentTable;
+
+            // Render ជម្រើសតុក្នុង Select Dropdown របស់ QR Modal
+            const selector = document.getElementById('qrTableSelector');
+            selector.innerHTML = '';
+            customTables.forEach(t => {
+                const isSel = t === currentTable ? 'selected' : '';
+                selector.innerHTML += `<option value="${t}" ${isSel}>${t}</option>`;
+            });
+        }
+
+        function changeQrTableFromModal(tableName) {
+            document.getElementById('tableInput').value = tableName;
+            renderTableCards();
+            generateDynamicQR(tableName);
+        }
+
+        function onTableInputChange() {
+            renderTableCards();
+            generateDynamicQR();
+        }
 
         // 🔔 មុខងារឆែកមើល Order ថ្មីពីភ្ញៀវស្កែន QR
         async function checkCustomerPendingOrders() {
@@ -466,7 +511,6 @@
                 const res = await fetch('/api/orders/customer-pending');
                 const result = await res.json();
                 if (result.success && result.data.length > 0) {
-                    // យក Order ដំបូងបង្អស់មកបង្ហាញផ្ទាំង Alert
                     currentPendingOrder = result.data[0];
                     showPendingOrderPopup(currentPendingOrder);
                 }
@@ -477,7 +521,6 @@
 
         // 🔊 បង្ហាញ Popup Modal ព្រមទាំងបន្លឺសំឡេងរោទ៍រៀងរាល់ 3-5 វិនាទី
         function showPendingOrderPopup(order) {
-            // បើ Modal កំពុងបើកហើយ មិនបាច់បើកជាន់គ្នាទេ
             const modalElement = document.getElementById('pendingOrderModal');
             if (modalElement.classList.contains('show')) return;
 
@@ -508,14 +551,14 @@
                 const gainNode = audioCtx.createGain();
                 
                 oscillator.type = 'sine';
-                oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // កម្រិតសំឡេង
+                oscillator.frequency.setValueAtTime(880, audioCtx.currentTime);
                 gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
                 
                 oscillator.connect(gainNode);
                 gainNode.connect(audioCtx.destination);
                 
                 oscillator.start();
-                oscillator.stop(audioCtx.currentTime + 0.4); // រោទ៍រយៈពេល 0.4 វិនាទី
+                oscillator.stop(audioCtx.currentTime + 0.4);
             } catch (e) {
                 console.log('Audio not supported or blocked by browser');
             }
@@ -523,10 +566,10 @@
 
         function startAlertSound() {
             if (soundInterval) clearInterval(soundInterval);
-            playBeepSound(); // លេងភ្លាមៗមួយដង
+            playBeepSound();
             soundInterval = setInterval(() => {
                 playBeepSound();
-            }, 3500); // រោទ៍រៀងរាល់ 3.5 វិនាទីរហូតដល់ចុចបិទ ឬ Accept
+            }, 3500);
         }
 
         function stopAlertSound() {
@@ -556,8 +599,10 @@
                     stopAlertSound();
                     pendingOrderModalObj.hide();
                     
-                    // ដាក់បញ្ចូលទំនិញចូលទៅក្នុង Cart របស់ POS ស្រេចដើម្បីគិតលុយបន្តបើចង់
                     document.getElementById('tableInput').value = currentPendingOrder.table_no || 'តុទូទៅ';
+                    renderTableCards();
+                    generateDynamicQR(currentPendingOrder.table_no);
+
                     cart = currentPendingOrder.items.map(i => ({
                         id: i.product_id || i.id,
                         name: i.name,
@@ -608,11 +653,13 @@
             document.getElementById('tableInput').value = tableName;
             input.value = '';
             renderTableCards();
+            generateDynamicQR(tableName);
         }
 
         function selectTable(tableName) {
             document.getElementById('tableInput').value = tableName;
             renderTableCards();
+            generateDynamicQR(tableName);
             const modalEl = document.getElementById('tableModal');
             const modal = bootstrap.Modal.getInstance(modalEl);
             modal.hide();
@@ -860,7 +907,7 @@
                     showReceiptModal(result.order.id, paymentMethod, receivedUSD);
                     await loadProducts(); 
                 } else {
-                    alert('⚠️ មិនអាចលក់ได้ទេ: ' + result.error);
+                    alert('⚠️ មិនអាចលក់បានទេ: ' + result.error);
                 }
             } catch (err) {
                 console.error('Checkout Error:', err);
@@ -931,7 +978,7 @@
             copyText.select();
             copyText.setSelectionRange(0, 99999);
             navigator.clipboard.writeText(copyText.value);
-            alert("បានចម្លងតំណสำเร็จ! (Link Copied)");
+            alert("បានចម្លងតំណជោគជ័យ! (Link Copied)");
         }
     </script>
 </body>
