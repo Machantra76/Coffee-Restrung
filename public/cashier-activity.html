@@ -93,7 +93,7 @@
         </div>
     </div>
 
-    <!-- 🖨️ Modal បង្ហាញវិក្កយបត្រសម្រាប់ Print (ទំហំ 80mm) -->
+    <!-- 🖨️ Modal បង្ហាញវិក្កយបត្រសម្រាប់ Print (ទំហំ 80mm មានគ្រប់លក្ខណៈដូច sale.html) -->
     <div class="modal fade" id="invoiceModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow rounded-4">
@@ -128,11 +128,34 @@
                         </table>
                     </div>
                     <div class="border-top pt-2 small">
+                        <div class="d-flex justify-content-between">
+                            <span>ទឹកប្រាក់រួម (Subtotal):</span>
+                            <span><strong id="recSubtotal">$0.00</strong> (<span id="recSubtotalRiel">0 រៀល</span>)</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span>បញ្ចុះតម្លៃ (Discount):</span>
+                            <span id="recDiscount">$0.00</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span>អាករ VAT (10%):</span>
+                            <span id="recVat">$0.00</span>
+                        </div>
                         <div class="d-flex justify-content-between fw-bold fs-6 border-top mt-2 pt-2">
                             <span>សរុបទាំងអស់ (Grand Total):</span>
                             <div class="text-end">
                                 <span class="text-success" id="recGrandTotal">$0.00</span><br>
                                 <span class="text-dark small" id="recGrandTotalRiel">0 រៀល</span>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between text-muted mt-1">
+                            <span>ប្រាក់ទទួលបាន (Received):</span>
+                            <span><strong id="recReceived">$0.00</strong> (<span id="recReceivedRiel">0 រៀល</span>)</span>
+                        </div>
+                        <div class="d-flex justify-content-between text-success fw-bold">
+                            <span>ប្រាក់អាប់សង (Change):</span>
+                            <div class="text-end">
+                                <span id="recChange">$0.00</span><br>
+                                <span id="recChangeRiel" class="small">(0 រៀល)</span>
                             </div>
                         </div>
                     </div>
@@ -304,22 +327,34 @@
             document.getElementById('recDate').innerText = new Date(order.created_at).toLocaleString();
             document.getElementById('recCashier').innerText = order.cashier_name || currentUser.full_name;
             document.getElementById('recPayment').innerText = order.payment_method || 'Cash';
+            
             document.getElementById('recGrandTotal').innerText = `$${grandTotalUSD.toFixed(2)}`;
             document.getElementById('recGrandTotalRiel').innerText = `${grandTotalRiel.toLocaleString()} រៀល`;
+
+            // បង្ហាញតម្លៃ Subtotal, Discount, VAT ស្របតាម order (បើមានទិន្នន័យស្រាប់ ឬប៉ាន់ស្មានជាមូលដ្ឋាន)
+            document.getElementById('recSubtotal').innerText = `$${grandTotalUSD.toFixed(2)}`;
+            document.getElementById('recSubtotalRiel').innerText = `${grandTotalRiel.toLocaleString()} រៀល`;
+            document.getElementById('recDiscount').innerText = `-$0.00 (0%)`;
+            document.getElementById('recVat').innerText = `$0.00`;
+            document.getElementById('recReceived').innerText = `$${grandTotalUSD.toFixed(2)}`;
+            document.getElementById('recReceivedRiel').innerText = `${grandTotalRiel.toLocaleString()} រៀល`;
+            document.getElementById('recChange').innerText = `$0.00`;
+            document.getElementById('recChangeRiel').innerText = `(0 រៀល)`;
 
             const itemsBody = document.getElementById('recItemsBody');
             itemsBody.innerHTML = `<tr><td colspan="4" class="text-center">កំពុងទាញយកទិន្នន័យ...</td></tr>`;
             invoiceModalObj.show();
 
             try {
-                // 🌟 ហៅ API ថ្មីទាញយកទំនិញតាម Order ID ផ្ទាល់
                 const res = await fetch(`/api/orders/${orderId}/items`);
                 const result = await res.json();
                 if (result.success && result.items && result.items.length > 0) {
                     itemsBody.innerHTML = '';
+                    let subTotal = 0;
                     result.items.forEach(i => {
                         const itemPrice = Number(i.price || 0);
                         const itemTotal = itemPrice * i.quantity;
+                        subTotal += itemTotal;
                         itemsBody.innerHTML += `
                             <tr>
                                 <td>${i.name}</td>
@@ -329,6 +364,10 @@
                             </tr>
                         `;
                     });
+
+                    let subTotalRiel = Math.round(subTotal * exchangeRate);
+                    document.getElementById('recSubtotal').innerText = `$${subTotal.toFixed(2)}`;
+                    document.getElementById('recSubtotalRiel').innerText = `${subTotalRiel.toLocaleString()} រៀល`;
                 } else {
                     itemsBody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">មិនមានទិន្នន័យមុខទំនិញលម្អិត។</td></tr>`;
                 }
