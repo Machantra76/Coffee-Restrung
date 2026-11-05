@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ផ្នែកផ្ទះបាយ - Kitchen Display System</title>
+    <title>ផ្នែកផ្ទះបាយ - Kitchen Display System & Reports</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;600&display=swap" rel="stylesheet">
@@ -12,6 +12,7 @@
         .order-card { border-radius: 12px; border: none; transition: all 0.3s ease; }
         .border-pending { border-left: 8px solid #ffc107 !important; }
         .border-preparing { border-left: 8px solid #0d6efd !important; }
+        .summary-card { border-radius: 12px; border: none; }
     </style>
 </head>
 <body>
@@ -19,7 +20,7 @@
     <nav class="navbar navbar-dark bg-dark px-3 py-3 shadow-sm">
         <div class="container-fluid d-flex justify-content-between align-items-center">
             <span class="navbar-brand fw-bold fs-5">
-                <i class="fa-solid fa-utensils me-2 text-warning"></i> ផ្នែកផ្ទះបាយ / Kitchen Display (KDS)
+                <i class="fa-solid fa-utensils me-2 text-warning"></i> ផ្នែកផ្ទះបាយ / Kitchen Display System (KDS)
             </span>
             <div class="d-flex align-items-center gap-3">
                 <span id="userDisplay" class="text-white small fw-bold bg-secondary px-3 py-1 rounded-pill"></span>
@@ -31,6 +32,44 @@
 
     <!-- Main Content -->
     <div class="container-fluid py-4 px-3 px-md-4">
+        
+        <!-- 📊 ផ្នែករបាយការណ៍សង្ខេបផ្ទះបាយ (Kitchen Summary Reports) -->
+        <div class="row g-3 mb-4">
+            <div class="col-12 col-md-4">
+                <div class="card summary-card p-3 bg-warning text-dark shadow-sm">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="fw-bold small d-block">ម្ហូបរង់ចាំធ្វើ (Pending Orders)</span>
+                            <h2 class="fw-bold mb-0" id="reportPendingCount">0</h2>
+                        </div>
+                        <i class="fa-solid fa-hourglass-half fs-1 opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-4">
+                <div class="card summary-card p-3 bg-primary text-white shadow-sm">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="fw-bold small d-block">ម្ហូបកំពុងធ្វើ (Preparing)</span>
+                            <h2 class="fw-bold mb-0" id="reportPreparingCount">0</h2>
+                        </div>
+                        <i class="fa-solid fa-fire-burner fs-1 opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-md-4">
+                <div class="card summary-card p-3 bg-success text-white shadow-sm">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="fw-bold small d-block">ម្ហូបធ្វើរួចរាល់សរុប (Completed Orders)</span>
+                            <h2 class="fw-bold mb-0" id="reportCompletedCount">0</h2>
+                        </div>
+                        <i class="fa-solid fa-circle-check fs-1 opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
             <div>
                 <h3 class="fw-bold text-dark mb-0"><i class="fa-solid fa-bell me-2 text-primary"></i> បញ្ជីកុម្ម៉ង់មុខម្ហូបកំពុងរង់ចាំ</h3>
@@ -74,6 +113,9 @@
                     const grid = document.getElementById('ordersGrid');
                     grid.innerHTML = '';
 
+                    let pendingCount = 0;
+                    let preparingCount = 0;
+
                     if (result.data.length === 0) {
                         grid.innerHTML = `
                             <div class="col-12 text-center py-5">
@@ -82,19 +124,23 @@
                                 <p class="text-muted small">រាល់មុខម្ហូបទាំងអស់ត្រូវបានរៀបចំរួចរាល់ហើយ</p>
                             </div>
                         `;
+                        updateReportCards(0, 0);
                         return;
                     }
 
                     result.data.forEach(order => {
                         const status = order.status || 'Pending';
                         const isPreparing = status === 'Preparing';
+                        
+                        if (isPreparing) preparingCount++;
+                        else pendingCount++;
+
                         const borderClass = isPreparing ? 'border-preparing' : 'border-pending';
                         const badgeClass = isPreparing ? 'bg-primary' : 'bg-warning text-dark';
                         const statusText = isPreparing ? 'កំពុងធ្វើ / Preparing' : 'រង់ចាំ / Pending';
                         const orderTime = new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                        const tableNo = order.table_no || 'តុទូទៅ'; // 🪑 ទាញយកលេខតុមកបង្ហាញ
+                        const tableNo = order.table_no || 'តុទូទៅ';
 
-                        // 📋 បញ្ជីមុខម្ហូបក្នុង Order នេះ
                         let itemsHtml = '<ul class="list-group list-group-flush small mb-3 bg-light rounded-3 overflow-hidden">';
                         if (order.items && order.items.length > 0) {
                             order.items.forEach(item => {
@@ -116,7 +162,6 @@
                                             <h5 class="fw-bold text-dark mb-0">Order #${order.id}</h5>
                                             <span class="badge ${badgeClass} px-2 py-1">${statusText}</span>
                                         </div>
-                                        <!-- 🪑 បង្ហាញលេខតុយ៉ាងលេចធ្លោ -->
                                         <div class="mb-2">
                                             <span class="badge bg-info text-dark fs-6 px-3 py-1 w-100"><i class="fa-solid fa-chair me-1"></i> ${tableNo}</span>
                                         </div>
@@ -126,7 +171,6 @@
                                         </div>
                                         <hr class="my-2">
                                         
-                                        <!-- 🍲 បង្ហាញឈ្មោះមុខម្ហូប និងចំនួន -->
                                         <div class="mb-2">
                                             <span class="fw-bold text-secondary small mb-1 d-block">មុខម្ហូបត្រូវធ្វើ៖</span>
                                             ${itemsHtml}
@@ -135,12 +179,12 @@
 
                                     <div>
                                         ${!isPreparing ? `
-                                            <button class="btn btn-primary w-100 fw-bold py-2 shadow-sm mb-2" onclick="updateOrderStatus(${order.id}, 'Preparing')">
+                                            <button class="btn btn-primary w-100 fw-bold py-2 shadow-sm mb-2" onclick="updateOrderStatus(${order.id}, 'Preparing', '${tableNo}')">
                                                 <i class="fa-solid fa-fire me-1"></i> ចាប់ផ្តើមធ្វើ / Start Preparing
                                             </button>
                                         ` : `
-                                            <button class="btn btn-success w-100 fw-bold py-2 shadow-sm" onclick="updateOrderStatus(${order.id}, 'Completed')">
-                                                <i class="fa-solid fa-circle-check me-1"></i> ធ្វើរួចរាល់ / Mark Completed
+                                            <button class="btn btn-success w-100 fw-bold py-2 shadow-sm" onclick="updateOrderStatus(${order.id}, 'Completed', '${tableNo}')">
+                                                <i class="fa-solid fa-circle-check me-1"></i> ធ្វើរួចរាល់ (ជូនដំណឹង Sales)
                                             </button>
                                         `}
                                     </div>
@@ -148,13 +192,24 @@
                             </div>
                         `;
                     });
+
+                    updateReportCards(pendingCount, preparingCount);
                 }
             } catch (err) {
                 console.error('Error loading kitchen orders:', err);
             }
         }
 
-        async function updateOrderStatus(orderId, newStatus) {
+        function updateReportCards(pending, preparing) {
+            document.getElementById('reportPendingCount').innerText = pending;
+            document.getElementById('reportPreparingCount').innerText = preparing;
+            
+            // ទាញយកចំនួន Completed ពីដំណាក់កាលលក់ (ឬរក្សាទុកក្នុង Local Storage)
+            const completedCount = localStorage.getItem('kitchen_completed_count') || 0;
+            document.getElementById('reportCompletedCount').innerText = completedCount;
+        }
+
+        async function updateOrderStatus(orderId, newStatus, tableNo) {
             try {
                 const res = await fetch(`/api/orders/${orderId}/status`, {
                     method: 'PATCH',
@@ -163,6 +218,14 @@
                 });
                 const result = await res.json();
                 if (result.success) {
+                    if (newStatus === 'Completed') {
+                        // 🔔 បង្កើតការជូនដំណឹង Toast លើ Screen ផ្ទះបាយ
+                        alert(`✅ បានធ្វើរួចរាល់សម្រាប់ ${tableNo}! ប្រព័ន្ធបានផ្ញើព័ត៌មានទៅផ្នែក Sales/រត់តុ រួចរាល់។`);
+                        
+                        // កើនចំនួនរបាយការណ៍សរុបថ្ងៃនេះ
+                        let count = parseInt(localStorage.getItem('kitchen_completed_count') || 0);
+                        localStorage.setItem('kitchen_completed_count', count + 1);
+                    }
                     loadKitchenOrders();
                 } else {
                     alert('បរាជ័យក្នុងការប្តូរស្ថានភាព Order!');
