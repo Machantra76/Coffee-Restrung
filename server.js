@@ -309,7 +309,7 @@ app.get('/api/orders/:id/items', async (req, res) => {
 
 // ================= ORDER & QR ORDERING APIs =================[cite: 11]
 
-// 1. API សម្រាប់ភ្ញៀវកុម្ម៉ង់ម្ហូប (អាប់ដេត៖ បើមាន Invoice បើកស្រាប់លើតុដដែល គឺបូកបញ្ចូលគ្នាស្វ័យប្រវត្តិ)
+// 1. API សម្រាប់ភ្ញៀវកុម្ម៉ង់ម្ហូប (អាប់ដេត៖ បើមានទំនិញជាន់គ្នា វានឹង Mix/Merge បញ្ចូលគ្នាជាជួរតែមួយស្វ័យប្រវត្តិ)
 app.post('/api/orders', async (req, res) => {
     const { cashier_id, table_no, total_amount, payment_method, items } = req.body;
     
@@ -317,7 +317,6 @@ app.post('/api/orders', async (req, res) => {
     try {
         await client.query('BEGIN');
 
-        // ឆែកមើលថាតើតុនេះមាន Order ណាកំពុងបើកស្រាប់ (Status មិនទាន់ Paid / Completed / Cancelled) ដែរឬទេ
         let existingOrder = null;
         if (table_no && table_no !== 'Walk-in') {
             const checkOrderQuery = `
@@ -334,7 +333,6 @@ app.post('/api/orders', async (req, res) => {
         let targetOrderId;
         const addedAmount = parseFloat(total_amount) || 0;
 
-        // ករណីកុម្ម៉ង់បន្ថែមលើតុដដែលដែលមាន Invoice ស្រាប់
         if (existingOrder) {
             targetOrderId = existingOrder.id;
 
@@ -355,15 +353,29 @@ app.post('/api/orders', async (req, res) => {
                         [item.quantity, item.id]
                     );
 
-                    // បញ្ចូលទំនិញថ្មីថែមលើ order_id ចាស់
-                    await client.query(
-                        `INSERT INTO order_items (order_id, product_id, quantity, price) VALUES ($1, $2, $3, $4)`,
-                        [targetOrderId, item.id, item.quantity, item.price]
+                    // 🔍 ឆែកមើលថាតើក្នុង order_items មាន product_id នេះស្រាប់ក្នុង Order ID ហ្នឹងហើយឬនៅ?
+                    const checkExistingItem = await client.query(
+                        `SELECT id, quantity FROM order_items WHERE order_id = $1 AND product_id = $2`,
+                        [targetOrderId, item.id]
                     );
+
+                    if (checkExistingItem.rows.length > 0) {
+                        // បើមានរួចហើយ គឺ Mix/Merge បន្ថែមចំនួនបរិមាណ (quantity) ចូលគ្នាជាជួរតែមួយ
+                        await client.query(
+                            `UPDATE order_items SET quantity = quantity + $1 WHERE id = $2`,
+                            [item.quantity, checkExistingItem.rows[0].id]
+                        );
+                    } else {
+                        // បើជាទំនិញថ្មី គឺ Insert ជាជួរថ្មីធម្មតា
+                        await client.query(
+                            `INSERT INTO order_items (order_id, product_id, quantity, price) VALUES ($1, $2, $3, $4)`,
+                            [targetOrderId, item.id, item.quantity, item.price]
+                        );
+                    }
                 }
             }
 
-            // បូកទឹកប្រាក់សរុប (total_amount) បន្ថែម និងប្តូរ status ទៅ 'Customer_Pending' វិញដើម្បីឱ្យផ្នែកលក់ដឹង
+            // បូកទឹកប្រាក់សរុប (total_amount) បន្ថែម និងប្តូរ status ទៅ 'Customer_Pending' វិញ
             await client.query(
                 `UPDATE orders SET total_amount = total_amount + $1, status = 'Customer_Pending' WHERE id = $2`,
                 [addedAmount, targetOrderId]
@@ -400,11 +412,22 @@ app.post('/api/orders', async (req, res) => {
 
             if (items && items.length > 0) {
                 for (let item of items) {
-                    const itemQuery = `
-                        INSERT INTO order_items (order_id, product_id, quantity, price)
-                        VALUES ($1, $2, $3, $4)
-                    `;
-                    await client.query(itemQuery, [targetOrderId, item.id, item.quantity, item.price]);
+                    const checkExistingItem = await client.query(
+                        `SELECT id, quantity FROM order_items WHERE order_id = $1 AND product_id = $2`,
+                        [targetOrderId, item.id]
+                    );
+
+                    if (checkExistingItem.rows.length > 0) {
+                        await client.query(
+                            `UPDATE order_items SET quantity = quantity + $1 WHERE id = $2`,
+                            [item.quantity, checkExistingItem.rows[0].id]
+                        );
+                    } else {
+                        await client.query(
+                            `INSERT INTO order_items (order_id, product_id, quantity, price) VALUES ($1, $2, $3, $4)`,
+                            [targetOrderId, item.id, item.quantity, item.price]
+                        );
+                    }
                 }
             }
         }
@@ -412,7 +435,7 @@ app.post('/api/orders', async (req, res) => {
         await client.query('COMMIT');
         res.status(201).json({ 
             success: true, 
-            message: existingOrder ? 'បានកុម្ម៉ង់បន្ថែមចូល Invoice តុเดิมដោយជោគជ័យ!' : 'Order created successfully', 
+            message: existingOrder ? 'បានកុម្ម៉ង់បន្ថែម និង Mix ទំនិញជាន់គ្នាដោយជោគជ័យ!' : 'Order created successfully', 
             order: { id: targetOrderId } 
         });
     } catch (err) {
