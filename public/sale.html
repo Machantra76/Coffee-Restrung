@@ -679,6 +679,7 @@
                     renderTableCards();
                     generateDynamicQR(currentPendingOrder.table_no);
 
+                    // 🛠️ ប្រើប្រាស់ product_id ជំនួសឱ្យ id ដើម្បីការពារ Error undefined ID
                     cart = currentPendingOrder.items.map(i => ({
                         id: i.product_id || i.id,
                         name: i.name,
