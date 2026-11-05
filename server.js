@@ -37,7 +37,9 @@ async function initDB() {
                 barcode VARCHAR(100) UNIQUE,
                 name VARCHAR(150) NOT NULL,
                 price NUMERIC(10, 2) NOT NULL,
+                cost_price NUMERIC(10, 2) DEFAULT 0,
                 category VARCHAR(100) DEFAULT 'General',
+                unit VARCHAR(50) DEFAULT 'ដប',
                 stock_qty INT DEFAULT 0,
                 image_url TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -94,16 +96,26 @@ app.get('/api/products', async (req, res) => {
 });
 
 app.post('/api/products', async (req, res) => {
-    const { barcode, name, price, category, stock_qty, image_url } = req.body;
+    const { barcode, name, price, cost_price, category, unit, image_url } = req.body;
     
-    if (!name || !price) {
+    if (!name || price === undefined) {
         return res.status(400).json({ success: false, error: 'Name and Price are required' });
     }
 
     try {
         const result = await pool.query(
-            'INSERT INTO products (barcode, name, price, category, stock_qty, image_url) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-            [barcode || null, name, parseFloat(price), category || 'General', parseInt(stock_qty) || 0, image_url || null]
+            `INSERT INTO products (barcode, name, price, cost_price, category, unit, stock_qty, image_url) 
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+            [
+                barcode || null, 
+                name, 
+                parseFloat(price) || 0, 
+                parseFloat(cost_price) || 0, 
+                category || 'General', 
+                unit || 'ដប', 
+                0, 
+                image_url || null
+            ]
         );
         res.status(201).json({ success: true, data: result.rows[0] });
     } catch (dbErr) {
@@ -114,12 +126,23 @@ app.post('/api/products', async (req, res) => {
 
 app.put('/api/products/:id', async (req, res) => {
     const { id } = req.params;
-    const { barcode, name, price, category, image_url } = req.body;
+    const { barcode, name, price, cost_price, category, unit, image_url } = req.body;
 
     try {
         const result = await pool.query(
-            'UPDATE products SET barcode = $1, name = $2, price = $3, category = $4, image_url = $5 WHERE id = $6 RETURNING *',
-            [barcode || null, name, parseFloat(price), category, image_url || null, id]
+            `UPDATE products 
+             SET barcode = $1, name = $2, price = $3, cost_price = $4, category = $5, unit = $6, image_url = $7 
+             WHERE id = $8 RETURNING *`,
+            [
+                barcode || null, 
+                name, 
+                parseFloat(price) || 0, 
+                parseFloat(cost_price) || 0, 
+                category || 'General', 
+                unit || 'ដប', 
+                image_url || null, 
+                id
+            ]
         );
         res.json({ success: true, data: result.rows[0] });
     } catch (dbErr) {
@@ -211,7 +234,7 @@ app.post('/api/inventory/stock-in', async (req, res) => {
 
 app.get('/api/inventory', async (req, res) => {
     try {
-        const result = await pool.query('SELECT id, name, price, category, stock_qty, image_url FROM products ORDER BY id DESC');
+        const result = await pool.query('SELECT id, name, price, cost_price, category, unit, stock_qty, image_url FROM products ORDER BY id DESC');
         res.json({ success: true, data: result.rows });
     } catch (err) {
         console.error('Get Inventory Error:', err);
