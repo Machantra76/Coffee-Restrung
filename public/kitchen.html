@@ -92,6 +92,7 @@
                         const badgeClass = isPreparing ? 'bg-primary' : 'bg-warning text-dark';
                         const statusText = isPreparing ? 'កំពុងធ្វើ / Preparing' : 'រង់ចាំ / Pending';
                         const orderTime = new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        const tableNo = order.table_no || 'តុទូទៅ'; // 🪑 ទាញយកលេខតុមកបង្ហាញ
 
                         // 📋 បញ្ជីមុខម្ហូបក្នុង Order នេះ
                         let itemsHtml = '<ul class="list-group list-group-flush small mb-3 bg-light rounded-3 overflow-hidden">';
@@ -112,8 +113,12 @@
                                 <div class="card order-card shadow-sm p-3 bg-white ${borderClass} h-100 d-flex flex-column justify-content-between">
                                     <div>
                                         <div class="d-flex justify-content-between align-items-center mb-2">
-                                            <h4 class="fw-bold text-dark mb-0">Order #${order.id}</h4>
+                                            <h5 class="fw-bold text-dark mb-0">Order #${order.id}</h5>
                                             <span class="badge ${badgeClass} px-2 py-1">${statusText}</span>
+                                        </div>
+                                        <!-- 🪑 បង្ហាញលេខតុយ៉ាងលេចធ្លោ -->
+                                        <div class="mb-2">
+                                            <span class="badge bg-info text-dark fs-6 px-3 py-1 w-100"><i class="fa-solid fa-chair me-1"></i> ${tableNo}</span>
                                         </div>
                                         <div class="small text-muted mb-2">
                                             <i class="fa-solid fa-clock me-1"></i> ម៉ោង៖ <b>${orderTime}</b><br>
