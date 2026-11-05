@@ -289,7 +289,7 @@ app.get('/api/inventory', async (req, res) => {
     }
 });
 
-// 🪑 API សម្រាប់ទាញយកតុដែលមាន Order កំពុងសកម្ម ( Active Tables ) ផ្អែកលើការមិនទាន់បង់ប្រាក់
+// 🪑 API សម្រាប់ទាញយកតុ Active Tables (ផ្អែកលើការមិនទាន់បង់ប្រាក់ Checkout)
 app.get('/api/orders/active-tables', async (req, res) => {
     try {
         const query = `
@@ -326,7 +326,7 @@ app.get('/api/orders/:id/items', async (req, res) => {
 
 // ================= ORDER & QR ORDERING APIs =================
 
-// 1. API សម្រាប់ភ្ញៀវកុម្ម៉ង់ម្ហូប (Handle ទាំង Order ថ្មី និង Order បន្ថែមជាន់តុដែលមិនទាន់គិតលុយ)[cite: 1, 2]
+// 1. API សម្រាប់ភ្ញៀវកុម្ម៉ង់ម្ហូប (បង្កើត Order ថ្មីដោយមិនទាន់មាន payment_method)
 app.post('/api/orders', async (req, res) => {
     const { cashier_id, table_no, total_amount, payment_method, items } = req.body;
     
@@ -364,7 +364,6 @@ app.post('/api/orders', async (req, res) => {
                         throw new Error(`ទំនិញ "${checkStock.rows[0].name}" ក្នុងស្តុកសល់តែ ${currentStock} ប៉ុណ្ណោះ!`);
                     }
                     
-                    // កាត់ស្តុក
                     await client.query(
                         'UPDATE products SET stock_qty = stock_qty - $1 WHERE id = $2',
                         [item.quantity, item.id]
@@ -423,7 +422,7 @@ app.post('/api/orders', async (req, res) => {
                 cashier_id || null, 
                 table_no || 'Walk-in', 
                 addedAmount, 
-                payment_method || null, 
+                null, // payment_method គឺ NULL ដំបូង ដើម្បីឱ្យលោត Active Table ភ្លាមៗ
                 initialStatus
             ]);
             targetOrderId = orderResult.rows[0].id;
@@ -453,7 +452,7 @@ app.post('/api/orders', async (req, res) => {
         await client.query('COMMIT');
         res.status(201).json({ 
             success: true, 
-            message: existingOrder ? 'បានកុម្ម៉ង់បន្ថែម និង Mix ទំនិញជាន់គ្នាដោយជោគជ័យ!' : 'Order created successfully', 
+            message: existingOrder ? 'បានកុម្ម៉ង់បន្ថែមជោគជ័យ!' : 'Order created successfully', 
             order: { id: targetOrderId } 
         });
     } catch (err) {
@@ -464,7 +463,7 @@ app.post('/api/orders', async (req, res) => {
     }
 });
 
-// 2. API សម្រាប់ Sales Dashboard ឆែកមើល Order ថ្មីៗដែលរង់ចាំការទទួល (status = 'Customer_Pending')
+// 2. API សម្រាប់ Sales Dashboard ឆែកមើល Order ថ្មីៗរង់ចាំការទទួលយក (status = 'Customer_Pending')
 app.get('/api/orders/customer-pending', async (req, res) => {
     try {
         const orderQuery = `
@@ -493,7 +492,7 @@ app.get('/api/orders/customer-pending', async (req, res) => {
     }
 });
 
-// 3. API សម្រាប់ Sales ចុច Accept (ប្ដូរ status ពី 'Customer_Pending' ទៅ 'Pending')
+// 3. API សម្រាប់ Sales ចុច Accept
 app.post('/api/orders/:id/accept', async (req, res) => {
     const { id } = req.params;
     try {
@@ -511,7 +510,7 @@ app.post('/api/orders/:id/accept', async (req, res) => {
     }
 });
 
-// 💰 4. API សម្រាប់បង់ប្រាក់ និងបញ្ចប់ Order (Checkout) - ធ្វើឱ្យតុបាត់ពី Active Tables ស្វ័យប្រវត្តិ[cite: 1, 2]
+// 💰 4. API សម្រាប់បង់ប្រាក់ Checkout (បំពេញ payment_method ដើម្បីឱ្យតុបាត់ពី Active Tables)
 app.post('/api/orders/:id/pay', async (req, res) => {
     const { id } = req.params;
     const { payment_method, total_amount } = req.body;
@@ -527,7 +526,7 @@ app.post('/api/orders/:id/pay', async (req, res) => {
     }
 });
 
-// ✏️ API សម្រាប់កែប្រែមុខទំនិញ និងទឹកប្រាក់ក្នុងវិក្កយបត្រ
+// ✏️ API សម្រាប់កែប្រែមុខទំនិញ
 app.put('/api/orders/:id/items', async (req, res) => {
     const { id } = req.params;
     const { items, total_amount } = req.body;
@@ -567,7 +566,7 @@ app.put('/api/orders/:id/items', async (req, res) => {
         await client.query('UPDATE orders SET total_amount = $1 WHERE id = $2', [total_amount, id]);
 
         await client.query('COMMIT');
-        res.json({ success: true, message: 'បានកែប្រែវិក្កយបត្រ និងស្តុកបានជោគជ័យ!' });
+        res.json({ success: true, message: 'បានកែប្រែវិក្កយបត្រជោគជ័យ!' });
     } catch (err) {
         await client.query('ROLLBACK');
         console.error('Update Order Items Error:', err);
@@ -577,7 +576,7 @@ app.put('/api/orders/:id/items', async (req, res) => {
     }
 });
 
-// 🍳 API សម្រាប់ផ្ទះបាយ (បង្ហាញ Order ដែលមិនទាន់បង់ប្រាក់ ទោះបីផ្ទះបាយចុច Completed ក៏តុនៅស្ថិតក្នុង Active Tables ជានិច្ច)[cite: 1, 2]
+// 🍳 API សម្រាប់ផ្ទះបាយ
 app.get('/api/orders/kitchen', async (req, res) => {
     try {
         const orderQuery = `
@@ -585,8 +584,7 @@ app.get('/api/orders/kitchen', async (req, res) => {
             FROM orders o
             LEFT JOIN users u ON o.cashier_id = u.id
             WHERE o.status != 'Customer_Pending'
-              AND (o.status IN ('Pending', 'Preparing', 'Ready') OR o.status IS NULL)
-              AND (o.payment_method IS NULL OR o.payment_method = '')
+              AND (o.status IN ('Pending', 'Preparing') OR o.status IS NULL)
               AND EXISTS (
                   SELECT 1 FROM order_items oi
                   JOIN products p ON oi.product_id = p.id
