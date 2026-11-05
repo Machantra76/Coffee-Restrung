@@ -103,7 +103,7 @@
         }
         .cart-items-box { max-height: 220px; overflow-y: auto; }
 
-     /* 🖨️ Print Styles សម្រាប់ម៉ាស៊ីនព្រិន្ទ POS */
+        /* 🖨️ Print Styles សម្រាប់ម៉ាស៊ីនព្រិន្ទ POS */
         @media print {
             body * { visibility: hidden; }
             #printableInvoice, #printableInvoice * { visibility: visible; }
@@ -173,11 +173,13 @@
             <div class="col-12 col-md-5 col-lg-4">
                 <div class="card shadow-sm border-0 rounded-4 p-3 cart-container bg-white d-flex flex-column justify-content-between">
                     <div>
-                        <!-- 🪑 រើសលេខតុ (Table Selection) -->
+                        <!-- 🪑 បញ្ចូលលេខតុដោយដៃ (Table Input) -->
                         <div class="mb-2 d-flex justify-content-between align-items-center bg-light p-2 rounded-3 border">
-                            <span class="fw-bold small text-secondary"><i class="fa-solid fa-chair me-1"></i> លេខតុ / Table:</span>
-                            <span id="selectedTableDisplay" class="fw-bold text-primary">តុទី ១ (Table 1)</span>
-                            <button class="btn btn-sm btn-outline-primary py-0 px-2" data-bs-toggle="modal" data-bs-target="#tableModal">ប្ដូរតុ</button>
+                            <label for="tableInput" class="fw-bold small text-secondary mb-0"><i class="fa-solid fa-chair me-1"></i> លេខតុ / Table:</label>
+                            <div class="d-flex align-items-center gap-1">
+                                <input type="text" id="tableInput" class="form-control form-control-sm fw-bold text-primary text-center" value="តុទី ១ (Table 1)" style="width: 130px;">
+                                <button class="btn btn-sm btn-outline-primary py-0 px-2" data-bs-toggle="modal" data-bs-target="#tableModal" title="រើសតុស្រាប់"><i class="fa-solid fa-list"></i></button>
+                            </div>
                         </div>
 
                         <h4 class="fw-bold text-dark mb-2 fs-5 fs-md-4"><i class="fa-solid fa-cart-shopping me-2"></i> កន្រ្តកវិក្កយបត្រ / Cart</h4>
@@ -263,7 +265,7 @@
         </div>
     </div>
 
-    <!-- 🪑 Modal រើសលេខតុ -->
+    <!-- 🪑 Modal រើសលេខតុស្រាប់ -->
     <div class="modal fade" id="tableModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow rounded-4">
@@ -302,7 +304,7 @@
         </div>
     </div>
 
-    <!-- 🖨️ Modal បង្ហាញវិក្កយបត្រសម្រាប់ Print (រួមទាំងប្រាក់រៀល) -->
+    <!-- 🖨️ Modal បង្ហាញវិក្កយបត្រសម្រាប់ Print -->
     <div class="modal fade" id="receiptModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow rounded-4">
@@ -361,7 +363,7 @@
                             <span><strong id="recReceived">$0.00</strong> (<span id="recReceivedRiel">0 រៀល</span>)</span>
                         </div>
                         <div class="d-flex justify-content-between text-success fw-bold">
-                            <span>ប្រាក់អាប់សង (Change):</span>
+                            <span>ប្រាក់អាប់សងវិញ (Change):</span>
                             <div class="text-end">
                                 <span id="recChange">$0.00</span><br>
                                 <span id="recChangeRiel" class="small">(0 រៀល)</span>
@@ -390,7 +392,6 @@
         let currentCategory = 'All';
         let currentUser = null;
         let finalCalculatedTotal = 0;
-        let selectedTable = 'តុទី ១ (Table 1)';
         let receiptModalObj = null;
 
         document.addEventListener('DOMContentLoaded', async () => {
@@ -410,9 +411,11 @@
         function generateTableCards() {
             const tableGrid = document.getElementById('tableGrid');
             tableGrid.innerHTML = '';
+            const currentTableVal = document.getElementById('tableInput').value;
+
             for (let i = 1; i <= 12; i++) {
                 const tableName = `តុទី ${i} (Table ${i})`;
-                const isSelected = tableName === selectedTable ? 'selected' : '';
+                const isSelected = tableName === currentTableVal ? 'selected' : '';
                 tableGrid.innerHTML += `
                     <div class="col-4">
                         <div class="table-card ${isSelected}" onclick="selectTable('${tableName}')">
@@ -425,8 +428,7 @@
         }
 
         function selectTable(tableName) {
-            selectedTable = tableName;
-            document.getElementById('selectedTableDisplay').innerText = tableName;
+            document.getElementById('tableInput').value = tableName;
             generateTableCards();
             const modalEl = document.getElementById('tableModal');
             const modal = bootstrap.Modal.getInstance(modalEl);
@@ -682,11 +684,12 @@
         }
 
         function showReceiptModal(orderId, paymentMethod, receivedUSD) {
+            const customTable = document.getElementById('tableInput').value || 'តុទូទៅ';
             document.getElementById('recInvoiceNo').innerText = `#${orderId}`;
             document.getElementById('recDate').innerText = new Date().toLocaleString();
             document.getElementById('recCashier').innerText = currentUser.full_name;
             document.getElementById('recPayment').innerText = paymentMethod;
-            document.getElementById('receiptTableBadge').innerText = selectedTable;
+            document.getElementById('receiptTableBadge').innerText = customTable;
 
             let subTotal = 0;
             const itemsBody = document.getElementById('recItemsBody');
