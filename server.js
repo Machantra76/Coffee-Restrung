@@ -168,6 +168,7 @@ app.delete('/api/products/:id', async (req, res) => {
         res.status(500).json({ success: false, error: 'Database error' });
     }
 });
+
 // 🗑️ API សម្រាប់លុបវិក្កយបត្រ និងបូកស្តុកសងវិញ
 app.delete('/api/orders/:id', async (req, res) => {
     const { id } = req.params;
@@ -176,7 +177,6 @@ app.delete('/api/orders/:id', async (req, res) => {
     try {
         await client.query('BEGIN');
 
-        // ១. ទាញយក items ក្នុងវិក្កយបត្រនោះ ដើម្បីយកមកបូកសងស្តុកវិញ
         const itemsResult = await client.query('SELECT product_id, quantity FROM order_items WHERE order_id = $1', [id]);
         
         for (let item of itemsResult.rows) {
@@ -188,10 +188,7 @@ app.delete('/api/orders/:id', async (req, res) => {
             }
         }
 
-        // ២. លុប order_items មុន (ព្រោះជាប់ Foreign Key)
         await client.query('DELETE FROM order_items WHERE order_id = $1', [id]);
-
-        // ៣. លុប orders ចេញ
         const deleteOrderRes = await client.query('DELETE FROM orders WHERE id = $1 RETURNING *', [id]);
 
         if (deleteOrderRes.rowCount === 0) {
@@ -288,12 +285,13 @@ app.get('/api/inventory', async (req, res) => {
         res.status(500).json({ success: false, error: 'Database error: ' + err.message });
     }
 });
-// 📦 API សម្រាប់ទាញយកមុខទំនិញលម្អិតតាម Order ID សម្រាប់ Print Invoice
+
+// 📦 API សម្រាប់ទាញយកមុខទំនិញលម្អិតតាម Order ID
 app.get('/api/orders/:id/items', async (req, res) => {
     const { id } = req.params;
     try {
         const query = `
-            SELECT p.name, oi.quantity, oi.price
+            SELECT p.id as product_id, p.name, oi.quantity, oi.price
             FROM order_items oi
             JOIN products p ON oi.product_id = p.id
             WHERE oi.order_id = $1
@@ -305,6 +303,7 @@ app.get('/api/orders/:id/items', async (req, res) => {
         res.status(500).json({ success: false, error: 'Database error' });
     }
 });
+
 // ================= ORDER APIs =================
 
 app.post('/api/orders', async (req, res) => {
@@ -362,7 +361,61 @@ app.post('/api/orders', async (req, res) => {
     }
 });
 
-// 🍳 API សម្រាប់ផ្ទះបាយ (ទាញយកតែ Order ណាដែលមានមុខម្ហូប Category = 'Food' ប៉ុណ្ណោះ)[cite: 5]
+// ✏️ API សម្រាប់កែប្រែមុខទំនិញ និងទឹកប្រាក់ក្នុងវិក្កយបត្រ
+app.put('/api/orders/:id/items', async (req, res) => {
+    const { id } = req.params;
+    const { items, total_amount } = req.body;
+    const client = await pool.connect();
+
+    try {
+        await client.query('BEGIN');
+
+        // ១. ទាញយក items ចាស់មកបូកសងស្តុកចូលវិញជាមុនសិន
+        const oldItemsRes = await client.query('SELECT product_id, quantity FROM order_items WHERE order_id = $1', [id]);
+        for (let oldItem of oldItemsRes.rows) {
+            if (oldItem.product_id) {
+                await client.query('UPDATE products SET stock_qty = stock_qty + $1 WHERE id = $2', [oldItem.quantity, oldItem.product_id]);
+            }
+        }
+
+        // ២. លុប items ចាស់ចេញពី order_items
+        await client.query('DELETE FROM order_items WHERE order_id = $1', [id]);
+
+        // ៣. បញ្ចូល items ថ្មី និងធ្វើការកាត់ស្តុកឡើងវិញ
+        if (items && items.length > 0) {
+            for (let newItem of items) {
+                const checkStock = await client.query('SELECT stock_qty, name FROM products WHERE id = $1', [newItem.id]);
+                if (checkStock.rows.length === 0) {
+                    throw new Error(`ទំនិញ ID ${newItem.id} មិនមានក្នុងប្រព័ន្ធទេ។`);
+                }
+                const currentStock = checkStock.rows[0].stock_qty || 0;
+                if (currentStock < newItem.quantity) {
+                    throw new Error(`ទំនិញ "${checkStock.rows[0].name}" ក្នុងស្តុកសល់តែ ${currentStock} ប៉ុណ្ណោះ មិនអាចកែប្រែចំនួន ${newItem.quantity} បានទេ!`);
+                }
+
+                await client.query(
+                    'INSERT INTO order_items (order_id, product_id, quantity, price) VALUES ($1, $2, $3, $4)',
+                    [id, newItem.id, newItem.quantity, newItem.price]
+                );
+                await client.query('UPDATE products SET stock_qty = stock_qty - $1 WHERE id = $2', [newItem.quantity, newItem.id]);
+            }
+        }
+
+        // ៤. អាប់ដេតទឹកប្រាក់សរុប (total_amount) ថ្មី
+        await client.query('UPDATE orders SET total_amount = $1 WHERE id = $2', [total_amount, id]);
+
+        await client.query('COMMIT');
+        res.json({ success: true, message: 'បានកែប្រែវិក្កយបត្រ និងស្តុកបានជោគជ័យ!' });
+    } catch (err) {
+        await client.query('ROLLBACK');
+        console.error('Update Order Items Error:', err);
+        res.status(400).json({ success: false, error: err.message });
+    } finally {
+        client.release();
+    }
+});
+
+// 🍳 API សម្រាប់ផ្ទះបាយ[cite: 5]
 app.get('/api/orders/kitchen', async (req, res) => {
     try {
         const orderQuery = `
