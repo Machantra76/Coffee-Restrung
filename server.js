@@ -326,7 +326,7 @@ app.get('/api/orders/:id/items', async (req, res) => {
 
 // ================= ORDER & QR ORDERING APIs =================
 
-// 1. API សម្រាប់ភ្ញៀវកុម្ម៉ង់ម្ហូប (Handle ទាំង Order ថ្មី និង Order បន្ថែមជាន់តុដែលមិនទាន់គិតលុយ)
+// 1. API សម្រាប់ភ្ញៀវកុម្ម៉ង់ម្ហូប (Handle ទាំង Order ថ្មី និង Order បន្ថែមជាន់តុដែលមិនទាន់គិតលុយ)[cite: 1, 2]
 app.post('/api/orders', async (req, res) => {
     const { cashier_id, table_no, total_amount, payment_method, items } = req.body;
     
@@ -511,7 +511,7 @@ app.post('/api/orders/:id/accept', async (req, res) => {
     }
 });
 
-// 💰 4. API សម្រាប់បង់ប្រាក់ និងបញ្ចប់ Order (Checkout) - ធ្វើឱ្យតុបាត់ពី Active Tables ស្វ័យប្រវត្តិ
+// 💰 4. API សម្រាប់បង់ប្រាក់ និងបញ្ចប់ Order (Checkout) - ធ្វើឱ្យតុបាត់ពី Active Tables ស្វ័យប្រវត្តិ[cite: 1, 2]
 app.post('/api/orders/:id/pay', async (req, res) => {
     const { id } = req.params;
     const { payment_method, total_amount } = req.body;
@@ -577,7 +577,7 @@ app.put('/api/orders/:id/items', async (req, res) => {
     }
 });
 
-// 🍳 API សម្រាប់ផ្ទះបាយ (បង្ហាញ Order ដែលមិនទាន់បង់ប្រាក់ ទោះបីផ្ទះបាយចុច Completed ក៏តុនៅស្ថិតក្នុង Active Tables ជានិច្ច)
+// 🍳 API សម្រាប់ផ្ទះបាយ (បង្ហាញ Order ដែលមិនទាន់បង់ប្រាក់ ទោះបីផ្ទះបាយចុច Completed ក៏តុនៅស្ថិតក្នុង Active Tables ជានិច្ច)[cite: 1, 2]
 app.get('/api/orders/kitchen', async (req, res) => {
     try {
         const orderQuery = `
