@@ -9,7 +9,572 @@
     <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;600&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Kantumruy Pro', sans-serif; background-color: #f1f5f9; }
+        .card { border: none; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>សកម្មភាពលក់ និងរបាយការណ៍ | Sales Activity & Reports Monitoring</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Kantumruy Pro', sans-serif; background-color: #f1f5f9; }
         .card { border: none; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        
+        /* 🖨️ Print Styles សម្រាប់ម៉ាស៊ីន POS (80mm) */
+        @media print {
+            body * { visibility: hidden; }
+            #printableInvoice, #printableInvoice * { visibility: visible; }
+            #printableInvoice { 
+                position: absolute; 
+                left: 0 !important; 
+                top: 0 !important; 
+                width: 80mm !important; 
+                margin: 0 !important;
+                padding: 2mm !important;
+            }
+            .no-print { display: none !important; }
+            @page {
+                size: 80mm auto;
+                margin: 0mm;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-dark px-4 py-3 shadow-sm">
+        <span class="navbar-brand fw-bold fs-4"><i class="fa-solid fa-chart-line me-2"></i> សកម្មភាពលក់ និងរបាយការណ៍ | Sales Activity</span>
+        <div>
+            <a href="pos.html" class="btn btn-outline-light btn-sm me-2"><i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ក្រោយ / Back</a>
+            <button class="btn btn-danger btn-sm px-3 fw-bold" onclick="logout()"><i class="fa-solid fa-right-from-bracket me-1"></i> ចាកចេញ</button>
+        </div>
+    </nav>
+
+    <div class="container py-5">
+        <!-- Admin Selector Form -->
+        <div class="row mb-4" id="adminSelectContainer" style="display: none;">
+            <div class="col-md-6">
+                <div class="card p-3 bg-white">
+                    <label class="form-label fw-bold text-primary"><i class="fa-solid fa-user-tie me-1"></i> ជ្រើសរើសអ្នកគិតលុយ (Select Cashier):</label>
+                    <select class="form-select" id="cashierSelect" onchange="onCashierChange()">
+                        <!-- Load dynamically -->
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Metric Summary Cards -->
+        <div class="row g-4 mb-4">
+            <div class="col-md-6">
+                <div class="card p-4 bg-primary text-white">
+                    <h5><i class="fa-solid fa-receipt me-2"></i> ចំនួនវិក្កយបត្រសរុប (Total Bills)</h5>
+                    <h2 id="totalBills" class="fw-bold display-6">0</h2>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card p-4 bg-success text-white">
+                    <h5><i class="fa-solid fa-dollar-sign me-2"></i> ទឹកប្រាក់លក់បានសរុប (Total Sales Amount)</h5>
+                    <h2 id="grandTotal" class="fw-bold display-6">$0.00</h2>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sales History Table Card -->
+        <div class="card p-4 bg-white">
+            <h4 class="fw-bold mb-3 text-dark"><i class="fa-solid fa-list-check me-2"></i> ប្រវត្តិវិក្កយបត្រ / Sales History</h4>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>លេខវិក្កយបត្រ (#Invoice)</th>
+                            <th>លេខតុ (Table)</th>
+                            <th>អ្នកគិតលុយ (Cashier)</th>
+                            <th>ទឹកប្រាក់ (Amount)</th>
+                            <th>ទម្រង់បង់ប្រាក់ (Payment)</th>
+                            <th>ស្ថានភាព (Status)</th>
+                            <th>កាលបរិច្ឆេទ / ម៉ោង (Date & Time)</th>
+                            <th class="text-end" style="width: 160px;">សកម្មភាព (Action)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="activityTableBody">
+                        <!-- Load dynamically -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🖨️ Modal បង្ហាញវិក្កយបត្រសម្រាប់ Print (ទំហំ 80mm) -->
+    <div class="modal fade" id="invoiceModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow rounded-4">
+                <div class="modal-body p-4" id="printableInvoice">
+                    <div class="text-center mb-3">
+                        <h4 class="fw-bold mb-1">☕ COFFEE & RESTAURANT</h4>
+                        <p class="text-muted small mb-1">វិក្កយបត្រលក់ប្រាក់ / POS INVOICE</p>
+                        <span id="receiptTableBadge" class="badge bg-dark">តុទូទៅ</span>
+                        <hr class="my-2">
+                    </div>
+                    <div class="d-flex justify-content-between small mb-2">
+                        <span>វិក្កយបត្រ #: <strong id="recInvoiceNo">#00</strong></span>
+                        <span id="recDate"></span>
+                    </div>
+                    <div class="d-flex justify-content-between small mb-3">
+                        <span>អ្នកគិតលុយ: <strong id="recCashier"></strong></span>
+                        <span>ទម្រង់បង់: <strong id="recPayment"></strong></span>
+                    </div>
+                    <div class="table-responsive mb-3">
+                        <table class="table table-sm align-middle">
+                            <thead class="table-light">
+                                <tr class="small">
+                                    <th>ទំនិញ</th>
+                                    <th class="text-center">ចំនួន</th>
+                                    <th class="text-end">តម្លៃ ($)</th>
+                                    <th class="text-end">សរុប</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recItemsBody">
+                                <!-- Items -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="border-top pt-2 small">
+                        <div class="d-flex justify-content-between">
+                            <span>ទឹកប្រាក់រួម (Subtotal):</span>
+                            <span><strong id="recSubtotal">$0.00</strong> (<span id="recSubtotalRiel">0 រៀល</span>)</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span>បញ្ចុះតម្លៃ (Discount):</span>
+                            <span id="recDiscount">$0.00</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span>អាករ VAT (10%):</span>
+                            <span id="recVat">$0.00</span>
+                        </div>
+                        <div class="d-flex justify-content-between fw-bold fs-6 border-top mt-2 pt-2">
+                            <span>សរុបទាំងអស់ (Grand Total):</span>
+                            <div class="text-end">
+                                <span class="text-success" id="recGrandTotal">$0.00</span><br>
+                                <span class="text-dark small" id="recGrandTotalRiel">0 រៀល</span>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between text-muted mt-1">
+                            <span>ប្រាក់ទទួលបាន (Received):</span>
+                            <span><strong id="recReceived">$0.00</strong> (<span id="recReceivedRiel">0 រៀល</span>)</span>
+                        </div>
+                        <div class="d-flex justify-content-between text-success fw-bold">
+                            <span>ប្រាក់អាប់សង (Change):</span>
+                            <div class="text-end">
+                                <span id="recChange">$0.00</span><br>
+                                <span id="recChangeRiel" class="small">(0 រៀល)</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-center mt-4 text-muted small">
+                        <p class="mb-1">🙏 សូមអរគុណ និងជម្រាបលា!</p>
+                        <p style="font-size: 0.75rem;">Thank you! Please come again.</p>
+                    </div>
+                </div>
+                <div class="modal-footer no-print">
+                    <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">បិទ (Close)</button>
+                    <button type="button" class="btn btn-primary fw-bold px-4" onclick="window.print()">
+                        <i class="fa-solid fa-print me-1"></i> បោះពុម្ព (Print Invoice)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🛒 Modal សម្រាប់កែប្រែមុខទំនិញក្នុងវិក្កយបត្រ (Edit Order Items) -->
+    <div class="modal fade" id="editOrderItemsModal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content border-0 shadow rounded-4">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title fw-bold"><i class="fa-solid fa-cart-flatbed me-2"></i> កែប្រែមុខទំនិញក្នុងវិក្កយបត្រ (<span id="editInvTitle">#00</span>)</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="currentEditOrderId">
+                    <div class="row g-3">
+                        <div class="col-md-7">
+                            <h6 class="fw-bold text-secondary">ទំនិញក្នុងវិក្កយបត្រ:</h6>
+                            <div class="table-responsive border rounded-3 p-2 bg-light" style="max-height: 300px; overflow-y: auto;">
+                                <table class="table table-sm align-middle mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>ទំនិញ</th>
+                                            <th class="text-center">ចំនួន</th>
+                                            <th class="text-end">តម្លៃ ($)</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="editCartTableBody">
+                                        <!-- Load items -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="d-flex justify-content-between fw-bold mt-2">
+                                <span>ទឹកប្រាក់សរុបថ្មី:</span>
+                                <span class="text-success fs-5" id="editGrandTotalDisplay">$0.00</span>
+                            </div>
+                        </div>
+
+                        <div class="col-md-5 border-start">
+                            <h6 class="fw-bold text-secondary">បន្ថែមទំនិញថ្មី:</h6>
+                            <div style="max-height: 300px; overflow-y: auto;" id="availableProductsList" class="d-flex flex-column gap-2">
+                                <!-- Load products -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="button" class="btn btn-primary fw-bold px-4" onclick="saveEditedOrder()">
+                        <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកការកែប្រែ
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentUser = null;
+        let invoiceModalObj = null;
+        let editOrderModalObj = null;
+        let allOrdersData = [];
+        let editCart = [];
+        let allProductsCatalog = [];
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
+            if (!currentUser) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            invoiceModalObj = new bootstrap.Modal(document.getElementById('invoiceModal'));
+            editOrderModalObj = new bootstrap.Modal(document.getElementById('editOrderItemsModal'));
+
+            if (currentUser.role === 'Admin') {
+                document.getElementById('adminSelectContainer').style.display = 'flex';
+                await loadCashiersList();
+            } else {
+                loadCashierActivity(currentUser.id);
+            }
+        });
+
+        async function loadCashiersList() {
+            try {
+                const res = await fetch('/api/users/cashiers-list');
+                const result = await res.json();
+                if (result.success && result.data && result.data.length > 0) {
+                    const select = document.getElementById('cashierSelect');
+                    select.innerHTML = '<option value="all">-- បង្ហាញ Cashiers ទាំងអស់ (All) --</option>';
+                    result.data.forEach(c => {
+                        select.innerHTML += `<option value="${c.id}">${c.full_name} (${c.username})</option>`;
+                    });
+                    loadCashierActivity('all');
+                } else {
+                    loadCashierActivity('all');
+                }
+            } catch (err) {
+                console.error('Error loading cashiers list:', err);
+                loadCashierActivity('all');
+            }
+        }
+
+        function onCashierChange() {
+            const cashierId = document.getElementById('cashierSelect').value;
+            loadCashierActivity(cashierId);
+        }
+
+        async function loadCashierActivity(cashierId) {
+            try {
+                let url = '/api/orders/history';
+                if (cashierId && cashierId !== 'all') {
+                    url = `/api/orders/cashier-activity/${cashierId}`;
+                }
+
+                const res = await fetch(url);
+                const result = await res.json();
+
+                if (result.success) {
+                    allOrdersData = result.data || result.orders || [];
+                    const totalBills = result.total_bills !== undefined ? result.total_bills : allOrdersData.length;
+                    
+                    let grandTotal = 0;
+                    if (result.grand_total !== undefined) {
+                        grandTotal = Number(result.grand_total);
+                    } else {
+                        allOrdersData.forEach(o => grandTotal += Number(o.total_amount || 0));
+                    }
+
+                    document.getElementById('totalBills').innerText = totalBills;
+                    document.getElementById('grandTotal').innerText = `$${grandTotal.toFixed(2)}`;
+
+                    const tbody = document.getElementById('activityTableBody');
+                    tbody.innerHTML = '';
+
+                    if (allOrdersData.length === 0) {
+                        tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-3">មិនទាន់មានកំណត់ត្រាការលក់ទេ។</td></tr>`;
+                        return;
+                    }
+
+                    allOrdersData.forEach((o) => {
+                        const invNo = o.order_number || `#${o.id}`;
+                        const tableNo = o.table_no || 'តុទូទៅ';
+                        const status = o.status || 'Completed';
+                        const cashier = o.cashier_name || 'បុគ្គលិក';
+                        tbody.innerHTML += `
+                            <tr>
+                                <td class="fw-bold">${invNo}</td>
+                                <td><span class="badge bg-info text-dark">${tableNo}</span></td>
+                                <td class="small">${cashier}</td>
+                                <td class="fw-bold text-success">$${Number(o.total_amount).toFixed(2)}</td>
+                                <td><span class="badge bg-secondary">${o.payment_method || 'Cash'}</span></td>
+                                <td><span class="badge bg-success">${status}</span></td>
+                                <td>${new Date(o.created_at).toLocaleString()}</td>
+                                <td class="text-end">
+                                    <div class="d-flex justify-content-end gap-1 flex-nowrap">
+                                        <button class="btn btn-sm btn-outline-primary px-2 py-1 fw-bold" onclick="printInvoice(${o.id})" title="បោះពុម្ពវិក្កយបត្រ" style="font-size: 0.85rem;">
+                                            <i class="fa-solid fa-print"></i> Print
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-warning px-2 py-1 fw-bold" onclick="openEditItemsModal(${o.id})" title="កែប្រែមុខទំនិញ" style="font-size: 0.85rem;">
+                                            <i class="fa-solid fa-pen-to-square"></i> កែ
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                }
+            }
+            catch (err) {
+                console.error('Error loading cashier activity:', err);
+            }
+        }
+
+        async function printInvoice(orderId) {
+            const order = allOrdersData.find(o => o.id === orderId);
+            if (!order) return;
+
+            const exchangeRate = 4100;
+            const grandTotalUSD = Number(order.total_amount || 0);
+            const grandTotalRiel = Math.round(grandTotalUSD * exchangeRate);
+
+            document.getElementById('recInvoiceNo').innerText = order.order_number || `#${order.id}`;
+            document.getElementById('receiptTableBadge').innerText = order.table_no || 'តុទូទៅ';
+            document.getElementById('recDate').innerText = new Date(order.created_at).toLocaleString();
+            document.getElementById('recCashier').innerText = order.cashier_name || currentUser.full_name;
+            document.getElementById('recPayment').innerText = order.payment_method || 'Cash';
+            
+            document.getElementById('recGrandTotal').innerText = `$${grandTotalUSD.toFixed(2)}`;
+            document.getElementById('recGrandTotalRiel').innerText = `${grandTotalRiel.toLocaleString()} រៀល`;
+
+            document.getElementById('recSubtotal').innerText = `$${grandTotalUSD.toFixed(2)}`;
+            document.getElementById('recSubtotalRiel').innerText = `${grandTotalRiel.toLocaleString()} រៀល`;
+            document.getElementById('recDiscount').innerText = `-$0.00 (0%)`;
+            document.getElementById('recVat').innerText = `$0.00`;
+            document.getElementById('recReceived').innerText = `$${grandTotalUSD.toFixed(2)}`;
+            document.getElementById('recReceivedRiel').innerText = `${grandTotalRiel.toLocaleString()} រៀល`;
+            document.getElementById('recChange').innerText = `$0.00`;
+            document.getElementById('recChangeRiel').innerText = `(0 រៀល)`;
+
+            const itemsBody = document.getElementById('recItemsBody');
+            itemsBody.innerHTML = `<tr><td colspan="4" class="text-center">កំពុងទាញយកទិន្នន័យ...</td></tr>`;
+            invoiceModalObj.show();
+
+            try {
+                const res = await fetch(`/api/orders/${orderId}/items`);
+                const result = await res.json();
+                if (result.success && result.items && result.items.length > 0) {
+                    itemsBody.innerHTML = '';
+                    let subTotal = 0;
+                    result.items.forEach(i => {
+                        const itemPrice = Number(i.price || 0);
+                        const itemTotal = itemPrice * i.quantity;
+                        subTotal += itemTotal;
+                        itemsBody.innerHTML += `
+                            <tr>
+                                <td>${i.name}</td>
+                                <td class="text-center">${i.quantity}</td>
+                                <td class="text-end">$${itemPrice.toFixed(2)}</td>
+                                <td class="text-end">$${itemTotal.toFixed(2)}</td>
+                            </tr>
+                        `;
+                    });
+
+                    let subTotalRiel = Math.round(subTotal * exchangeRate);
+                    document.getElementById('recSubtotal').innerText = `$${subTotal.toFixed(2)}`;
+                    document.getElementById('recSubtotalRiel').innerText = `${subTotalRiel.toLocaleString()} រៀល`;
+                } else {
+                    itemsBody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">មិនមានទិន្នន័យមុខទំនិញលម្អិត។</td></tr>`;
+                }
+            } catch (err) {
+                console.error('Error loading items:', err);
+                itemsBody.innerHTML = `<tr><td colspan="4" class="text-center text-danger">បរាជ័យក្នុងការទាញយកទិន្នន័យ។</td></tr>`;
+            }
+        }
+
+        async function openEditItemsModal(orderId) {
+            const order = allOrdersData.find(o => o.id === orderId);
+            if (!order) return;
+
+            document.getElementById('currentEditOrderId').value = order.id;
+            document.getElementById('editInvTitle').innerText = order.order_number || `#${order.id}`;
+
+            try {
+                const prodRes = await fetch('/api/products');
+                const prodResult = await prodRes.json();
+                if (prodResult.success) {
+                    allProductsCatalog = prodResult.data;
+                    renderAvailableProducts();
+                }
+            } catch (err) {
+                console.error('Error loading products catalog:', err);
+            }
+
+            try {
+                const res = await fetch(`/api/orders/${orderId}/items`);
+                const result = await res.json();
+                if (result.success && result.items) {
+                    editCart = result.items.map(i => ({
+                        id: i.product_id || i.id,
+                        name: i.name,
+                        price: Number(i.price),
+                        quantity: i.quantity
+                    }));
+                    renderEditCart();
+                }
+            } catch (err) {
+                console.error('Error loading order items for edit:', err);
+            }
+
+            editOrderModalObj.show();
+        }
+
+        function renderAvailableProducts() {
+            const container = document.getElementById('availableProductsList');
+            container.innerHTML = '';
+            allProductsCatalog.forEach(p => {
+                container.innerHTML += `
+                    <div class="d-flex justify-content-between align-items-center bg-white border p-2 rounded shadow-sm">
+                        <div>
+                            <span class="fw-bold small d-block">${p.name}</span>
+                            <span class="text-success small">$${Number(p.price).toFixed(2)}</span>
+                        </div>
+                        <button class="btn btn-sm btn-outline-primary py-0 px-2" onclick="addEditItem(${p.id})">
+                            <i class="fa-solid fa-plus"></i> បន្ថែម
+                        </button>
+                    </div>
+                `;
+            });
+        }
+
+        function addEditItem(productId) {
+            const product = allProductsCatalog.find(p => p.id === productId);
+            if (!product) return;
+
+            const existing = editCart.find(item => item.id === productId);
+            if (existing) {
+                existing.quantity += 1;
+            } else {
+                editCart.push({
+                    id: product.id,
+                    name: product.name,
+                    price: Number(product.price),
+                    quantity: 1
+                });
+            }
+            renderEditCart();
+        }
+
+        function updateEditQty(index, change) {
+            editCart[index].quantity += change;
+            if (editCart[index].quantity <= 0) {
+                editCart.splice(index, 1);
+            }
+            renderEditCart();
+        }
+
+        function renderEditCart() {
+            const tbody = document.getElementById('editCartTableBody');
+            tbody.innerHTML = '';
+            let grandTotal = 0;
+
+            if (editCart.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted small">គ្មានទំនិញ</td></tr>`;
+                document.getElementById('editGrandTotalDisplay').innerText = `$0.00`;
+                return;
+            }
+
+            editCart.forEach((item, index) => {
+                let itemTotal = item.price * item.quantity;
+                grandTotal += itemTotal;
+                tbody.innerHTML += `
+                    <tr>
+                        <td class="small fw-bold">${item.name}</td>
+                        <td class="text-center" style="white-space: nowrap;">
+                            <button class="btn btn-sm btn-outline-secondary py-0 px-1" onclick="updateEditQty(${index}, -1)">-</button>
+                            <span class="mx-1 small">${item.quantity}</span>
+                            <button class="btn btn-sm btn-outline-secondary py-0 px-1" onclick="updateEditQty(${index}, 1)">+</button>
+                        </td>
+                        <td class="text-end small">$${itemTotal.toFixed(2)}</td>
+                        <td class="text-end">
+                            <button class="btn btn-sm text-danger p-0" onclick="editCart.splice(${index}, 1); renderEditCart();"><i class="fa-solid fa-trash"></i></button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            document.getElementById('editGrandTotalDisplay').innerText = `$${grandTotal.toFixed(2)}`;
+        }
+
+        async function saveEditedOrder() {
+            const orderId = document.getElementById('currentEditOrderId').value;
+            let grandTotal = editCart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+            if (editCart.length === 0) {
+                alert('សូមបញ្ចូលទំនិញយ៉ាងហោចណាស់មួយក្នុងវិក្កយបត្រ!');
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/orders/${orderId}/items`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        items: editCart,
+                        total_amount: grandTotal
+                    })
+                });
+                const result = await res.json();
+
+                if (res.ok && result.success) {
+                    alert('✅ បានកែប្រែមុខទំនិញក្នុងវិក្កយបត្រដោយជោគជ័យ!');
+                    editOrderModalObj.hide();
+                    const cashierId = document.getElementById('cashierSelect') ? document.getElementById('cashierSelect').value : 'all';
+                    loadCashierActivity(cashierId);
+                } else {
+                    alert('❌ បរាជ័យ៖ ' + (result.error || 'Server error'));
+                }
+            } catch (err) {
+                console.error('Save edited order error:', err);
+                alert('មានបញ្ហាក្នុងការតភ្ជាប់ទៅកាន់ Server!');
+            }
+        }
+
+        function logout() {
+            sessionStorage.removeItem('currentUser');
+            sessionStorage.removeItem('currentShift');
+            window.location.href = 'login.html';
+        }
+    </script>
+</body>
+</html>
+
         
         /* 🖨️ Print Styles សម្រាប់ម៉ាស៊ីន POS (80mm) */
         @media print {
