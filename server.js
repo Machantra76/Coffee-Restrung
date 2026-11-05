@@ -289,7 +289,7 @@ app.get('/api/inventory', async (req, res) => {
     }
 });
 
-// 🪑 API សម្រាប់ទាញយកតុដែលមាន Order កំពុងសកម្ម (Active Tables) ផ្អែកលើការមិនទាន់បង់ប្រាក់
+// 🪑 API សម្រាប់ទាញយកតុដែលមាន Order កំពុងសកម្ម ( Active Tables ) ផ្អែកលើការមិនទាន់បង់ប្រាក់
 app.get('/api/orders/active-tables', async (req, res) => {
     try {
         const query = `
@@ -326,7 +326,7 @@ app.get('/api/orders/:id/items', async (req, res) => {
 
 // ================= ORDER & QR ORDERING APIs =================
 
-// 1. API សម្រាប់ភ្ញៀវកុម្ម៉ង់ម្ហូប
+// 1. API សម្រាប់ភ្ញៀវកុម្ម៉ង់ម្ហូប (Handle ទាំង Order ថ្មី និង Order បន្ថែមជាន់តុដែលមិនទាន់គិតលុយ)
 app.post('/api/orders', async (req, res) => {
     const { cashier_id, table_no, total_amount, payment_method, items } = req.body;
     
@@ -464,7 +464,7 @@ app.post('/api/orders', async (req, res) => {
     }
 });
 
-// 2. API សម្រាប់ Sales Dashboard ឆែកមើល Order ថ្មីៗที่รង់ចាំการรับ (status = 'Customer_Pending')
+// 2. API សម្រាប់ Sales Dashboard ឆែកមើល Order ថ្មីៗដែលរង់ចាំការទទួល (status = 'Customer_Pending')
 app.get('/api/orders/customer-pending', async (req, res) => {
     try {
         const orderQuery = `
@@ -511,7 +511,7 @@ app.post('/api/orders/:id/accept', async (req, res) => {
     }
 });
 
-// 💰 4. API សម្រាប់បង់ប្រាក់ និងបញ្ចប់ Order (Checkout)
+// 💰 4. API សម្រាប់បង់ប្រាក់ និងបញ្ចប់ Order (Checkout) - ធ្វើឱ្យតុបាត់ពី Active Tables ស្វ័យប្រវត្តិ
 app.post('/api/orders/:id/pay', async (req, res) => {
     const { id } = req.params;
     const { payment_method, total_amount } = req.body;
@@ -577,7 +577,7 @@ app.put('/api/orders/:id/items', async (req, res) => {
     }
 });
 
-// 🍳 API សម្រាប់ផ្ទះបាយ
+// 🍳 API សម្រាប់ផ្ទះបាយ (បង្ហាញ Order ដែលមិនទាន់បង់ប្រាក់ ទោះបីផ្ទះបាយចុច Completed ក៏តុនៅស្ថិតក្នុង Active Tables ជានិច្ច)
 app.get('/api/orders/kitchen', async (req, res) => {
     try {
         const orderQuery = `
@@ -585,7 +585,8 @@ app.get('/api/orders/kitchen', async (req, res) => {
             FROM orders o
             LEFT JOIN users u ON o.cashier_id = u.id
             WHERE o.status != 'Customer_Pending'
-              AND (o.status IN ('Pending', 'Preparing') OR o.status IS NULL)
+              AND (o.status IN ('Pending', 'Preparing', 'Ready') OR o.status IS NULL)
+              AND (o.payment_method IS NULL OR o.payment_method = '')
               AND EXISTS (
                   SELECT 1 FROM order_items oi
                   JOIN products p ON oi.product_id = p.id
