@@ -7,7 +7,7 @@ const { Pool } = require('pg');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// តភ្ជាប់ជាមួយ Cloud Database (Neon PostgreSQL)[cite: 11]
+// តភ្ជាប់ជាមួយ Cloud Database (Neon PostgreSQL)
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: { rejectUnauthorized: false }
@@ -18,7 +18,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// មុខងារបង្កើត និងត្រួតពិនិត្យតារាង Database[cite: 11]
+// មុខងារបង្កើត និងត្រួតពិនិត្យតារាង Database
 async function initDB() {
     try {
         await pool.query(`
@@ -73,7 +73,7 @@ async function initDB() {
             );
         `);
 
-        // 🛠️ បន្ថែមស្វ័យប្រវត្តិ (ALTER TABLE) ករណីតារាងមានស្រាប់តែខ្វះ Column ថ្មី[cite: 11]
+        // 🛠️ បន្ថែមស្វ័យប្រវត្តិ (ALTER TABLE) ករណីតារាងមានស្រាប់តែខ្វះ Column ថ្មី
         await pool.query(`
             ALTER TABLE products ADD COLUMN IF NOT EXISTS cost_price NUMERIC(10, 2) DEFAULT 0;
             ALTER TABLE products ADD COLUMN IF NOT EXISTS unit VARCHAR(50) DEFAULT 'ដប';
@@ -89,11 +89,11 @@ async function initDB() {
 
 initDB();
 
-// User Routes[cite: 11]
+// User Routes
 const userRoutes = require('./routes/users');
 app.use('/api/users', userRoutes);
 
-// ================= PRODUCT APIs =================[cite: 11]
+// ================= PRODUCT APIs =================
 
 app.get('/api/products', async (req, res) => {
     try {
@@ -172,7 +172,7 @@ app.delete('/api/products/:id', async (req, res) => {
     }
 });
 
-// 🗑️ API សម្រាប់លុបវិក្កយបត្រ និងបូកស្តុកសងវិញ[cite: 11]
+// 🗑️ API សម្រាប់លុបវិក្កយបត្រ និងបូកស្តុកសងវិញ
 app.delete('/api/orders/:id', async (req, res) => {
     const { id } = req.params;
     const client = await pool.connect();
@@ -209,7 +209,7 @@ app.delete('/api/orders/:id', async (req, res) => {
     }
 });
 
-// ================= INVENTORY / STOCK APIs =================[cite: 11]
+// ================= INVENTORY / STOCK APIs =================
 
 app.put('/api/inventory/:id/stock', async (req, res) => {
     const { id } = req.params;
@@ -288,14 +288,14 @@ app.get('/api/inventory', async (req, res) => {
         res.status(500).json({ success: false, error: 'Database error: ' + err.message });
     }
 });
-// 🪑 API សម្រាប់ទាញយកតុដែលមាន Order កំពុងសកម្ម (Active Tables) ដែលមិនទាន់ Completed 
+
+// 🪑 API សម្រាប់ទាញយកតុដែលមាន Order កំពុងសកម្ម (Active Tables) ដែលមិនទាន់បង់ប្រាក់
 app.get('/api/orders/active-tables', async (req, res) => {
     try {
         const query = `
             SELECT DISTINCT id, table_no, total_amount, status, created_at
             FROM orders
-            WHERE status IN ('Customer_Pending', 'Pending', 'Preparing', 'Completed')
-              AND payment_method IS NULL OR status != 'Completed'
+            WHERE payment_method IS NULL OR payment_method = ''
             ORDER BY id ASC
         `;
         const result = await pool.query(query);
@@ -305,7 +305,8 @@ app.get('/api/orders/active-tables', async (req, res) => {
         res.status(500).json({ success: false, error: 'Database error' });
     }
 });
-// 📦 API សម្រាប់ទាញយកមុខទំនិញលម្អិតតាម Order ID[cite: 11]
+
+// 📦 API សម្រាប់ទាញយកមុខទំនិញលម្អិតតាម Order ID
 app.get('/api/orders/:id/items', async (req, res) => {
     const { id } = req.params;
     try {
@@ -323,7 +324,7 @@ app.get('/api/orders/:id/items', async (req, res) => {
     }
 });
 
-// ================= ORDER & QR ORDERING APIs =================[cite: 11]
+// ================= ORDER & QR ORDERING APIs =================
 
 // 1. API សម្រាប់ភ្ញៀវកុម្ម៉ង់ម្ហូប
 app.post('/api/orders', async (req, res) => {
@@ -337,7 +338,8 @@ app.post('/api/orders', async (req, res) => {
         if (table_no && table_no !== 'Walk-in') {
             const checkOrderQuery = `
                 SELECT id, total_amount FROM orders 
-                WHERE table_no = $1 AND status IN ('Customer_Pending', 'Pending', 'Preparing')
+                WHERE table_no = $1 AND status IN ('Customer_Pending', 'Pending', 'Preparing', 'Completed') 
+                AND (payment_method IS NULL OR payment_method = '')
                 ORDER BY id DESC LIMIT 1
             `;
             const checkRes = await client.query(checkOrderQuery, [table_no]);
@@ -415,7 +417,7 @@ app.post('/api/orders', async (req, res) => {
 
             const orderQuery = `
                 INSERT INTO orders (cashier_id, table_no, total_amount, payment_method, status, created_at) 
-                VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP) 
+                VALUES ($1, $2, $3, NULL, $5, CURRENT_TIMESTAMP) 
                 RETURNING id, total_amount, created_at, status
             `;
             const orderResult = await client.query(orderQuery, [cashier_id || null, table_no || 'Walk-in', addedAmount, payment_method || 'Cash', initialStatus]);
@@ -457,7 +459,7 @@ app.post('/api/orders', async (req, res) => {
     }
 });
 
-// 2. API សម្រាប់ Sales Dashboard ឆែកមើល Order ថ្មីៗដែលរង់ចាំการรับ (status = 'Customer_Pending')[cite: 11]
+// 2. API សម្រាប់ Sales Dashboard ឆែកមើល Order ថ្មីៗដែលរង់ចាំการรับ (status = 'Customer_Pending')
 app.get('/api/orders/customer-pending', async (req, res) => {
     try {
         const orderQuery = `
@@ -486,7 +488,7 @@ app.get('/api/orders/customer-pending', async (req, res) => {
     }
 });
 
-// 3. API សម្រាប់ Sales ចុច Accept (ប្ដូរ status ពី 'Customer_Pending' ទៅ 'Pending')[cite: 11]
+// 3. API សម្រាប់ Sales ចុច Accept (ប្ដូរ status ពី 'Customer_Pending' ទៅ 'Pending')
 app.post('/api/orders/:id/accept', async (req, res) => {
     const { id } = req.params;
     try {
@@ -504,7 +506,7 @@ app.post('/api/orders/:id/accept', async (req, res) => {
     }
 });
 
-// 💰 4. API សម្រាប់បង់ប្រាក់ និងបញ្ចប់ Order មកពី QR ដែលមានស្រាប់ (បន្ថែមใหม่ตรงนี้)
+// 💰 4. API សម្រាប់បង់ប្រាក់ និងបញ្ចប់ Order មកពី QR ដែលមានស្រាប់
 app.post('/api/orders/:id/pay', async (req, res) => {
     const { id } = req.params;
     const { payment_method, total_amount } = req.body;
@@ -520,7 +522,7 @@ app.post('/api/orders/:id/pay', async (req, res) => {
     }
 });
 
-// ✏️ API សម្រាប់កែប្រែមុខទំនិញ និងទឹកប្រាក់ក្នុងវិក្កយបត្រ[cite: 11]
+// ✏️ API សម្រាប់កែប្រែមុខទំនិញ និងទឹកប្រាក់ក្នុងវិក្កយបត្រ
 app.put('/api/orders/:id/items', async (req, res) => {
     const { id } = req.params;
     const { items, total_amount } = req.body;
@@ -570,7 +572,7 @@ app.put('/api/orders/:id/items', async (req, res) => {
     }
 });
 
-// 🍳 API សម្រាប់ផ្ទះបាយ[cite: 11]
+// 🍳 API សម្រាប់ផ្ទះបាយ
 app.get('/api/orders/kitchen', async (req, res) => {
     try {
         const orderQuery = `
@@ -734,7 +736,7 @@ app.get('/api/orders/cashier-activity/:cashierId', async (req, res) => {
     }
 });
 
-// Root Route[cite: 11]
+// Root Route
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
