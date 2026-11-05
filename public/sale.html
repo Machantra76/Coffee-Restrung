@@ -486,6 +486,17 @@
             pendingOrderModalObj = new bootstrap.Modal(document.getElementById('pendingOrderModal'));
             tableModalObj = new bootstrap.Modal(document.getElementById('tableModal'));
 
+            // 🔍 ទាញយកលេខតុពី URL parameters (ຖ້າມີ)
+            const urlParams = new URLSearchParams(window.location.search);
+            const tableFromUrl = urlParams.get('table');
+            if (tableFromUrl) {
+                const decodedTable = decodeURIComponent(tableFromUrl);
+                document.getElementById('tableInput').value = decodedTable;
+                if (!customTables.includes(decodedTable)) {
+                    customTables.push(decodedTable);
+                }
+            }
+
             renderTableCards();
             await loadProducts();
             generateDynamicQR();
@@ -751,7 +762,7 @@
                 }
             } catch (err) {
                 console.error('Error loading active tables:', err);
-                activeGrid.innerHTML = `<div class="col-12 text-danger small">មានបញ្ហាក្នុងการទាញយកទិន្នន័យតុ។</div>`;
+                activeGrid.innerHTML = `<div class="col-12 text-danger small">មានបញ្ហាក្នុងការទាញយកទិន្នន័យតុ។</div>`;
             }
         }
 
@@ -1049,7 +1060,6 @@
                 let res, result;
 
                 if (acceptedOrderId) {
-                    // 📌 อัปเดตรายการสินค้าที่เพิ่มใหม่ (Manual Add) เข้า Order เดิม និងបង់ប្រាក់
                     await fetch(`/api/orders/${acceptedOrderId}/items`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
@@ -1073,7 +1083,6 @@
                     });
                     result = await res.json();
                 } else {
-                    // 📌 ករណីលក់ថ្មីធម្មតា (Walk-in)
                     const orderData = {
                         cashier_id: currentUser.id,
                         table_no: tableNo,
