@@ -173,13 +173,12 @@
             <div class="col-12 col-md-5 col-lg-4">
                 <div class="card shadow-sm border-0 rounded-4 p-3 cart-container bg-white d-flex flex-column justify-content-between">
                     <div>
-                        <!-- 🪑 បញ្ចូលលេខតុដោយដៃ (Table Input) -->
+                        <!-- 🪑 បញ្ចូលលេខតុដោយដៃ និងប៊ូតុងរើសតុ -->
                         <div class="mb-2 d-flex justify-content-between align-items-center bg-light p-2 rounded-3 border">
                             <label for="tableInput" class="fw-bold small text-secondary mb-0"><i class="fa-solid fa-chair me-1"></i> លេខតុ / Table:</label>
                             <div class="d-flex align-items-center gap-1">
-                                <!-- បន្ថែម oninput ដើម្បអាប់ដេតកាតតុភ្លាមៗពេលវាយអក្សរ -->
-                                <input type="text" id="tableInput" class="form-control form-control-sm fw-bold text-primary text-center" value="តុទី ១ (Table 1)" style="width: 130px;" oninput="generateTableCards()">
-                                <button class="btn btn-sm btn-outline-primary py-0 px-2" data-bs-toggle="modal" data-bs-target="#tableModal" title="រើសតុស្រាប់"><i class="fa-solid fa-list"></i></button>
+                                <input type="text" id="tableInput" class="form-control form-control-sm fw-bold text-primary text-center" value="តុទី ១ (Table 1)" style="width: 130px;" oninput="renderTableCards()">
+                                <button class="btn btn-sm btn-outline-primary py-0 px-2" data-bs-toggle="modal" data-bs-target="#tableModal" title="ជ្រើសរើសតុ"><i class="fa-solid fa-list"></i></button>
                             </div>
                         </div>
 
@@ -266,17 +265,24 @@
         </div>
     </div>
 
-    <!-- 🪑 Modal រើសលេខតុស្រាប់ -->
+    <!-- 🪑 Modal រើសលេខតុ និងបង្កើតកាតតុថ្មី -->
     <div class="modal fade" id="tableModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow rounded-4">
                 <div class="modal-header bg-dark text-white">
-                    <h5 class="modal-title fw-bold"><i class="fa-solid fa-chair me-2"></i> ជ្រើសរើសលេខតុ (Select Table)</h5>
+                    <h5 class="modal-title fw-bold"><i class="fa-solid fa-chair me-2"></i> ជ្រើសរើស ឬបង្កើតលេខតុថ្មី</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="row g-2" id="tableGrid">
-                        <!-- Render តុ ១ ដល់ ១២ ស្វ័យប្រវត្តិ -->
+                    <!-- ប្រអប់សម្រាប់បន្ថែមតុថ្មី -->
+                    <div class="input-group mb-3">
+                        <input type="text" id="newTableNameInput" class="form-control" placeholder="វាយឈ្មោះតុថ្មី (ឧ. តុ VIP 1)">
+                        <button class="btn btn-primary fw-bold" type="button" onclick="addNewTableCard()"><i class="fa-solid fa-plus me-1"></i> បន្ថែមតុថ្មី</button>
+                    </div>
+                    <hr>
+                    <!-- បញ្ជីកាតតុ -->
+                    <div class="row g-2" id="tableGrid" style="max-height: 250px; overflow-y: auto;">
+                        <!-- Render តុស្វ័យប្រវត្តិ -->
                     </div>
                 </div>
             </div>
@@ -395,6 +401,9 @@
         let finalCalculatedTotal = 0;
         let receiptModalObj = null;
 
+        // បញ្ជីតុចាប់ផ្តើម (អាចបន្ថែមសេរី)
+        let customTables = ['តុទី ១ (Table 1)', 'តុទី ២ (Table 2)', 'តុទី ៣ (Table 3)', 'តុទី ៤ (Table 4)', 'តុទី ៥ (Table 5)', 'តុទី ៦ (Table 6)', 'តុទី ៧ (Table 7)', 'តុទី ៨ (Table 8)'];
+
         document.addEventListener('DOMContentLoaded', async () => {
             currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
             if (!currentUser) {
@@ -405,33 +414,48 @@
             document.getElementById('cashierDisplay').innerText = `Cashier: ${currentUser.full_name}`;
             receiptModalObj = new bootstrap.Modal(document.getElementById('receiptModal'));
 
-            generateTableCards();
+            renderTableCards();
             await loadProducts();
         });
 
-        function generateTableCards() {
+        function renderTableCards() {
             const tableGrid = document.getElementById('tableGrid');
             tableGrid.innerHTML = '';
             const currentTableVal = document.getElementById('tableInput').value.trim();
 
-            for (let i = 1; i <= 12; i++) {
-                const tableName = `តុទី ${i} (Table ${i})`;
-                // ពិនិត្យមើលថាតើឈ្មោះតុដែលបានបញ្ចូលត្រូវគ្នានឹងកាតតុណាមួយដែរឬទេ
-                const isSelected = (tableName === currentTableVal || `តុទី ${i}` === currentTableVal) ? 'selected' : '';
+            customTables.forEach(tableName => {
+                const isSelected = tableName === currentTableVal ? 'selected' : '';
                 tableGrid.innerHTML += `
                     <div class="col-4">
                         <div class="table-card ${isSelected}" onclick="selectTable('${tableName}')">
                             <i class="fa-solid fa-chair fs-4 mb-1"></i>
-                            <div class="fw-bold small">តុទី ${i}</div>
+                            <div class="fw-bold small">${tableName}</div>
                         </div>
                     </div>
                 `;
+            });
+        }
+
+        function addNewTableCard() {
+            const input = document.getElementById('newTableNameInput');
+            const tableName = input.value.trim();
+            if (!tableName) {
+                alert('សូមបញ្ចូលឈ្មោះ ឬលេខតុថ្មី!');
+                return;
             }
+
+            if (!customTables.includes(tableName)) {
+                customTables.push(tableName);
+            }
+
+            document.getElementById('tableInput').value = tableName;
+            input.value = '';
+            renderTableCards();
         }
 
         function selectTable(tableName) {
             document.getElementById('tableInput').value = tableName;
-            generateTableCards();
+            renderTableCards();
             const modalEl = document.getElementById('tableModal');
             const modal = bootstrap.Modal.getInstance(modalEl);
             modal.hide();
