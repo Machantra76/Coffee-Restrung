@@ -451,6 +451,7 @@
         let pendingOrderModalObj = null;
         let currentPendingOrder = null;
         let soundInterval = null;
+        let lastKitchenStatusMap = {}; // 🔔 សម្រាប់តាមដាន Status ពីផ្ទះបាយ
 
         let customTables = ['តុទី ១ (Table 1)', 'តុទី ២ (Table 2)', 'តុទី ៣ (Table 3)', 'តុទី ៤ (Table 4)', 'តុទី ៥ (Table 5)', 'តុទី ៦ (Table 6)', 'តុទី ៧ (Table 7)', 'តុទី ៨ (Table 8)'];
 
@@ -471,7 +472,81 @@
 
             // 🔄 បើកមុខងារ Auto-Check QR Orders រៀងរាល់ 3 វិនាទីស្វ័យប្រវត្តិ
             setInterval(checkCustomerPendingOrders, 3000);
+
+            // 🔔 មុខងារឆែកមើល Status ពីផ្ទះបាយរៀងរាល់ 3 វិនាទី
+            setInterval(checkKitchenOrderStatusUpdates, 3000);
         });
+
+        // 🔔 មុខងារឆែកមើល Status ពីផ្ទះបាយ (Preparing / Completed)
+        async function checkKitchenOrderStatusUpdates() {
+            try {
+                const res = await fetch('/api/orders/kitchen');
+                const result = await res.json();
+                
+                if (result.success && result.data) {
+                    result.data.forEach(order => {
+                        let currentStatus = order.status;
+                        let orderId = order.id;
+                        let tableNo = order.table_no || 'តុទូទៅ';
+
+                        if (lastKitchenStatusMap[orderId] && lastKitchenStatusMap[orderId] !== currentStatus) {
+                            if (currentStatus === 'Preparing') {
+                                playBellSound();
+                                showSalesAlert(`🔥 ផ្ទះបាយកំពុងចាប់ផ្តើមធ្វើ Order #${orderId} (${tableNo}) ហើយ!`);
+                            } else if (currentStatus === 'Completed') {
+                                playBellSound();
+                                showSalesAlert(`✅ ម្ហូបសម្រាប់ Order #${orderId} (${tableNo}) **ធ្វើរួចរាល់ហើយ**! សូមរត់តុយកជូនភ្ញៀវ។`);
+                            }
+                        }
+                        lastKitchenStatusMap[orderId] = currentStatus;
+                    });
+                }
+            } catch (err) {
+                console.error('Error checking kitchen updates for sales:', err);
+            }
+        }
+
+        // 🔊 បន្លឺសំឡេងកណ្ដឹង (Bell Audio Alert)
+        function playBellSound() {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                
+                oscillator.type = 'triangle';
+                oscillator.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5 Note
+                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                
+                oscillator.start();
+                oscillator.stop(audioCtx.currentTime + 0.6);
+            } catch (e) {
+                console.log('Audio blocked or not supported');
+            }
+        }
+
+        // 💬 បង្ហាញ Toast Notification លើหน้า POS
+        function showSalesAlert(message) {
+            let toastContainer = document.getElementById('salesToastContainer');
+            if (!toastContainer) {
+                toastContainer = document.createElement('div');
+                toastContainer.id = 'salesToastContainer';
+                toastContainer.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px;';
+                document.body.appendChild(toastContainer);
+            }
+
+            let toast = document.createElement('div');
+            toast.className = 'alert alert-info shadow-lg fw-bold border-0 text-dark px-4 py-3 rounded-4';
+            toast.style.minWidth = '300px';
+            toast.innerHTML = `<i class="fa-solid fa-bell-concierge me-2 text-primary fs-5"></i> ${message}`;
+            toastContainer.appendChild(toast);
+
+            setTimeout(() => {
+                toast.remove();
+            }, 6000);
+        }
 
         // 🔗 Dynamic QR Code Generator តាមលេខតុដែលបានជ្រើសរើស
         function generateDynamicQR(selectedTableName = null) {
@@ -485,7 +560,6 @@
             document.getElementById('customerOrderLink').value = fullTableUrl;
             document.getElementById('qrTableTitleBadge').innerText = currentTable;
 
-            // Render ជម្រើសតុក្នុង Select Dropdown របស់ QR Modal
             const selector = document.getElementById('qrTableSelector');
             selector.innerHTML = '';
             customTables.forEach(t => {
@@ -519,7 +593,6 @@
             }
         }
 
-        // 🔊 បង្ហាញ Popup Modal ព្រមទាំងបន្លឺសំឡេងរោទ៍រៀងរាល់ 3-5 វិនាទី
         function showPendingOrderPopup(order) {
             const modalElement = document.getElementById('pendingOrderModal');
             if (modalElement.classList.contains('show')) return;
@@ -543,7 +616,6 @@
             startAlertSound();
         }
 
-        // 🔊 Web Audio API សម្រាប់បង្កើតសំឡេងប៊ីប/កណ្ដឹងរោទ៍ Alert
         function playBeepSound() {
             try {
                 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -584,7 +656,6 @@
             pendingOrderModalObj.hide();
         }
 
-        // ✅ មុខងារចុចទទួលយក Order (Accept)
         async function acceptCustomerOrder() {
             if (!currentPendingOrder) return;
 
