@@ -289,13 +289,13 @@ app.get('/api/inventory', async (req, res) => {
     }
 });
 
-// 🪑 API សម្រាប់ទាញយកតុដែលមាន Order កំពុងសកម្ម (Active Tables) ដោយមិនយកតុដែល Checkout រួច
+// 🪑 API សម្រាប់ទាញយកតុដែលមាន Order កំពុងសកម្ម (Active Tables) ផ្អែកលើការមិនទាន់បង់ប្រាក់
 app.get('/api/orders/active-tables', async (req, res) => {
     try {
         const query = `
             SELECT DISTINCT id, table_no, total_amount, status, created_at
             FROM orders
-            WHERE status IN ('Customer_Pending', 'Pending', 'Preparing')
+            WHERE payment_method IS NULL OR payment_method = ''
             ORDER BY id ASC
         `;
         const result = await pool.query(query);
@@ -338,7 +338,7 @@ app.post('/api/orders', async (req, res) => {
         if (table_no && table_no !== 'Walk-in') {
             const checkOrderQuery = `
                 SELECT id, total_amount FROM orders 
-                WHERE table_no = $1 AND status IN ('Customer_Pending', 'Pending', 'Preparing')
+                WHERE table_no = $1 AND (payment_method IS NULL OR payment_method = '')
                 ORDER BY id DESC LIMIT 1
             `;
             const checkRes = await client.query(checkOrderQuery, [table_no]);
@@ -464,7 +464,7 @@ app.post('/api/orders', async (req, res) => {
     }
 });
 
-// 2. API សម្រាប់ Sales Dashboard ឆែកមើល Order ថ្មីៗដែលរង់ចាំการรับ (status = 'Customer_Pending')
+// 2. API សម្រាប់ Sales Dashboard ឆែកមើល Order ថ្មីៗដែលរង់ចាំການรับ (status = 'Customer_Pending')
 app.get('/api/orders/customer-pending', async (req, res) => {
     try {
         const orderQuery = `
