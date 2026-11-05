@@ -44,6 +44,25 @@
             </div>
         </div>
 
+        <!-- Cashier Activity Filter Section -->
+        <div class="card p-3 bg-white mb-4">
+            <h5 class="fw-bold mb-3 text-dark"><i class="fa-solid fa-user-tie me-2 text-primary"></i> ត្រួតពិនិត្យការលក់តាមបុគ្គលិក (Cashier Sales Monitoring)</h5>
+            <div class="row g-3 align-items-end">
+                <div class="col-12 col-md-6">
+                    <label class="form-label fw-bold small text-secondary">ជ្រើសរើសបុគ្គលិកគិតលុយ (Select Cashier):</label>
+                    <select id="cashierSelect" class="form-select" onchange="loadCashierActivity()">
+                        <option value="all">-- បុគ្គលិកទាំងអស់ (All Cashiers) --</option>
+                    </select>
+                </div>
+                <div class="col-12 col-md-6 d-flex align-items-center">
+                    <div class="bg-light p-2 rounded w-100 d-flex justify-content-between px-3">
+                        <span>ចំនួនវិក្កយបត្រសរុប: <strong id="cashierTotalBills" class="text-primary">0</strong></span>
+                        <span>ទឹកប្រាក់សរុប: <strong id="cashierGrandTotal" class="text-success">$0.00</strong></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Metric Summary Cards -->
         <div class="row g-4 mb-4">
             <div class="col-md-4">
@@ -118,10 +137,81 @@
             document.getElementById('fromDate').value = today;
             document.getElementById('toDate').value = today;
 
+            await loadCashiersList();
             await loadOrdersHistory();
         });
 
+        async function loadCashiersList() {
+            try {
+                const res = await fetch('/api/users/cashiers-list');
+                const result = await res.json();
+                if (result.success) {
+                    const select = document.getElementById('cashierSelect');
+                    result.data.forEach(c => {
+                        select.innerHTML += `<option value="${c.id}">${c.full_name} (${c.username})</option>`;
+                    });
+                }
+            } catch (err) {
+                console.error('Error loading cashiers list:', err);
+            }
+        }
+
+        async function loadCashierActivity() {
+            const cashierId = document.getElementById('cashierSelect').value;
+            if (cashierId === 'all') {
+                loadOrdersHistory();
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/orders/cashier-activity/${cashierId}`);
+                const result = await res.json();
+
+                if (result.success) {
+                    document.getElementById('cashierTotalBills').innerText = result.total_bills;
+                    document.getElementById('cashierGrandTotal').innerText = `$${Number(result.grand_total).toFixed(2)}`;
+
+                    const orders = result.orders || [];
+                    const tbody = document.getElementById('reportsTableBody');
+                    tbody.innerHTML = '';
+
+                    if (orders.length === 0) {
+                        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">ពុំមានប្រវត្តិការលក់សម្រាប់បុគ្គលិកនេះទេ។</td></tr>`;
+                        return;
+                    }
+
+                    orders.forEach(o => {
+                        const invNo = o.order_number || `#${o.id}`;
+                        const cashier = o.cashier_name || 'បុគ្គលិកទូទៅ';
+                        tbody.innerHTML += `
+                            <tr>
+                                <td class="fw-bold text-primary">${invNo}</td>
+                                <td>${cashier}</td>
+                                <td class="fw-bold text-success">$${Number(o.total_amount).toFixed(2)}</td>
+                                <td><span class="badge bg-secondary">${o.payment_method || 'Cash'}</span></td>
+                                <td><span class="badge bg-success">${o.status || 'Completed'}</span></td>
+                                <td>${new Date(o.created_at).toLocaleString()}</td>
+                                <td class="text-end">
+                                    <button class="btn btn-sm btn-outline-danger fw-bold" onclick="deleteOrder(${o.id})">
+                                        <i class="fa-solid fa-trash"></i> លុប
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                }
+            } catch (err) {
+                console.error('Error loading cashier activity:', err);
+            }
+        }
+
         async function loadOrdersHistory() {
+            const cashierId = document.getElementById('cashierSelect').value;
+            if (cashierId && cashierId !== 'all') {
+                loadCashierActivity();
+                return;
+            }
+
             const fromDate = document.getElementById('fromDate').value;
             const toDate = document.getElementById('toDate').value;
 
@@ -138,10 +228,12 @@
                 if (result.success) {
                     const orders = result.data || [];
                     document.getElementById('totalOrders').innerText = orders.length;
+                    document.getElementById('cashierTotalBills').innerText = orders.length;
 
                     let revenue = 0;
                     orders.forEach(o => revenue += Number(o.total_amount || 0));
                     document.getElementById('totalRevenue').innerText = `$${revenue.toFixed(2)}`;
+                    document.getElementById('cashierGrandTotal').innerText = `$${revenue.toFixed(2)}`;
 
                     const totalProfit = Number(result.total_profit || 0);
                     document.getElementById('totalProfit').innerText = `$${totalProfit.toFixed(2)}`;
@@ -223,6 +315,7 @@
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('fromDate').value = today;
             document.getElementById('toDate').value = today;
+            document.getElementById('cashierSelect').value = 'all';
             loadOrdersHistory();
         }
 
