@@ -7,7 +7,7 @@ const { Pool } = require('pg');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// តភ្ជាប់ជាមួយ Cloud Database (Neon PostgreSQL)
+// តភ្ជាប់ជាមួយ Cloud Database (Neon PostgreSQL)[cite: 11]
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: { rejectUnauthorized: false }
@@ -18,7 +18,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// មុខងារបង្កើត និងត្រួតពិនិត្យតារាង Database
+// មុខងារបង្កើត និងត្រួតពិនិត្យតារាង Database[cite: 11]
 async function initDB() {
     try {
         await pool.query(`
@@ -73,7 +73,7 @@ async function initDB() {
             );
         `);
 
-        // 🛠️ បន្ថែមស្វ័យប្រវត្តិ (ALTER TABLE) ករណីតារាងមានស្រាប់តែខ្វះ Column ថ្មី
+        // 🛠️ បន្ថែមស្វ័យប្រវត្តិ (ALTER TABLE) ករណីតារាងមានស្រាប់តែខ្វះ Column ថ្មី[cite: 11]
         await pool.query(`
             ALTER TABLE products ADD COLUMN IF NOT EXISTS cost_price NUMERIC(10, 2) DEFAULT 0;
             ALTER TABLE products ADD COLUMN IF NOT EXISTS unit VARCHAR(50) DEFAULT 'ដប';
@@ -89,11 +89,11 @@ async function initDB() {
 
 initDB();
 
-// User Routes
+// User Routes[cite: 11]
 const userRoutes = require('./routes/users');
 app.use('/api/users', userRoutes);
 
-// ================= PRODUCT APIs =================
+// ================= PRODUCT APIs =================[cite: 11]
 
 app.get('/api/products', async (req, res) => {
     try {
@@ -172,7 +172,7 @@ app.delete('/api/products/:id', async (req, res) => {
     }
 });
 
-// 🗑️ API សម្រាប់លុបវិក្កយបត្រ និងបូកស្តុកសងវិញ
+// 🗑️ API សម្រាប់លុបវិក្កយបត្រ និងបូកស្តុកសងវិញ[cite: 11]
 app.delete('/api/orders/:id', async (req, res) => {
     const { id } = req.params;
     const client = await pool.connect();
@@ -209,7 +209,7 @@ app.delete('/api/orders/:id', async (req, res) => {
     }
 });
 
-// ================= INVENTORY / STOCK APIs =================
+// ================= INVENTORY / STOCK APIs =================[cite: 11]
 
 app.put('/api/inventory/:id/stock', async (req, res) => {
     const { id } = req.params;
@@ -289,7 +289,7 @@ app.get('/api/inventory', async (req, res) => {
     }
 });
 
-// 📦 API សម្រាប់ទាញយកមុខទំនិញលម្អិតតាម Order ID
+// 📦 API សម្រាប់ទាញយកមុខទំនិញលម្អិតតាម Order ID[cite: 11]
 app.get('/api/orders/:id/items', async (req, res) => {
     const { id } = req.params;
     try {
@@ -307,9 +307,9 @@ app.get('/api/orders/:id/items', async (req, res) => {
     }
 });
 
-// ================= ORDER & QR ORDERING APIs =================
+// ================= ORDER & QR ORDERING APIs =================[cite: 11]
 
-// 1. API សម្រាប់ភ្ញៀវកុម្ម៉ង់ម្ហូបពី QR Menu (កំណត់ status เป็น 'Customer_Pending')
+// 1. API សម្រាប់ភ្ញៀវកុម្ម៉ង់ម្ហូប (អាប់ដេត៖ បើមាន Invoice បើកស្រាប់លើតុដដែល គឺបូកបញ្ចូលគ្នាស្វ័យប្រវត្តិ)
 app.post('/api/orders', async (req, res) => {
     const { cashier_id, table_no, total_amount, payment_method, items } = req.body;
     
@@ -317,46 +317,104 @@ app.post('/api/orders', async (req, res) => {
     try {
         await client.query('BEGIN');
 
-        // ตรวจสอบและตัดสตុកทันที หรือเก็บไว้ตัดตอน Accept (អាស្រ័យលើការចង់បាន ទីនេះរក្សាការកាត់ស្តុក ឬអាចដកออกបើចង់កាត់ពេល Accept)
-        if (items && items.length > 0) {
-            for (let item of items) {
-                const checkStock = await client.query('SELECT stock_qty, name FROM products WHERE id = $1', [item.id]);
-                if (checkStock.rows.length === 0) {
-                    throw new Error(`ទំនិញ ID ${item.id} មិនមានក្នុងប្រព័ន្ធទេ។`);
-                }
-                const currentStock = checkStock.rows[0].stock_qty || 0;
-                if (currentStock < item.quantity) {
-                    throw new Error(`ទំនិញ "${checkStock.rows[0].name}" ក្នុងស្តុកសល់តែ ${currentStock} ប៉ុណ្ណោះ!`);
-                }
-                await client.query(
-                    'UPDATE products SET stock_qty = stock_qty - $1 WHERE id = $2',
-                    [item.quantity, item.id]
-                );
+        // ឆែកមើលថាតើតុនេះមាន Order ណាកំពុងបើកស្រាប់ (Status មិនទាន់ Paid / Completed / Cancelled) ដែរឬទេ
+        let existingOrder = null;
+        if (table_no && table_no !== 'Walk-in') {
+            const checkOrderQuery = `
+                SELECT id, total_amount FROM orders 
+                WHERE table_no = $1 AND status IN ('Customer_Pending', 'Pending', 'Preparing')
+                ORDER BY id DESC LIMIT 1
+            `;
+            const checkRes = await client.query(checkOrderQuery, [table_no]);
+            if (checkRes.rows.length > 0) {
+                existingOrder = checkRes.rows[0];
             }
         }
 
-        const initialStatus = table_no ? 'Customer_Pending' : 'Pending';
+        let targetOrderId;
+        const addedAmount = parseFloat(total_amount) || 0;
 
-        const orderQuery = `
-            INSERT INTO orders (cashier_id, table_no, total_amount, payment_method, status, created_at) 
-            VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP) 
-            RETURNING id, total_amount, created_at, status
-        `;
-        const orderResult = await client.query(orderQuery, [cashier_id || null, table_no || 'Walk-in', total_amount, payment_method || 'Cash', initialStatus]);
-        const newOrderId = orderResult.rows[0].id;
+        // ករណីកុម្ម៉ង់បន្ថែមលើតុដដែលដែលមាន Invoice ស្រាប់
+        if (existingOrder) {
+            targetOrderId = existingOrder.id;
 
-        if (items && items.length > 0) {
-            for (let item of items) {
-                const itemQuery = `
-                    INSERT INTO order_items (order_id, product_id, quantity, price)
-                    VALUES ($1, $2, $3, $4)
-                `;
-                await client.query(itemQuery, [newOrderId, item.id, item.quantity, item.price]);
+            if (items && items.length > 0) {
+                for (let item of items) {
+                    const checkStock = await client.query('SELECT stock_qty, name FROM products WHERE id = $1', [item.id]);
+                    if (checkStock.rows.length === 0) {
+                        throw new Error(`ទំនិញ ID ${item.id} មិនមានក្នុងប្រព័ន្ធទេ។`);
+                    }
+                    const currentStock = checkStock.rows[0].stock_qty || 0;
+                    if (currentStock < item.quantity) {
+                        throw new Error(`ទំនិញ "${checkStock.rows[0].name}" ក្នុងស្តុកសល់តែ ${currentStock} ប៉ុណ្ណោះ!`);
+                    }
+                    
+                    // កាត់ស្តុក
+                    await client.query(
+                        'UPDATE products SET stock_qty = stock_qty - $1 WHERE id = $2',
+                        [item.quantity, item.id]
+                    );
+
+                    // បញ្ចូលទំនិញថ្មីថែមលើ order_id ចាស់
+                    await client.query(
+                        `INSERT INTO order_items (order_id, product_id, quantity, price) VALUES ($1, $2, $3, $4)`,
+                        [targetOrderId, item.id, item.quantity, item.price]
+                    );
+                }
+            }
+
+            // បូកទឹកប្រាក់សរុប (total_amount) បន្ថែម និងប្តូរ status ទៅ 'Customer_Pending' វិញដើម្បីឱ្យផ្នែកលក់ដឹង
+            await client.query(
+                `UPDATE orders SET total_amount = total_amount + $1, status = 'Customer_Pending' WHERE id = $2`,
+                [addedAmount, targetOrderId]
+            );
+
+        } else {
+            // ករណីបង្កើត Invoice ថ្មី
+            if (items && items.length > 0) {
+                for (let item of items) {
+                    const checkStock = await client.query('SELECT stock_qty, name FROM products WHERE id = $1', [item.id]);
+                    if (checkStock.rows.length === 0) {
+                        throw new Error(`ទំនិញ ID ${item.id} មិនមានក្នុងប្រព័ន្ធទេ។`);
+                    }
+                    const currentStock = checkStock.rows[0].stock_qty || 0;
+                    if (currentStock < item.quantity) {
+                        throw new Error(`ទំនិញ "${checkStock.rows[0].name}" ក្នុងស្តុកសល់តែ ${currentStock} ប៉ុណ្ណោះ!`);
+                    }
+                    await client.query(
+                        'UPDATE products SET stock_qty = stock_qty - $1 WHERE id = $2',
+                        [item.quantity, item.id]
+                    );
+                }
+            }
+
+            const initialStatus = table_no ? 'Customer_Pending' : 'Pending';
+
+            const orderQuery = `
+                INSERT INTO orders (cashier_id, table_no, total_amount, payment_method, status, created_at) 
+                VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP) 
+                RETURNING id, total_amount, created_at, status
+            `;
+            const orderResult = await client.query(orderQuery, [cashier_id || null, table_no || 'Walk-in', addedAmount, payment_method || 'Cash', initialStatus]);
+            targetOrderId = orderResult.rows[0].id;
+
+            if (items && items.length > 0) {
+                for (let item of items) {
+                    const itemQuery = `
+                        INSERT INTO order_items (order_id, product_id, quantity, price)
+                        VALUES ($1, $2, $3, $4)
+                    `;
+                    await client.query(itemQuery, [targetOrderId, item.id, item.quantity, item.price]);
+                }
             }
         }
 
         await client.query('COMMIT');
-        res.status(201).json({ success: true, message: 'Order created successfully', order: orderResult.rows[0] });
+        res.status(201).json({ 
+            success: true, 
+            message: existingOrder ? 'បានកុម្ម៉ង់បន្ថែមចូល Invoice តុเดิมដោយជោគជ័យ!' : 'Order created successfully', 
+            order: { id: targetOrderId } 
+        });
     } catch (err) {
         await client.query('ROLLBACK');
         res.status(400).json({ success: false, error: err.message });
@@ -365,7 +423,7 @@ app.post('/api/orders', async (req, res) => {
     }
 });
 
-// 2. API สำหรับ Sales Dashboard ឆែកមើល Order ថ្មីៗដែលរង់ចាំការទទួលយក (status = 'Customer_Pending')
+// 2. API សម្រាប់ Sales Dashboard ឆែកមើល Order ថ្មីៗដែលរង់ចាំការទទួលយក (status = 'Customer_Pending')[cite: 11]
 app.get('/api/orders/customer-pending', async (req, res) => {
     try {
         const orderQuery = `
@@ -394,7 +452,7 @@ app.get('/api/orders/customer-pending', async (req, res) => {
     }
 });
 
-// 3. API សម្រាប់ Sales ចុច Accept (ប្ដូរ status ពី 'Customer_Pending' ទៅ 'Pending')
+// 3. API សម្រាប់ Sales ចុច Accept (ប្ដូរ status ពី 'Customer_Pending' ទៅ 'Pending')[cite: 11]
 app.post('/api/orders/:id/accept', async (req, res) => {
     const { id } = req.params;
     try {
@@ -412,7 +470,7 @@ app.post('/api/orders/:id/accept', async (req, res) => {
     }
 });
 
-// ✏️ API សម្រាប់កែប្រែមុខទំនិញ និងទឹកប្រាក់ក្នុងវិក្កយបត្រ
+// ✏️ API សម្រាប់កែប្រែមុខទំនិញ និងទឹកប្រាក់ក្នុងវិក្កយបត្រ[cite: 11]
 app.put('/api/orders/:id/items', async (req, res) => {
     const { id } = req.params;
     const { items, total_amount } = req.body;
@@ -462,7 +520,7 @@ app.put('/api/orders/:id/items', async (req, res) => {
     }
 });
 
-// 🍳 API សម្រាប់ផ្ទះបាយ (ទាញយកเฉพาะ Order ណាដែល Sale បាន Accept ហើយ និងជាប្រភេទ Food)[cite: 5]
+// 🍳 API សម្រាប់ផ្ទះបាយ (ទាញយកเฉพาะ Order ណាដែល Sale បាន Accept ហើយ និងជាប្រភេទ Food)[cite: 11]
 app.get('/api/orders/kitchen', async (req, res) => {
     try {
         const orderQuery = `
@@ -626,7 +684,7 @@ app.get('/api/orders/cashier-activity/:cashierId', async (req, res) => {
     }
 });
 
-// Root Route
+// Root Route[cite: 11]
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
