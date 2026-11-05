@@ -177,7 +177,8 @@
                         <div class="mb-2 d-flex justify-content-between align-items-center bg-light p-2 rounded-3 border">
                             <label for="tableInput" class="fw-bold small text-secondary mb-0"><i class="fa-solid fa-chair me-1"></i> លេខតុ / Table:</label>
                             <div class="d-flex align-items-center gap-1">
-                                <input type="text" id="tableInput" class="form-control form-control-sm fw-bold text-primary text-center" value="តុទី ១ (Table 1)" style="width: 130px;">
+                                <!-- បន្ថែម oninput ដើម្បអាប់ដេតកាតតុភ្លាមៗពេលវាយអក្សរ -->
+                                <input type="text" id="tableInput" class="form-control form-control-sm fw-bold text-primary text-center" value="តុទី ១ (Table 1)" style="width: 130px;" oninput="generateTableCards()">
                                 <button class="btn btn-sm btn-outline-primary py-0 px-2" data-bs-toggle="modal" data-bs-target="#tableModal" title="រើសតុស្រាប់"><i class="fa-solid fa-list"></i></button>
                             </div>
                         </div>
@@ -293,10 +294,10 @@
                 <div class="modal-body">
                     <p class="text-muted small">សូមស្កែន QR Code នេះដើម្បីបើកមីនុយបញ្ជាទិញតាមទូរសព្ទដៃរបស់ភ្ញៀវ៖</p>
                     <div class="bg-light p-3 d-inline-block rounded-4 shadow-sm mb-3">
-                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=https://coffee-restrung.onrender.com/pos.html" alt="Customer QR" class="img-fluid rounded">
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=https://coffee-restrung.onrender.com/customer-order.html" alt="Customer QR" class="img-fluid rounded">
                     </div>
                     <div class="input-group input-group-sm mb-2">
-                        <input type="text" id="customerOrderLink" class="form-control text-center" value="https://coffee-restrung.onrender.com/pos.html" readonly>
+                        <input type="text" id="customerOrderLink" class="form-control text-center" value="https://coffee-restrung.onrender.com/customer-order.html" readonly>
                         <button class="btn btn-outline-primary" onclick="copyOrderLink()"><i class="fa-solid fa-copy"></i> ចម្លងតំណ</button>
                     </div>
                 </div>
@@ -411,11 +412,12 @@
         function generateTableCards() {
             const tableGrid = document.getElementById('tableGrid');
             tableGrid.innerHTML = '';
-            const currentTableVal = document.getElementById('tableInput').value;
+            const currentTableVal = document.getElementById('tableInput').value.trim();
 
             for (let i = 1; i <= 12; i++) {
                 const tableName = `តុទី ${i} (Table ${i})`;
-                const isSelected = tableName === currentTableVal ? 'selected' : '';
+                // ពិនិត្យមើលថាតើឈ្មោះតុដែលបានបញ្ចូលត្រូវគ្នានឹងកាតតុណាមួយដែរឬទេ
+                const isSelected = (tableName === currentTableVal || `តុទី ${i}` === currentTableVal) ? 'selected' : '';
                 tableGrid.innerHTML += `
                     <div class="col-4">
                         <div class="table-card ${isSelected}" onclick="selectTable('${tableName}')">
