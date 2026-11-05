@@ -140,12 +140,13 @@
                                     <th>ឈ្មោះទំនិញ</th>
                                     <th>ប្រភេទ</th>
                                     <th>ឯកតា</th>
+                                    <th class="text-end">តម្លៃទិញ</th>
                                     <th class="text-end">តម្លៃលក់</th>
                                     <th class="text-end">សកម្មភាព</th>
                                 </tr>
                             </thead>
                             <tbody id="productsTableBody">
-                                <tr><td colspan="7" class="text-center text-muted py-4">កំពុងទាញយកទិន្នន័យ...</td></tr>
+                                <tr><td colspan="8" class="text-center text-muted py-4">កំពុងទាញយកទិន្នន័យ...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -202,7 +203,7 @@
                     tbody.innerHTML = '';
 
                     if (productsList.length === 0) {
-                        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">មិនទាន់មានទំនិញក្នុង Database ទេ។</td></tr>`;
+                        tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-4">មិនទាន់មានទំនិញក្នុង Database ទេ។</td></tr>`;
                         return;
                     }
 
@@ -220,6 +221,7 @@
                                 <td class="fw-bold text-dark">${p.name}</td>
                                 <td><span class="badge bg-light text-dark border">${p.category || 'General'}</span></td>
                                 <td><span class="badge bg-secondary">${p.unit || 'ដប'}</span></td>
+                                <td class="text-end text-muted">$${Number(p.cost_price || 0).toFixed(2)}</td>
                                 <td class="text-end fw-bold text-success">$${Number(p.price).toFixed(2)}</td>
                                 <td class="text-end">
                                     <button class="btn btn-sm btn-outline-warning me-1" onclick="editProduct(${p.id})">
