@@ -78,11 +78,38 @@
             transition: all 0.2s ease;
         }
 
+        /* 🏷️ រចនាបថតុ (Table Card Style) */
+        .table-card {
+            cursor: pointer;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            transition: all 0.2s;
+            background: #fff;
+            text-align: center;
+            padding: 10px;
+        }
+        .table-card.selected {
+            border-color: #0d6efd;
+            background-color: #cfe2ff;
+            color: #084298;
+        }
+        .table-card:hover {
+            border-color: #6c757d;
+        }
+
         @media (min-width: 992px) {
             .cart-container { height: calc(100vh - 90px); position: sticky; top: 15px; }
             .products-container { height: calc(100vh - 90px); overflow-y: auto; }
         }
-        .cart-items-box { max-height: 250px; overflow-y: auto; }
+        .cart-items-box { max-height: 220px; overflow-y: auto; }
+
+        /* 🖨️ Print Styles */
+        @media print {
+            body * { visibility: hidden; }
+            #printableInvoice, #printableInvoice * { visibility: visible; }
+            #printableInvoice { position: absolute; left: 0; top: 0; width: 100%; }
+            .no-print { display: none !important; }
+        }
     </style>
 </head>
 <body>
@@ -94,6 +121,9 @@
             </span>
             <div class="d-flex align-items-center gap-2 flex-wrap">
                 <span id="cashierDisplay" class="text-white small fw-bold bg-secondary px-3 py-1 rounded-pill"></span>
+                <button class="btn btn-outline-warning btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#qrModal">
+                    <i class="fa-solid fa-qrcode me-1"></i> QR សម្រាប់ភ្ញៀវ Order
+                </button>
                 <a href="pos.html" class="btn btn-outline-light btn-sm"><i class="fa-solid fa-house me-1"></i> ម៉ឺនុយមេ / Menu</a>
             </div>
         </div>
@@ -117,7 +147,7 @@
                     </div>
                 </div>
 
-                <!-- 🏷️ Category Filter Buttons (បង្កើតឡើងដោយស្វ័យប្រវត្តិពី Database) -->
+                <!-- 🏷️ Category Filter Buttons -->
                 <div class="d-flex flex-wrap gap-2 mb-3" id="categoryButtons">
                     <!-- Dynamic Rendered Buttons -->
                 </div>
@@ -132,6 +162,13 @@
             <div class="col-12 col-md-5 col-lg-4">
                 <div class="card shadow-sm border-0 rounded-4 p-3 cart-container bg-white d-flex flex-column justify-content-between">
                     <div>
+                        <!-- 🪑 រើសលេខតុ (Table Selection) -->
+                        <div class="mb-2 d-flex justify-content-between align-items-center bg-light p-2 rounded-3 border">
+                            <span class="fw-bold small text-secondary"><i class="fa-solid fa-chair me-1"></i> លេខតុ / Table:</span>
+                            <span id="selectedTableDisplay" class="fw-bold text-primary">តុទី ១ (Table 1)</span>
+                            <button class="btn btn-sm btn-outline-primary py-0 px-2" data-bs-toggle="modal" data-bs-target="#tableModal">ប្ដូរតុ</button>
+                        </div>
+
                         <h4 class="fw-bold text-dark mb-2 fs-5 fs-md-4"><i class="fa-solid fa-cart-shopping me-2"></i> កន្រ្តកវិក្កយបត្រ / Cart</h4>
                         
                         <!-- Cart Table -->
@@ -215,12 +252,130 @@
         </div>
     </div>
 
+    <!-- 🪑 Modal រើសលេខតុ -->
+    <div class="modal fade" id="tableModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow rounded-4">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title fw-bold"><i class="fa-solid fa-chair me-2"></i> ជ្រើសរើសលេខតុ (Select Table)</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-2" id="tableGrid">
+                        <!-- Render តុ ១ ដល់ ១២ ស្វ័យប្រវត្តិ -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 📱 Modal QR Code សម្រាប់ភ្ញៀវ Order -->
+    <div class="modal fade" id="qrModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow rounded-4 text-center p-3">
+                <div class="modal-header border-0">
+                    <h5 class="modal-title fw-bold"><i class="fa-solid fa-qrcode me-2 text-primary"></i> QR Code សម្រាប់ភ្ញៀវမှာទំនិញ</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small">សូមស្កែន QR Code នេះដើម្បីបើកមីនុយបញ្ជាទិញតាមទូរសព្ទដៃរបស់ភ្ញៀវ៖</p>
+                    <div class="bg-light p-3 d-inline-block rounded-4 shadow-sm mb-3">
+                        <!-- QR Code រូបភាពតំណាង -->
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=https://coffee-restrung.onrender.com/pos.html" alt="Customer QR" class="img-fluid rounded">
+                    </div>
+                    <div class="input-group input-group-sm mb-2">
+                        <input type="text" id="customerOrderLink" class="form-control text-center" value="https://coffee-restrung.onrender.com/pos.html" readonly>
+                        <button class="btn btn-outline-primary" onclick="copyOrderLink()"><i class="fa-solid fa-copy"></i> ចម្លងតំណ</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🖨️ Modal បង្ហាញវិក្កយបត្រសម្រាប់ Print -->
+    <div class="modal fade" id="receiptModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow rounded-4">
+                <div class="modal-body p-4" id="printableInvoice">
+                    <div class="text-center mb-3">
+                        <h4 class="fw-bold mb-1">☕ COFFEE & RESTAURANT</h4>
+                        <p class="text-muted small mb-1">វិក្កយបត្រលក់ប្រាក់ / POS INVOICE</p>
+                        <span id="receiptTableBadge" class="badge bg-dark">តុទី ១</span>
+                        <hr class="my-2">
+                    </div>
+                    <div class="d-flex justify-content-between small mb-2">
+                        <span>វិក្កយបត្រ #: <strong id="recInvoiceNo">#00</strong></span>
+                        <span id="recDate"></span>
+                    </div>
+                    <div class="d-flex justify-content-between small mb-3">
+                        <span>អ្នកគិតលុយ: <strong id="recCashier"></strong></span>
+                        <span>ទម្រង់បង់: <strong id="recPayment"></strong></span>
+                    </div>
+                    <div class="table-responsive mb-3">
+                        <table class="table table-sm align-middle">
+                            <thead class="table-light">
+                                <tr class="small">
+                                    <th>ទំនិញ</th>
+                                    <th class="text-center">ចំនួន</th>
+                                    <th class="text-end">តម្លៃ ($)</th>
+                                    <th class="text-end">សរុប</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recItemsBody">
+                                <!-- Items -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="border-top pt-2 small">
+                        <div class="d-flex justify-content-between">
+                            <span>ទឹកប្រាក់រួម (Subtotal):</span>
+                            <span id="recSubtotal">$0.00</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span>បញ្ចុះតម្លៃ (Discount):</span>
+                            <span id="recDiscount">$0.00</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span>អាករ VAT (10%):</span>
+                            <span id="recVat">$0.00</span>
+                        </div>
+                        <div class="d-flex justify-content-between fw-bold fs-6 border-top mt-2 pt-2">
+                            <span>សរុបទាំងអស់ (Grand Total):</span>
+                            <span class="text-success" id="recGrandTotal">$0.00</span>
+                        </div>
+                        <div class="d-flex justify-content-between text-muted mt-1">
+                            <span>ប្រាក់ទទួលបាន (Received):</span>
+                            <span id="recReceived">$0.00</span>
+                        </div>
+                        <div class="d-flex justify-content-between text-success fw-bold">
+                            <span>ប្រាក់អាប់សង (Change):</span>
+                            <span id="recChange">$0.00</span>
+                        </div>
+                    </div>
+                    <div class="text-center mt-4 text-muted small">
+                        <p class="mb-1">🙏 សូមអរគុណ និងជម្រាបលា!</p>
+                        <p style="font-size: 0.75rem;">Thank you! Please come again.</p>
+                    </div>
+                </div>
+                <div class="modal-footer no-print">
+                    <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">បិទ (Close)</button>
+                    <button type="button" class="btn btn-primary fw-bold px-4" onclick="window.print()">
+                        <i class="fa-solid fa-print me-1"></i> បោះពុម្ព (Print Invoice)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         let cart = [];
         let products = [];
         let currentCategory = 'All';
         let currentUser = null;
         let finalCalculatedTotal = 0;
+        let selectedTable = 'តុទី ១ (Table 1)';
+        let receiptModalObj = null;
 
         document.addEventListener('DOMContentLoaded', async () => {
             currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
@@ -230,18 +385,38 @@
             }
 
             document.getElementById('cashierDisplay').innerText = `Cashier: ${currentUser.full_name}`;
+            receiptModalObj = new bootstrap.Modal(document.getElementById('receiptModal'));
 
-            if (currentUser.role === 'Cashier') {
-                const currentShift = sessionStorage.getItem('currentShift');
-                if (!currentShift) {
-                    alert('សូមបើកវេនលក់ (Start Shift) ជាមុនសិន!');
-                    window.location.href = 'pos.html';
-                    return;
-                }
-            }
-
+            generateTableCards();
             await loadProducts();
         });
+
+        // 🪑 បង្កើតបញ្ជីតុស្វ័យប្រវត្តិ (តុ ១ ដល់ ១២)
+        function generateTableCards() {
+            const tableGrid = document.getElementById('tableGrid');
+            tableGrid.innerHTML = '';
+            for (let i = 1; i <= 12; i++) {
+                const tableName = `តុទី ${i} (Table ${i})`;
+                const isSelected = tableName === selectedTable ? 'selected' : '';
+                tableGrid.innerHTML += `
+                    <div class="col-4">
+                        <div class="table-card ${isSelected}" onclick="selectTable('${tableName}')">
+                            <i class="fa-solid fa-chair fs-4 mb-1"></i>
+                            <div class="fw-bold small">តុទី ${i}</div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        function selectTable(tableName) {
+            selectedTable = tableName;
+            document.getElementById('selectedTableDisplay').innerText = tableName;
+            generateTableCards();
+            const modalEl = document.getElementById('tableModal');
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            modal.hide();
+        }
 
         async function loadProducts() {
             try {
@@ -249,7 +424,7 @@
                 const result = await res.json();
                 if (result.success) {
                     products = result.data;
-                    generateCategoryButtons(products); // 🌟 បង្កើតប៊ូតុង Category ស្វ័យប្រវត្តិ
+                    generateCategoryButtons(products);
                     displayProducts(products);
                 }
             } catch (err) {
@@ -257,7 +432,6 @@
             }
         }
 
-        // 🌟 មុខងារបង្កើតប៊ូតុង Category ស្វ័យប្រវត្តិពី Database
         function generateCategoryButtons(list) {
             const container = document.getElementById('categoryButtons');
             const categories = new Set();
@@ -282,7 +456,6 @@
 
         function filterCategory(category, btnElement) {
             currentCategory = category;
-
             document.querySelectorAll('.category-btn').forEach(btn => {
                 btn.classList.remove('btn-dark');
                 btn.classList.add('btn-outline-dark');
@@ -482,20 +655,71 @@
                 const result = await res.json();
 
                 if (result.success) {
-                    alert(`បង់ប្រាក់បានជោគជ័យ! លេខវិក្កយបត្រ #${result.order.id} \nPayment Successful! Invoice #${result.order.id}`);
-                    cart = [];
-                    document.getElementById('amountReceived').value = '';
-                    document.getElementById('discountPercent').value = '0';
-                    document.getElementById('vatToggle').checked = false;
-                    renderCart();
+                    // 🖨️ បង្ហាញវិក្កយបត្រសម្រាប់ Print មុនពេលសម្អាត Cart
+                    showReceiptModal(result.order.id, paymentMethod, receivedUSD);
                     await loadProducts(); 
                 } else {
-                    alert('⚠️ មិនអាចលក់ได้ទេ: ' + result.error);
+                    alert('⚠️ មិនអាចលក់បានទេ: ' + result.error);
                 }
             } catch (err) {
                 console.error('Checkout Error:', err);
                 alert('មានបញ្ហាក្នុងការតភ្ជាប់ទៅកាន់ Server! / Connection error!');
             }
+        }
+
+        function showReceiptModal(orderId, paymentMethod, receivedUSD) {
+            document.getElementById('recInvoiceNo').innerText = `#${orderId}`;
+            document.getElementById('recDate').innerText = new Date().toLocaleString();
+            document.getElementById('recCashier').innerText = currentUser.full_name;
+            document.getElementById('recPayment').innerText = paymentMethod;
+            document.getElementById('receiptTableBadge').innerText = selectedTable;
+
+            let subTotal = 0;
+            const itemsBody = document.getElementById('recItemsBody');
+            itemsBody.innerHTML = '';
+
+            cart.forEach(item => {
+                let itemTotal = item.price * item.quantity;
+                subTotal += itemTotal;
+                itemsBody.innerHTML += `
+                    <tr>
+                        <td>${item.name}</td>
+                        <td class="text-center">${item.quantity}</td>
+                        <td class="text-end">$${item.price.toFixed(2)}</td>
+                        <td class="text-end">$${itemTotal.toFixed(2)}</td>
+                    </tr>
+                `;
+            });
+
+            let discountPercent = parseFloat(document.getElementById('discountPercent').value) || 0;
+            let discountAmount = (subTotal * discountPercent) / 100;
+            let afterDiscount = subTotal - discountAmount;
+            let isVatChecked = document.getElementById('vatToggle').checked;
+            let vatAmount = isVatChecked ? (afterDiscount * 0.10) : 0;
+
+            document.getElementById('recSubtotal').innerText = `$${subTotal.toFixed(2)}`;
+            document.getElementById('recDiscount').innerText = `-$${discountAmount.toFixed(2)} (${discountPercent}%)`;
+            document.getElementById('recVat').innerText = `$${vatAmount.toFixed(2)}`;
+            document.getElementById('recGrandTotal').innerText = `$${finalCalculatedTotal.toFixed(2)}`;
+            document.getElementById('recReceived').innerText = `$${receivedUSD.toFixed(2)}`;
+            document.getElementById('recChange').innerText = `$${(receivedUSD - finalCalculatedTotal).toFixed(2)}`;
+
+            receiptModalObj.show();
+
+            // សម្អាត Cart បន្ទាប់ពីបើក Modal Print រួច
+            cart = [];
+            document.getElementById('amountReceived').value = '';
+            document.getElementById('discountPercent').value = '0';
+            document.getElementById('vatToggle').checked = false;
+            renderCart();
+        }
+
+        function copyOrderLink() {
+            const copyText = document.getElementById("customerOrderLink");
+            copyText.select();
+            copyText.setSelectionRange(0, 99999);
+            navigator.clipboard.writeText(copyText.value);
+            alert("បានចម្លងតំណสำเร็จ! (Link Copied)");
         }
     </script>
 </body>
