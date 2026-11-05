@@ -78,7 +78,7 @@
             transition: all 0.2s ease;
         }
 
-        /* 🏷️ រចនាបថតុ (Table Card Style) */
+        /* 🪑 រចនាបថតុ (Table Card Style) */
         .table-card {
             cursor: pointer;
             border: 2px solid #e2e8f0;
@@ -280,7 +280,6 @@
                 <div class="modal-body">
                     <p class="text-muted small">សូមស្កែន QR Code នេះដើម្បីបើកមីនុយបញ្ជាទិញតាមទូរសព្ទដៃរបស់ភ្ញៀវ៖</p>
                     <div class="bg-light p-3 d-inline-block rounded-4 shadow-sm mb-3">
-                        <!-- QR Code រូបភាពតំណាង -->
                         <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=https://coffee-restrung.onrender.com/pos.html" alt="Customer QR" class="img-fluid rounded">
                     </div>
                     <div class="input-group input-group-sm mb-2">
@@ -292,7 +291,7 @@
         </div>
     </div>
 
-    <!-- 🖨️ Modal បង្ហាញវិក្កយបត្រសម្រាប់ Print -->
+    <!-- 🖨️ Modal បង្ហាញវិក្កយបត្រសម្រាប់ Print (រួមទាំងប្រាក់រៀល) -->
     <div class="modal fade" id="receiptModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow rounded-4">
@@ -329,7 +328,7 @@
                     <div class="border-top pt-2 small">
                         <div class="d-flex justify-content-between">
                             <span>ទឹកប្រាក់រួម (Subtotal):</span>
-                            <span id="recSubtotal">$0.00</span>
+                            <span><strong id="recSubtotal">$0.00</strong> (<span id="recSubtotalRiel">0 រៀល</span>)</span>
                         </div>
                         <div class="d-flex justify-content-between">
                             <span>បញ្ចុះតម្លៃ (Discount):</span>
@@ -341,15 +340,21 @@
                         </div>
                         <div class="d-flex justify-content-between fw-bold fs-6 border-top mt-2 pt-2">
                             <span>សរុបទាំងអស់ (Grand Total):</span>
-                            <span class="text-success" id="recGrandTotal">$0.00</span>
+                            <div class="text-end">
+                                <span class="text-success" id="recGrandTotal">$0.00</span><br>
+                                <span class="text-dark small" id="recGrandTotalRiel">0 រៀល</span>
+                            </div>
                         </div>
                         <div class="d-flex justify-content-between text-muted mt-1">
                             <span>ប្រាក់ទទួលបាន (Received):</span>
-                            <span id="recReceived">$0.00</span>
+                            <span><strong id="recReceived">$0.00</strong> (<span id="recReceivedRiel">0 រៀល</span>)</span>
                         </div>
                         <div class="d-flex justify-content-between text-success fw-bold">
                             <span>ប្រាក់អាប់សង (Change):</span>
-                            <span id="recChange">$0.00</span>
+                            <div class="text-end">
+                                <span id="recChange">$0.00</span><br>
+                                <span id="recChangeRiel" class="small">(0 រៀល)</span>
+                            </div>
                         </div>
                     </div>
                     <div class="text-center mt-4 text-muted small">
@@ -391,7 +396,6 @@
             await loadProducts();
         });
 
-        // 🪑 បង្កើតបញ្ជីតុស្វ័យប្រវត្តិ (តុ ១ ដល់ ១២)
         function generateTableCards() {
             const tableGrid = document.getElementById('tableGrid');
             tableGrid.innerHTML = '';
@@ -655,7 +659,6 @@
                 const result = await res.json();
 
                 if (result.success) {
-                    // 🖨️ បង្ហាញវិក្កយបត្រសម្រាប់ Print មុនពេលសម្អាត Cart
                     showReceiptModal(result.order.id, paymentMethod, receivedUSD);
                     await loadProducts(); 
                 } else {
@@ -697,16 +700,26 @@
             let isVatChecked = document.getElementById('vatToggle').checked;
             let vatAmount = isVatChecked ? (afterDiscount * 0.10) : 0;
 
+            let exchangeRate = parseFloat(document.getElementById('exchangeRate').value) || 4100;
+            let changeUSD = receivedUSD - finalCalculatedTotal;
+
             document.getElementById('recSubtotal').innerText = `$${subTotal.toFixed(2)}`;
+            document.getElementById('recSubtotalRiel').innerText = `${Math.round(subTotal * exchangeRate).toLocaleString()} រៀល`;
+            
             document.getElementById('recDiscount').innerText = `-$${discountAmount.toFixed(2)} (${discountPercent}%)`;
             document.getElementById('recVat').innerText = `$${vatAmount.toFixed(2)}`;
+            
             document.getElementById('recGrandTotal').innerText = `$${finalCalculatedTotal.toFixed(2)}`;
+            document.getElementById('recGrandTotalRiel').innerText = `${Math.round(finalCalculatedTotal * exchangeRate).toLocaleString()} រៀល`;
+            
             document.getElementById('recReceived').innerText = `$${receivedUSD.toFixed(2)}`;
-            document.getElementById('recChange').innerText = `$${(receivedUSD - finalCalculatedTotal).toFixed(2)}`;
+            document.getElementById('recReceivedRiel').innerText = `${Math.round(receivedUSD * exchangeRate).toLocaleString()} រៀល`;
+            
+            document.getElementById('recChange').innerText = `$${changeUSD.toFixed(2)}`;
+            document.getElementById('recChangeRiel').innerText = `(${Math.round(changeUSD * exchangeRate).toLocaleString()} រៀល)`;
 
             receiptModalObj.show();
 
-            // សម្អាត Cart បន្ទាប់ពីបើក Modal Print រួច
             cart = [];
             document.getElementById('amountReceived').value = '';
             document.getElementById('discountPercent').value = '0';
