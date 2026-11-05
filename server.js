@@ -288,7 +288,23 @@ app.get('/api/inventory', async (req, res) => {
         res.status(500).json({ success: false, error: 'Database error: ' + err.message });
     }
 });
-
+// 📦 API សម្រាប់ទាញយកមុខទំនិញលម្អិតតាម Order ID សម្រាប់ Print Invoice
+app.get('/api/orders/:id/items', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const query = `
+            SELECT p.name, oi.quantity, oi.price
+            FROM order_items oi
+            JOIN products p ON oi.product_id = p.id
+            WHERE oi.order_id = $1
+        `;
+        const result = await pool.query(query, [id]);
+        res.json({ success: true, items: result.rows });
+    } catch (err) {
+        console.error('Get Order Items Error:', err);
+        res.status(500).json({ success: false, error: 'Database error' });
+    }
+});
 // ================= ORDER APIs =================
 
 app.post('/api/orders', async (req, res) => {
