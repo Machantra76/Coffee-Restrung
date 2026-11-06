@@ -11,7 +11,7 @@
         body { font-family: 'Kantumruy Pro', sans-serif; background-color: #f1f5f9; }
         .card { border: none; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
 
-        /* 🖨️ KTS & Print Setup ស្អាតឥតខ្ចោះ */
+        /* 🖨️ KTS & Print Setup សម្រាប់ A4 Landscape */
         @media print {
             body * { 
                 visibility: hidden !important; 
@@ -30,21 +30,21 @@
                 border: none !important;
             }
             
-            /* រៀបចំ Header តារាង មិនឱ្យដាច់អក្សរ ឬចុះបន្ទាត់ផ្តេសផ្តាស */
+            /* រៀបចំ Header តារាង និងជួរឈរក្នុងទម្រង់ដេក Landscape */
             #categoryReportCard table th {
                 background-color: #1e293b !important;
                 color: #ffffff !important;
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
-                white-space: nowrap !important; /* 🟢 រក្សាអក្សរឱ្យជាប់គ្នា មិនដាច់ជួរ */
-                font-size: 14px !important;
-                padding: 10px 12px !important;
+                white-space: nowrap !important;
+                font-size: 15px !important;
+                padding: 12px !important;
                 vertical-align: middle !important;
             }
 
             #categoryReportCard table td {
                 font-size: 14px !important;
-                padding: 8px 12px !important;
+                padding: 10px 12px !important;
                 vertical-align: middle !important;
             }
 
@@ -52,7 +52,7 @@
                 display: none !important; 
             }
             @page {
-                size: A4 portrait;
+                size: A4 landscape; /* 🟢 កំណត់ទម្រង់ក្រដាស់ជា A4 ដេក (Landscape) */
                 margin: 10mm;
             }
         }
@@ -131,7 +131,7 @@
             </div>
         </div>
 
-        <!-- 📊 របាយការណ៍លម្អិតតាម Category -->
+        <!-- 📊 របាយការណ៍លម្អិតតាម Category (Landscape A4 Layout) -->
         <div class="card p-4 bg-white mb-4" id="categoryReportCard">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <div>
@@ -143,7 +143,7 @@
                 </button>
             </div>
             <div class="table-responsive">
-                <table class="table table-bordered table-hover align-middle">
+                <table class="table table-bordered table-hover align-middle w-100">
                     <thead class="table-dark text-center">
                         <tr>
                             <th style="width: 25%; white-space: nowrap;">ប្រភេទ (Category)</th>
