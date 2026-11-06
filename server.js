@@ -553,6 +553,7 @@ app.put('/api/orders/:id/items', async (req, res) => {
 });
 
 // 🍳 API សម្រាប់ផ្ទះបាយ (ទាញយកទំនិញតាមលំដាប់លំដោយ ID របស់ order_items ដើម្បីឱ្យឃើញការកុម្ម៉ង់បន្ថែមដាច់ដោយឡែក)
+// 🍳 API សម្រាប់ផ្ទះបាយ (បូកសរុបចំនួនទំនិញស្វ័យប្រវត្តិ និងបែងចែកដឹងពីចំនួនកុម្ម៉ង់បន្ថែមថ្មី)
 app.get('/api/orders/kitchen', async (req, res) => {
     try {
         const orderQuery = `
@@ -582,7 +583,7 @@ app.get('/api/orders/kitchen', async (req, res) => {
         const orders = orderResult.rows;
 
         for (let order of orders) {
-            // 🟢 ទាញយក Item នីមួយៗតាមลำดับ id របស់ order_items (កុម្ម៉ង់មុននៅខាងលើ កុម្ម៉ង់ក្រោយនៅខាងក្រោម)
+            // 🟢 ទាញយកទំនិញទាំងអស់ក្នុង Order នេះ ដោយរៀបលំដាប់តាម id របស់ order_items (កុម្ម៉ង់មុន/ក្រោយ)
             const itemsResult = await pool.query(`
                 SELECT 
                     p.id as product_id,
@@ -606,24 +607,36 @@ app.get('/api/orders/kitchen', async (req, res) => {
                 ORDER BY oi.id ASC
             `, [order.id]);
 
-            // 🔍 ពិនិត្យមើលថាតើទំនិញណាត្រូវបានកុម្ម៉ង់លើសពី១ដង (Add-on) ដើម្បីដាក់ស្លាកសម្គាល់
-            let productOccurrence = {};
+            // 🧮 ធ្វើការបូកសរុប Quantity សរុប និងរក្សាទុក Quantity នៃការកុម្ម៉ង់លើកដំបូង និងលើកក្រោយ (Add-on)
+            let productMap = {};
+            
             itemsResult.rows.forEach(item => {
-                productOccurrence[item.product_id] = (productOccurrence[item.product_id] || 0) + 1;
-            });
-
-            let seenCount = {};
-            order.items = itemsResult.rows.map(item => {
-                seenCount[item.product_id] = (seenCount[item.product_id] || 0) + 1;
+                if (!productMap[item.product_id]) {
+                    productMap[item.product_id] = {
+                        name: item.name,
+                        total_qty: 0,
+                        first_qty: 0,
+                        later_qty: 0,
+                        entries_count: 0
+                    };
+                }
                 
-                let isAddOn = (productOccurrence[item.product_id] > 1 && seenCount[item.product_id] > 1);
+                productMap[item.product_id].entries_count += 1;
+                productMap[item.product_id].total_qty += parseInt(item.quantity || 0);
 
-                return {
-                    name: item.name,
-                    quantity: parseInt(item.quantity || 1),
-                    added_qty: isAddOn ? parseInt(item.quantity || 1) : 0
-                };
+                if (productMap[item.product_id].entries_count === 1) {
+                    productMap[item.product_id].first_qty = parseInt(item.quantity || 0);
+                } else {
+                    productMap[item.product_id].later_qty += parseInt(item.quantity || 0);
+                }
             });
+
+            // 🔄 បម្លែងទិន្នន័យត្រឡប់ទៅឱ្យ Frontend វិញយ៉ាងស្អាត
+            order.items = Object.values(productMap).map(prod => ({
+                name: prod.name,
+                quantity: prod.total_qty,
+                added_qty: prod.later_qty // ប្រសិនបើមានការកុម្ម៉ង់បន្ថែម វានឹងបង្ហាញចំនួនថ្មីនៅទីនេះ
+            }));
         }
 
         res.json({ success: true, data: orders });
@@ -632,7 +645,6 @@ app.get('/api/orders/kitchen', async (req, res) => {
         res.status(500).json({ success: false, error: 'Database error' });
     }
 });
-
 app.patch('/api/orders/:id/status', async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
