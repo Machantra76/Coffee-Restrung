@@ -116,7 +116,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">បិទ</button>
-                    <button type="button" class="btn btn-success fw-bold px-4" onclick="submitCustomerOrder()">
+                    <button type="button" class="btn btn-success fw-bold px-4" id="submitOrderBtn" onclick="submitCustomerOrder()">
                         <i class="fa-solid fa-paper-plane me-1"></i> បញ្ជាទិញ (Confirm Order)
                     </button>
                 </div>
@@ -261,9 +261,12 @@
                 return;
             }
 
+            const submitBtn = document.getElementById('submitOrderBtn');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin me-1"></i> កំពុងបញ្ជូន...`;
+
             let grandTotal = customerCart.reduce((sum, i) => sum + (i.price * i.quantity), 0);
             
-            // 🚀 បញ្ជូន table_no ដែលចាប់បានពី URL ទៅកាន់ API /api/orders
             const orderData = {
                 table_no: selectedTable,
                 total_amount: grandTotal,
@@ -278,17 +281,26 @@
                     body: JSON.stringify(orderData)
                 });
                 const result = await res.json();
+                
                 if (result.success) {
                     alert(`✅ បញ្ជាទិញបានជោគជ័យសម្រាប់ "${selectedTable}"! សូមរង់ចាំបុគ្គលិកទទួលយកការកុម្ម៉ង់បន្ត។`);
+                    
+                    // 🟢 សម្អាតកន្រ្តកទំនិញចោលទាំងស្រុងក្រោយផ្ញើរួច ដើម្បីការពារកុំឱ្យ Order លើកក្រោយគុណនឹងពីរ ($x2$)
                     customerCart = [];
                     renderCustomerCart();
-                    bootstrap.Modal.getInstance(document.getElementById('cartModal')).hide();
+                    
+                    const cartModalEl = document.getElementById('cartModal');
+                    const modalObj = bootstrap.Modal.getInstance(cartModalEl);
+                    if (modalObj) modalObj.hide();
                 } else {
                     alert('⚠️ បរាជ័យ៖ ' + result.error);
                 }
             } catch (err) {
                 console.error('Order error:', err);
                 alert('មានបញ្ហាក្នុងការតភ្ជាប់ទៅកាន់ Server!');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = `<i class="fa-solid fa-paper-plane me-1"></i> បញ្ជាទិញ (Confirm Order)`;
             }
         }
     </script>
