@@ -6,19 +6,88 @@
     <title>Main Dashboard - ប្រព័ន្ធ POS</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Kantumruy Pro', sans-serif; background-color: #f1f5f9; }
-        .menu-card { transition: all 0.3s ease; border: none; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); height: 100%; }
-        .menu-card:hover { transform: translateY(-5px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
-        .card-icon { font-size: 2.5rem; margin-bottom: 15px; }
+        
+        /* 🌟 កូដរចនាកាត និង Glowing Border Effect ពេល Hover លើកាត */
+        .menu-card { 
+            transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1); 
+            border: 2px solid transparent !important; 
+            border-radius: 16px; 
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08); 
+            height: 100%; 
+            position: relative;
+            background-color: #ffffff;
+            overflow: hidden;
+        }
+
+        /* 🌟 Glowing Effects តាមប្រភេទកាតនីមួយៗ */
+        /* 1. POS - Blue Glow */
+        #posMenu .menu-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            border-color: #0d6efd !important;
+            box-shadow: 0 0 20px rgba(13, 110, 253, 0.45), 0 10px 20px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        /* 2. Cashier Activity - Green Glow */
+        #cashierActivityMenu .menu-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            border-color: #198754 !important;
+            box-shadow: 0 0 20px rgba(25, 135, 84, 0.45), 0 10px 20px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        /* 3. Products - Emerald Glow */
+        #productsMenu .menu-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            border-color: #20c997 !important;
+            box-shadow: 0 0 20px rgba(32, 201, 151, 0.45), 0 10px 20px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        /* 4. Inventory - Cyan/Info Glow */
+        #inventoryMenu .menu-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            border-color: #0dcaf0 !important;
+            box-shadow: 0 0 20px rgba(13, 202, 240, 0.45), 0 10px 20px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        /* 5. Kitchen - Amber/Warning Glow */
+        #kitchenMenu .menu-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            border-color: #ffc107 !important;
+            box-shadow: 0 0 20px rgba(255, 193, 7, 0.5), 0 10px 20px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        /* 6. Orders History - Purple Glow */
+        #ordersMenu .menu-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            border-color: #6f42c1 !important;
+            box-shadow: 0 0 20px rgba(111, 66, 193, 0.45), 0 10px 20px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        /* 7. Admin - Red Glow */
+        #adminMenu .menu-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            border-color: #dc3545 !important;
+            box-shadow: 0 0 20px rgba(220, 53, 69, 0.45), 0 10px 20px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-icon { 
+            font-size: 2.8rem; 
+            margin-bottom: 15px; 
+            transition: transform 0.3s ease;
+        }
+
+        .menu-card:hover .card-icon {
+            transform: scale(1.15);
+        }
     </style>
 </head>
 <body>
     <nav class="navbar navbar-dark bg-dark px-3 py-3 shadow-sm">
         <div class="container-fluid d-flex flex-wrap justify-content-between align-items-center">
             <span class="navbar-brand fw-bold fs-5 fs-md-4 mb-2 mb-md-0">
-                <i class="fa-solid fa-cash-register me-2"></i> POS System
+                <i class="fa-solid fa-cash-register me-2 text-warning"></i> POS System
             </span>
             <div class="d-flex align-items-center text-white flex-wrap gap-2">
                 <span id="userDisplay" class="fw-bold bg-secondary px-3 py-1 rounded-pill small"></span>
@@ -40,7 +109,7 @@
         <div class="row g-3 g-md-4 justify-content-center">
             <!-- 1. POS / Sales Terminal -->
             <div class="col-12 col-sm-6 col-lg-4" id="posMenu" style="display: none;">
-                <div class="card menu-card p-3 p-md-4 text-center bg-white" style="cursor: pointer;" onclick="checkShiftAndSell()">
+                <div class="card menu-card p-3 p-md-4 text-center" style="cursor: pointer;" onclick="checkShiftAndSell()">
                     <div class="card-body">
                         <i class="fa-solid fa-cart-shopping text-primary card-icon"></i>
                         <h4 class="fw-bold text-dark fs-5 fs-md-4">ទំព័រលក់ (POS)</h4>
@@ -51,7 +120,7 @@
 
             <!-- 2. Cashier Activity -->
             <div class="col-12 col-sm-6 col-lg-4" id="cashierActivityMenu" style="display: none;">
-                <div class="card menu-card p-3 p-md-4 text-center bg-white" style="cursor: pointer;" onclick="location.href='cashier-activity.html'">
+                <div class="card menu-card p-3 p-md-4 text-center" style="cursor: pointer;" onclick="location.href='cashier-activity.html'">
                     <div class="card-body">
                         <i class="fa-solid fa-chart-pie text-success card-icon"></i>
                         <h4 class="fw-bold text-dark fs-5 fs-md-4" id="activityTitle">សកម្មភាពលក់របស់ខ្ញុំ</h4>
@@ -62,7 +131,7 @@
 
             <!-- 3. Products Management -->
             <div class="col-12 col-sm-6 col-lg-4" id="productsMenu" style="display: none;">
-                <div class="card menu-card p-3 p-md-4 text-center bg-white" style="cursor: pointer;" onclick="location.href='products.html'">
+                <div class="card menu-card p-3 p-md-4 text-center" style="cursor: pointer;" onclick="location.href='products.html'">
                     <div class="card-body">
                         <i class="fa-solid fa-boxes-stacked text-success card-icon"></i>
                         <h4 class="fw-bold text-dark fs-5 fs-md-4">គ្រប់គ្រងផលិតផល</h4>
@@ -73,7 +142,7 @@
 
             <!-- 4. Inventory / Stock -->
             <div class="col-12 col-sm-6 col-lg-4" id="inventoryMenu" style="display: none;">
-                <div class="card menu-card p-3 p-md-4 text-center bg-white" style="cursor: pointer;" onclick="location.href='inventory.html'">
+                <div class="card menu-card p-3 p-md-4 text-center" style="cursor: pointer;" onclick="location.href='inventory.html'">
                     <div class="card-body">
                         <i class="fa-solid fa-warehouse text-info card-icon"></i>
                         <h4 class="fw-bold text-dark fs-5 fs-md-4">ស្តុកទំនិញ (Inventory)</h4>
@@ -84,7 +153,7 @@
 
             <!-- 5. Kitchen Display System -->
             <div class="col-12 col-sm-6 col-lg-4" id="kitchenMenu" style="display: none;">
-                <div class="card menu-card p-3 p-md-4 text-center bg-white" style="cursor: pointer;" onclick="location.href='kitchen.html'">
+                <div class="card menu-card p-3 p-md-4 text-center" style="cursor: pointer;" onclick="location.href='kitchen.html'">
                     <div class="card-body">
                         <i class="fa-solid fa-utensils text-warning card-icon"></i>
                         <h4 class="fw-bold text-dark fs-5 fs-md-4">ផ្នែកផ្ទះបាយ (Kitchen)</h4>
@@ -95,9 +164,9 @@
 
             <!-- 6. Sales History / Orders -->
             <div class="col-12 col-sm-6 col-lg-4" id="ordersMenu" style="display: none;">
-                <div class="card menu-card p-3 p-md-4 text-center bg-white" style="cursor: pointer;" onclick="location.href='orders.html'">
+                <div class="card menu-card p-3 p-md-4 text-center" style="cursor: pointer;" onclick="location.href='orders.html'">
                     <div class="card-body">
-                        <i class="fa-solid fa-receipt text-secondary card-icon"></i>
+                        <i class="fa-solid fa-receipt text-purple card-icon" style="color: #6f42c1;"></i>
                         <h4 class="fw-bold text-dark fs-5 fs-md-4">ប្រវត្តិការលក់</h4>
                         <p class="text-muted small">ពិនិត្យមើលរបាយការណ៍ និងវិក្កយបត្រ<br><i>Review past transactions</i></p>
                     </div>
@@ -106,7 +175,7 @@
 
             <!-- 7. User Management (Admin Only) -->
             <div class="col-12 col-sm-6 col-lg-4" id="adminMenu" style="display: none;">
-                <div class="card menu-card p-3 p-md-4 text-center bg-white" style="cursor: pointer;" onclick="location.href='users.html'">
+                <div class="card menu-card p-3 p-md-4 text-center" style="cursor: pointer;" onclick="location.href='users.html'">
                     <div class="card-body">
                         <i class="fa-solid fa-users-gear text-danger card-icon"></i>
                         <h4 class="fw-bold text-dark fs-5 fs-md-4">គ្រប់គ្រងគណនី</h4>
@@ -120,7 +189,7 @@
     <!-- Modal សម្រាប់ Cashier បើកវេនលក់ -->
     <div class="modal fade" id="shiftModal" tabindex="-1" data-bs-backdrop="static">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
+            <div class="modal-content rounded-4 shadow">
                 <div class="modal-header bg-primary text-white">
                     <h5 class="modal-title fw-bold"><i class="fa-solid fa-clock-rotate-left me-2"></i> បើកវេនលក់ (Start Cashier Shift)</h5>
                 </div>
@@ -132,7 +201,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-primary w-100 fw-bold" onclick="startShift()">
+                    <button type="button" class="btn btn-primary w-100 fw-bold rounded-3" onclick="startShift()">
                         <i class="fa-solid fa-play me-1"></i> ចាប់ផ្តើមវេនលក់ / Start Shift
                     </button>
                 </div>
