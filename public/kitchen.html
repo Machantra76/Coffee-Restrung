@@ -157,7 +157,7 @@
                         let itemsHtml = '<ul class="list-group list-group-flush small mb-3 bg-light rounded-3 overflow-hidden">';
                         if (order.items && order.items.length > 0) {
                             order.items.forEach(item => {
-                                // 🟢 បង្កើតស្លាកសញ្ញាបន្ថែមថ្មី (Add-on Tag) ប្រសិនបើ item.added_qty > 0
+                                // 💡 ពិនិត្យមើលប្រសិនបើមានការកុម្ម៉ង់បន្ថែម (added_qty > 0) ឱ្យលោតស្លាកពណ៌ក្រហមបង្ហាញភ្លាម
                                 let addOnBadge = '';
                                 if (item.added_qty && item.added_qty > 0) {
                                     addOnBadge = `<div class="add-on-tag"><i class="fa-solid fa-circle-plus me-1"></i> កុម្ម៉ង់ថែមថ្មី: x${item.added_qty}</div>`;
@@ -251,7 +251,7 @@
                 }
             } catch (err) {
                 console.error('Error updating status:', err);
-                alert('មានបញ្ហាក្នុងការតភ្ជាប់ទៅកាន់ Server!');
+                alert('មានបញ្ហាក្នុងการតភ្ជាប់ទៅកាន់ Server!');
             }
         }
 
