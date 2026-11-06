@@ -26,6 +26,31 @@
             display: inline-block;
             margin-top: 4px;
         }
+
+        /* 🟢 ស្លាកសញ្ញាសម្គាល់តុដែលធ្វើរួចរាល់ក្នុងតារាងសង្ខេប */
+        .completed-table-badge {
+            background-color: #d1e7dd;
+            color: #0f5132;
+            border: 1px solid #badbcc;
+            font-size: 0.82rem;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 8px;
+            display: inline-block;
+            margin: 2px;
+        }
+
+        .pending-table-badge {
+            background-color: #fff3cd;
+            color: #664d03;
+            border: 1px solid #ffecb5;
+            font-size: 0.82rem;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 8px;
+            display: inline-block;
+            margin: 2px;
+        }
     </style>
 </head>
 <body>
@@ -83,20 +108,25 @@
             </div>
         </div>
 
-        <!-- 📋 របាយការណ៍សង្ខេបមុខម្ហូបសរុបត្រូវធ្វើ (Item Quantity Summary Report) -->
+        <!-- 📋 របាយការណ៍សង្ខេបមុខម្ហូបសរុប (រាប់បញ្ចូលទាំងធ្វើរួច និងមិនទាន់ធ្វើ នៅជាប់រហូត) -->
         <div class="card shadow-sm border-0 rounded-4 p-3 mb-4 bg-white">
-            <h5 class="fw-bold text-dark mb-3"><i class="fa-solid fa-list-check me-2 text-primary"></i> របាយការណ៍សង្ខេបមុខទំនិញសរុបដែលត្រូវធ្វើ (Total Items to Prepare)</h5>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold text-dark mb-0"><i class="fa-solid fa-list-check me-2 text-primary"></i> របាយការណ៍សង្ខេបមុខទំនិញសរុប (Item Quantity & Table Status Report)</h5>
+                <button class="btn btn-sm btn-outline-danger fw-bold" onclick="clearKitchenSummaryHistory()">
+                    <i class="fa-solid fa-trash me-1"></i> សម្អាតប្រវត្តិសង្ខេប (Reset)
+                </button>
+            </div>
             <div class="table-responsive">
                 <table class="table table-bordered table-hover align-middle mb-0">
-                    <thead class="table-dark">
+                    <thead class="table-dark text-center">
                         <tr>
-                            <th>ឈ្មោះមុខទំនិញ / ភេសជ្ជៈ (Item Name)</th>
-                            <th class="text-center" style="width: 150px;">ចំនួនសរុប (Total Qty)</th>
-                            <th>សម្រាប់តុ (Tables)</th>
+                            <th class="text-start">ឈ្មោះមុខទំនិញ / ភេសជ្ជៈ (Item Name)</th>
+                            <th style="width: 150px;">ចំនួនសរុប (Total Qty)</th>
+                            <th class="text-start">ស្ថានភាពតាមតុនីមួយៗ (Table Breakdown)</th>
                         </tr>
                     </thead>
                     <tbody id="itemSummaryTableBody">
-                        <tr><td colspan="3" class="text-center text-muted py-3">មិនមានទំនិញរង់ចាំធ្វើទេ</td></tr>
+                        <tr><td colspan="3" class="text-center text-muted py-3">មិនទាន់មានទិន្នន័យ</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -104,7 +134,7 @@
 
         <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
             <div>
-                <h3 class="fw-bold text-dark mb-0"><i class="fa-solid fa-bell me-2 text-primary"></i> បញ្ជីកុម្ម៉ង់មុខម្ហូបតាម Order នីមួយៗ</h3>
+                <h3 class="fw-bold text-dark mb-0"><i class="fa-solid fa-bell me-2 text-primary"></i> បញ្ជីកុម្ម៉ង់មុខម្ហូបដែលមិនទាន់ធ្វើរួច</h3>
                 <p class="text-muted small mb-0">ទិន្នន័យអាប់ដេតស្វ័យប្រវត្តិរៀងរាល់ ៥ វិនាទីម្តង</p>
             </div>
             <button class="btn btn-outline-primary btn-sm fw-bold" onclick="loadKitchenOrders()">
@@ -120,6 +150,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         let currentUser = null;
+        let cumulativeItemSummaryMap = {}; // 🟢 រក្សាទុកប្រវត្តិសង្ខេបមុខម្ហូបជាប់រហូតប្រចាំថ្ងៃ
 
         document.addEventListener('DOMContentLoaded', () => {
             currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
@@ -131,6 +162,16 @@
             }
 
             document.getElementById('userDisplay').innerText = `${currentUser.role}: ${currentUser.full_name}`;
+
+            // ទាញយកប្រវត្តិដែលធ្លាប់រក្សាទុកក្នុង LocalStorage
+            const savedSummary = localStorage.getItem('kitchen_cumulative_summary');
+            if (savedSummary) {
+                try {
+                    cumulativeItemSummaryMap = JSON.parse(savedSummary);
+                } catch (e) {
+                    cumulativeItemSummaryMap = {};
+                }
+            }
 
             loadKitchenOrders();
             setInterval(loadKitchenOrders, 5000); // Refresh រៀងរាល់ ៥ វិនាទី
@@ -147,135 +188,192 @@
 
                     let pendingCount = 0;
                     let preparingCount = 0;
-                    
-                    // 📊 វត្ថុសម្រាប់ប្រមូលផ្តុំទិន្នន័យសង្ខេបមុខទំនិញសរុប
-                    let itemSummaryMap = {};
 
-                    if (result.data.length === 0) {
-                        grid.innerHTML = `
-                            <div class="col-12 text-center py-5">
-                                <i class="fa-solid fa-circle-check text-success display-1 mb-3"></i>
-                                <h4 class="fw-bold text-muted">គ្មានបញ្ជាទិញម្ហូបអាហាររង់ចាំទេ!</h4>
-                                <p class="text-muted small">រាល់មុខម្ហូបទាំងអស់ត្រូវបានរៀបចំរួចរាល់ហើយ</p>
-                            </div>
-                        `;
-                        updateReportCards(0, 0);
-                        renderItemSummaryTable({});
-                        return;
-                    }
+                    const activeOrders = result.data.filter(o => o.status !== 'Completed');
 
+                    // 🟢 បច្ចុប្បន្នភាព និងប្រមូលផ្តុំទិន្នន័យចូលក្នុង cumulativeItemSummaryMap
                     result.data.forEach(order => {
-                        const status = order.status || 'Pending';
-                        const isPreparing = status === 'Preparing';
-                        
-                        if (isPreparing) preparingCount++;
-                        else pendingCount++;
-
-                        const borderClass = isPreparing ? 'border-preparing' : 'border-pending';
-                        const badgeClass = isPreparing ? 'bg-primary' : 'bg-warning text-dark';
-                        const statusText = isPreparing ? 'កំពុងធ្វើ / Preparing' : 'រង់ចាំ / Pending';
-                        const orderTime = new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        const isDone = order.status === 'Completed';
                         const tableNo = order.table_no || 'តុទូទៅ';
 
-                        let itemsHtml = '<ul class="list-group list-group-flush small mb-3 bg-light rounded-3 overflow-hidden">';
                         if (order.items && order.items.length > 0) {
                             order.items.forEach(item => {
                                 const itemName = item.name || 'មុខទំនិញ';
                                 const itemQty = Number(item.quantity || 1);
+                                const orderItemKey = `${order.id}_${itemName}`;
 
-                                // 📊 បូកសរុបទិន្នន័យសម្រាប់ Item Summary Report
-                                if (!itemSummaryMap[itemName]) {
-                                    itemSummaryMap[itemName] = { totalQty: 0, tables: new Set() };
-                                }
-                                itemSummaryMap[itemName].totalQty += itemQty;
-                                itemSummaryMap[itemName].tables.add(tableNo);
-
-                                // 💡 ឆែកមើលថាតើមានទំនិញកុម្ម៉ង់ថែមថ្មី (added_qty) ឬទេ
-                                let addOnBadge = '';
-                                if (item.added_qty && item.added_qty > 0) {
-                                    addOnBadge = `<div class="add-on-tag"><i class="fa-solid fa-circle-plus me-1"></i> កុម្ម៉ង់ថែមថ្មី x${item.added_qty}</div>`;
+                                if (!cumulativeItemSummaryMap[itemName]) {
+                                    cumulativeItemSummaryMap[itemName] = {
+                                        totalQty: 0,
+                                        pendingTables: {},
+                                        completedTables: {},
+                                        processedOrderItems: {}
+                                    };
                                 }
 
-                                itemsHtml += `
-                                    <li class="list-group-item py-2 bg-transparent border-bottom">
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <span class="fw-bold text-dark fs-6"><i class="fa-solid fa-utensils me-1 text-secondary"></i> ${itemName}</span>
-                                            <span class="badge bg-danger rounded-pill px-2.5 py-1.5 fs-6">x${itemQty}</span>
-                                        </div>
-                                        ${addOnBadge}
-                                    </li>
-                                `;
+                                const itemObj = cumulativeItemSummaryMap[itemName];
+
+                                // ប្រសិនបើជា OrderItem ថ្មីដែលមិនទាន់រាប់
+                                if (!itemObj.processedOrderItems[orderItemKey]) {
+                                    itemObj.totalQty += itemQty;
+                                    itemObj.processedOrderItems[orderItemKey] = {
+                                        qty: itemQty,
+                                        status: isDone ? 'Completed' : 'Pending',
+                                        table: tableNo
+                                    };
+
+                                    if (isDone) {
+                                        itemObj.completedTables[tableNo] = (itemObj.completedTables[tableNo] || 0) + itemQty;
+                                    } else {
+                                        itemObj.pendingTables[tableNo] = (itemObj.pendingTables[tableNo] || 0) + itemQty;
+                                    }
+                                } else {
+                                    // បើ Order នេះទើបតែប្តូរទៅជា Completed
+                                    const prevStatus = itemObj.processedOrderItems[orderItemKey].status;
+                                    if (prevStatus !== 'Completed' && isDone) {
+                                        itemObj.processedOrderItems[orderItemKey].status = 'Completed';
+                                        
+                                        // ដកចេញពី Pending រួចបូកចូល Completed
+                                        if (itemObj.pendingTables[tableNo]) {
+                                            itemObj.pendingTables[tableNo] -= itemQty;
+                                            if (itemObj.pendingTables[tableNo] <= 0) delete itemObj.pendingTables[tableNo];
+                                        }
+                                        itemObj.completedTables[tableNo] = (itemObj.completedTables[tableNo] || 0) + itemQty;
+                                    }
+                                }
                             });
                         }
-                        itemsHtml += '</ul>';
-
-                        grid.innerHTML += `
-                            <div class="col-12 col-sm-6 col-md-4 col-lg-3">
-                                <div class="card order-card shadow-sm p-3 bg-white ${borderClass} h-100 d-flex flex-column justify-content-between">
-                                    <div>
-                                        <div class="d-flex justify-content-between align-items-center mb-2">
-                                            <h5 class="fw-bold text-dark mb-0">Order #${order.id}</h5>
-                                            <span class="badge ${badgeClass} px-2 py-1">${statusText}</span>
-                                        </div>
-                                        <div class="mb-2">
-                                            <span class="badge bg-info text-dark fs-6 px-3 py-1 w-100"><i class="fa-solid fa-chair me-1"></i> ${tableNo}</span>
-                                        </div>
-                                        <div class="small text-muted mb-2">
-                                            <i class="fa-solid fa-clock me-1"></i> ម៉ោង៖ <b>${orderTime}</b><br>
-                                            <i class="fa-solid fa-user me-1"></i> Cashier: <b>${order.cashier_name || 'N/A'}</b>
-                                        </div>
-                                        <hr class="my-2">
-                                        
-                                        <div class="mb-2">
-                                            <span class="fw-bold text-secondary small mb-1 d-block">មុខម្ហូបត្រូវធ្វើ៖</span>
-                                            ${itemsHtml}
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        ${!isPreparing ? `
-                                            <button class="btn btn-primary w-100 fw-bold py-2 shadow-sm mb-2" onclick="updateOrderStatus(${order.id}, 'Preparing', '${tableNo}')">
-                                                <i class="fa-solid fa-fire me-1"></i> ចាប់ផ្តើមធ្វើ / Start Preparing
-                                            </button>
-                                        ` : `
-                                            <button class="btn btn-success w-100 fw-bold py-2 shadow-sm" onclick="updateOrderStatus(${order.id}, 'Completed', '${tableNo}')">
-                                                <i class="fa-solid fa-circle-check me-1"></i> ធ្វើរួចរាល់ (ជូនដំណឹង Sales)
-                                            </button>
-                                        `}
-                                    </div>
-                                </div>
-                            </div>
-                        `;
                     });
 
+                    // រក្សាទុកទិន្នន័យក្នុង LocalStorage
+                    localStorage.setItem('kitchen_cumulative_summary', JSON.stringify(cumulativeItemSummaryMap));
+
+                    if (activeOrders.length === 0) {
+                        grid.innerHTML = `
+                            <div class="col-12 text-center py-5">
+                                <i class="fa-solid fa-circle-check text-success display-1 mb-3"></i>
+                                <h4 class="fw-bold text-muted">គ្មានបញ្ជាទិញម្ហូបអាហាររង់ចាំធ្វើទេ!</h4>
+                                <p class="text-muted small">រាល់មុខម្ហូបទាំងអស់ត្រូវបានរៀបចំរួចរាល់ហើយ</p>
+                            </div>
+                        `;
+                    } else {
+                        activeOrders.forEach(order => {
+                            const status = order.status || 'Pending';
+                            const isPreparing = status === 'Preparing';
+                            
+                            if (isPreparing) preparingCount++;
+                            else pendingCount++;
+
+                            const borderClass = isPreparing ? 'border-preparing' : 'border-pending';
+                            const badgeClass = isPreparing ? 'bg-primary' : 'bg-warning text-dark';
+                            const statusText = isPreparing ? 'កំពុងធ្វើ / Preparing' : 'រង់ចាំ / Pending';
+                            const orderTime = new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                            const tableNo = order.table_no || 'តុទូទៅ';
+
+                            let itemsHtml = '<ul class="list-group list-group-flush small mb-3 bg-light rounded-3 overflow-hidden">';
+                            if (order.items && order.items.length > 0) {
+                                order.items.forEach(item => {
+                                    const itemName = item.name || 'មុខទំនិញ';
+                                    const itemQty = Number(item.quantity || 1);
+
+                                    let addOnBadge = '';
+                                    if (item.added_qty && item.added_qty > 0) {
+                                        addOnBadge = `<div class="add-on-tag"><i class="fa-solid fa-circle-plus me-1"></i> កុម្ម៉ង់ថែមថ្មី x${item.added_qty}</div>`;
+                                    }
+
+                                    itemsHtml += `
+                                        <li class="list-group-item py-2 bg-transparent border-bottom">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <span class="fw-bold text-dark fs-6"><i class="fa-solid fa-utensils me-1 text-secondary"></i> ${itemName}</span>
+                                                <span class="badge bg-danger rounded-pill px-2.5 py-1.5 fs-6">x${itemQty}</span>
+                                            </div>
+                                            ${addOnBadge}
+                                        </li>
+                                    `;
+                                });
+                            }
+                            itemsHtml += '</ul>';
+
+                            grid.innerHTML += `
+                                <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+                                    <div class="card order-card shadow-sm p-3 bg-white ${borderClass} h-100 d-flex flex-column justify-content-between">
+                                        <div>
+                                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                                <h5 class="fw-bold text-dark mb-0">Order #${order.id}</h5>
+                                                <span class="badge ${badgeClass} px-2 py-1">${statusText}</span>
+                                            </div>
+                                            <div class="mb-2">
+                                                <span class="badge bg-info text-dark fs-6 px-3 py-1 w-100"><i class="fa-solid fa-chair me-1"></i> ${tableNo}</span>
+                                            </div>
+                                            <div class="small text-muted mb-2">
+                                                <i class="fa-solid fa-clock me-1"></i> ម៉ោង៖ <b>${orderTime}</b><br>
+                                                <i class="fa-solid fa-user me-1"></i> Cashier: <b>${order.cashier_name || 'N/A'}</b>
+                                            </div>
+                                            <hr class="my-2">
+                                            
+                                            <div class="mb-2">
+                                                <span class="fw-bold text-secondary small mb-1 d-block">មុខម្ហូបត្រូវធ្វើ៖</span>
+                                                ${itemsHtml}
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            ${!isPreparing ? `
+                                                <button class="btn btn-primary w-100 fw-bold py-2 shadow-sm mb-2" onclick="updateOrderStatus(${order.id}, 'Preparing', '${tableNo}')">
+                                                    <i class="fa-solid fa-fire me-1"></i> ចាប់ផ្តើមធ្វើ / Start Preparing
+                                                </button>
+                                            ` : `
+                                                <button class="btn btn-success w-100 fw-bold py-2 shadow-sm" onclick="updateOrderStatus(${order.id}, 'Completed', '${tableNo}')">
+                                                    <i class="fa-solid fa-circle-check me-1"></i> ធ្វើរួចរាល់ (ជូនដំណឹង Sales)
+                                                </button>
+                                            `}
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                    }
+
                     updateReportCards(pendingCount, preparingCount);
-                    renderItemSummaryTable(itemSummaryMap);
+                    renderItemSummaryTable(cumulativeItemSummaryMap);
                 }
             } catch (err) {
                 console.error('Error loading kitchen orders:', err);
             }
         }
 
-        // 📊 បង្ហាញទិន្នន័យសង្ខេបមុខទំនិញចូលក្នុងតារាង
+        // 📊 បង្ហាញទិន្នន័យសង្ខេបមុខទំនិញចូលក្នុងតារាងស្អាតបាត (រួមទាំងស្លាកអក្សរធ្វើរួចរាល់)
         function renderItemSummaryTable(summaryMap) {
             const tbody = document.getElementById('itemSummaryTableBody');
             tbody.innerHTML = '';
 
             const keys = Object.keys(summaryMap);
             if (keys.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="3" class="text-center text-muted py-3">មិនមានទំនិញរង់ចាំធ្វើទេ</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="3" class="text-center text-muted py-3">មិនទាន់មានទិន្នន័យសង្ខេបទេ</td></tr>`;
                 return;
             }
 
             keys.forEach(itemName => {
                 const data = summaryMap[itemName];
-                const tablesList = Array.from(data.tables).join(', ');
+                let tableStatusBadges = '';
+
+                // បង្ហាញតុដែលកំពុងរង់ចាំ / កំពុងធ្វើ
+                Object.keys(data.pendingTables || {}).forEach(tNo => {
+                    const q = data.pendingTables[tNo];
+                    tableStatusBadges += `<span class="pending-table-badge"><i class="fa-solid fa-hourglass-half me-1"></i> រង់ចាំ៖ ${tNo} (x${q})</span> `;
+                });
+
+                // 🟢 បង្ហាញអក្សរ «មុខម្ហូបនេះបានធ្វើរួចរាល់ សម្រាប់តុលេខ...»
+                Object.keys(data.completedTables || {}).forEach(tNo => {
+                    const q = data.completedTables[tNo];
+                    tableStatusBadges += `<span class="completed-table-badge"><i class="fa-solid fa-circle-check me-1 text-success"></i> មុខម្ហូបនេះបានធ្វើរួចរាល់ សម្រាប់${tNo} (x${q})</span> `;
+                });
 
                 tbody.innerHTML += `
                     <tr>
                         <td class="fw-bold text-dark"><i class="fa-solid fa-mug-hot text-warning me-2"></i> ${itemName}</td>
                         <td class="text-center"><span class="badge bg-danger fs-6 px-3 py-1">x${data.totalQty}</span></td>
-                        <td><span class="badge bg-secondary px-2 py-1">${tablesList}</span></td>
+                        <td>${tableStatusBadges || '<span class="text-muted small">គ្មានព័ត៌មានតុ</span>'}</td>
                     </tr>
                 `;
             });
@@ -311,6 +409,14 @@
             } catch (err) {
                 console.error('Error updating status:', err);
                 alert('មានបញ្ហាក្នុងការតភ្ជាប់ទៅកាន់ Server!');
+            }
+        }
+
+        function clearKitchenSummaryHistory() {
+            if (confirm('តើអ្នកពិតជាចង់សម្អាតប្រវត្តិសង្ខេបមុខម្ហូបក្នុងថ្ងៃនេះមែនទេ?')) {
+                cumulativeItemSummaryMap = {};
+                localStorage.removeItem('kitchen_cumulative_summary');
+                loadKitchenOrders();
             }
         }
 
