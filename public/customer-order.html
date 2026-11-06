@@ -195,12 +195,38 @@
         </div>
     </div>
 
+    <!-- 🥤 Modal សម្រាប់ជ្រើសរើសកម្រិតជាតិស្ករ (សម្រាប់ Category Coffee) -->
+    <div class="modal fade" id="sweetnessModal" tabindex="-1" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content border-0 shadow-lg rounded-4 text-center p-3">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold text-dark w-100"><i class="fa-solid fa-mug-hot text-warning me-1"></i> ជ្រើសរើសកម្រិតស្ករ</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small mb-3 fw-bold" id="modalProductName">Latte</p>
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-outline-dark fw-bold py-2 rounded-3" onclick="selectSweetness('ផ្អែមធម្មតា (100%)')">🟢 ផ្អែមធម្មតា (100%)</button>
+                        <button class="btn btn-outline-dark fw-bold py-2 rounded-3" onclick="selectSweetness('ផ្អែមតិច (70%)')">🟡 ផ្អែមតិច (70%)</button>
+                        <button class="btn btn-outline-dark fw-bold py-2 rounded-3" onclick="selectSweetness('កន្លះផ្អែម (50%)')">🟠 កន្លះផ្អែម (50%)</button>
+                        <button class="btn btn-outline-dark fw-bold py-2 rounded-3" onclick="selectSweetness('ស្ករតិចបំផុត (25%)')">🟤 ស្ករតិចបំផុត (25%)</button>
+                        <button class="btn btn-outline-dark fw-bold py-2 rounded-3" onclick="selectSweetness('មិនដាក់ស្ករ (0%)')">⚪ មិនដាក់ស្ករ (0%)</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         let products = [];
         let customerCart = [];
         let currentCategory = 'All';
         let selectedTable = 'តុទី ១ (Table 1)';
+
+        // 🥤 Biến cho Sweetness Modal
+        let sweetnessModalObj = null;
+        let selectedProductForSweetness = null;
 
         document.addEventListener('DOMContentLoaded', async () => {
             const urlParams = new URLSearchParams(window.location.search);
@@ -212,6 +238,9 @@
 
             document.getElementById('tableTitleDisplay').innerText = selectedTable;
             document.getElementById('detectedTableBadge').innerText = selectedTable;
+
+            // 🥤 Khởi tạo Sweetness Modal
+            sweetnessModalObj = new bootstrap.Modal(document.getElementById('sweetnessModal'));
 
             await loadProducts();
         });
@@ -279,12 +308,46 @@
             });
         }
 
+        // 🟢 កែសម្រួលមុខងារ addToCustomerCart ឱ្យឆែកមើល Category "Coffee"
         function addToCustomerCart(productId) {
             const product = products.find(p => p.id === productId);
             if (!product) return;
-            const exist = customerCart.find(i => i.id === productId);
-            if (exist) exist.quantity += 1;
-            else customerCart.push({ id: product.id, name: product.name, price: Number(product.price), quantity: 1 });
+
+            const categoryName = (product.category || '').toLowerCase();
+            if (categoryName.includes('coffee') || categoryName.includes('កាហ្វេ')) {
+                selectedProductForSweetness = product;
+                document.getElementById('modalProductName').innerText = product.name;
+                sweetnessModalObj.show();
+            } else {
+                appendItemToCustomerCart(product, 'ធម្មតា');
+            }
+        }
+
+        // 🟢 មុខងារជ្រើសរើសកម្រិតស្ករពី Modal របស់ភ្ញៀវ
+        function selectSweetness(sweetnessLevel) {
+            if (!selectedProductForSweetness) return;
+            appendItemToCustomerCart(selectedProductForSweetness, sweetnessLevel);
+            selectedProductForSweetness = null;
+            sweetnessModalObj.hide();
+        }
+
+        // 🟢 មុខងារបន្ថែមទំនិញចូលកន្រ្តកភ្ញៀវ (រួមទាំងកម្រិតស្ករ)
+        function appendItemToCustomerCart(product, sweetness) {
+            const cartItemId = `${product.id}_${sweetness}`;
+            const displayName = sweetness === 'ធម្មតា' ? product.name : `${product.name} (${sweetness})`;
+
+            const exist = customerCart.find(i => i.cartItemId === cartItemId);
+            if (exist) {
+                exist.quantity += 1;
+            } else {
+                customerCart.push({
+                    cartItemId: cartItemId,
+                    id: product.id,
+                    name: displayName,
+                    price: Number(product.price),
+                    quantity: 1
+                });
+            }
             renderCustomerCart();
         }
 
@@ -354,7 +417,12 @@
                 table_no: selectedTable,
                 total_amount: grandTotal,
                 payment_method: 'KHQR',
-                items: customerCart.map(i => ({ id: i.id, quantity: i.quantity, price: i.price }))
+                items: customerCart.map(i => ({ 
+                    id: i.id, 
+                    name: i.name, // 🟢 បញ្ជូនឈ្មោះរួមទាំងកម្រិតស្ករទៅកាន់ Server / Cashier POS / Kitchen
+                    quantity: i.quantity, 
+                    price: i.price 
+                }))
             };
 
             try {
