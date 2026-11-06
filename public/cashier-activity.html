@@ -35,7 +35,7 @@
     <nav class="navbar navbar-dark bg-dark px-4 py-3 shadow-sm">
         <span class="navbar-brand fw-bold fs-4"><i class="fa-solid fa-chart-line me-2"></i> សកម្មភាពលក់ និងរបាយការណ៍ | Sales Activity</span>
         <div>
-            <a href="pos.html" class="btn btn-outline-light btn-sm me-2"><i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ក្រោយ / Back</a>
+            <a href="sale.html" class="btn btn-outline-light btn-sm me-2"><i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ក្រោយ / Sale</a>
             <button class="btn btn-danger btn-sm px-3 fw-bold" onclick="logout()"><i class="fa-solid fa-right-from-bracket me-1"></i> ចាកចេញ</button>
         </div>
     </nav>
@@ -77,12 +77,13 @@
                     <thead class="table-dark">
                         <tr>
                             <th>លេខវិក្កយបត្រ (#Invoice)</th>
+                            <th>លេខតុ (Table)</th>
                             <th>អ្នកគិតលុយ (Cashier)</th>
                             <th>ទឹកប្រាក់ (Amount)</th>
                             <th>ទម្រង់បង់ប្រាក់ (Payment)</th>
                             <th>ស្ថានភាព (Status)</th>
                             <th>កាលបរិច្ឆេទ / ម៉ោង (Date & Time)</th>
-                            <th class="text-end">សកម្មភាព (Action)</th>
+                            <th class="text-end" style="width: 220px;">សកម្មភាព (Action)</th>
                         </tr>
                     </thead>
                     <tbody id="activityTableBody">
@@ -306,29 +307,37 @@
                     tbody.innerHTML = '';
 
                     if (allOrdersData.length === 0) {
-                        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-3">មិនទាន់មានកំណត់ត្រាការលក់សម្រាប់ Cashier នេះទេ។</td></tr>`;
+                        tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-3">មិនទាន់មានកំណត់ត្រាការលក់ទេ។</td></tr>`;
                         return;
                     }
 
                     allOrdersData.forEach((o) => {
                         const invNo = o.order_number || `#${o.id}`;
+                        const tableNo = o.table_no || 'តុទូទៅ';
                         const status = o.status || 'Completed';
                         const cashier = o.cashier_name || 'បុគ្គលិក';
                         tbody.innerHTML += `
                             <tr>
                                 <td class="fw-bold">${invNo}</td>
+                                <td><span class="badge bg-info text-dark">${tableNo}</span></td>
                                 <td class="small">${cashier}</td>
                                 <td class="fw-bold text-success">$${Number(o.total_amount).toFixed(2)}</td>
                                 <td><span class="badge bg-secondary">${o.payment_method || 'Cash'}</span></td>
                                 <td><span class="badge bg-success">${status}</span></td>
                                 <td>${new Date(o.created_at).toLocaleString()}</td>
                                 <td class="text-end">
-                                    <button class="btn btn-sm btn-outline-primary fw-bold me-1" onclick="printInvoice(${o.id})" title="បោះពុម្ពវិក្កយបត្រ">
-                                        <i class="fa-solid fa-print"></i> Print
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-warning fw-bold" onclick="openEditItemsModal(${o.id})" title="កែប្រែមុខទំនិញ">
-                                        <i class="fa-solid fa-pen-to-square"></i> កែប្រែ
-                                    </button>
+                                    <div class="d-flex justify-content-end gap-1 flex-nowrap">
+                                        <!-- 🟢 ប៊ូតុងបង់ប្រាក់ (បញ្ជូនទៅ sale.html) -->
+                                        <button class="btn btn-sm btn-success px-2 py-1 fw-bold" onclick="goToSaleCheckout('${tableNo}', ${o.id})" title="ទៅបង់ប្រាក់" style="font-size: 0.85rem;">
+                                            <i class="fa-solid fa-cash-register"></i> បង់ប្រាក់
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-primary px-2 py-1 fw-bold" onclick="printInvoice(${o.id})" title="បោះពុម្ពវិក្កយបត្រ" style="font-size: 0.85rem;">
+                                            <i class="fa-solid fa-print"></i> Print
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-warning px-2 py-1 fw-bold" onclick="openEditItemsModal(${o.id})" title="កែប្រែមុខទំនិញ" style="font-size: 0.85rem;">
+                                            <i class="fa-solid fa-pen-to-square"></i> កែប្រែ
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         `;
@@ -340,6 +349,11 @@
             }
         }
 
+        // 🚀 មុខងារសម្រាប់បញ្ជូនទិន្នន័យទៅកាន់ sale.html
+        function goToSaleCheckout(tableNo, orderId) {
+            window.location.href = `sale.html?table=${encodeURIComponent(tableNo)}&order_id=${orderId}`;
+        }
+
         async function printInvoice(orderId) {
             const order = allOrdersData.find(o => o.id === orderId);
             if (!order) return;
@@ -349,6 +363,7 @@
             const grandTotalRiel = Math.round(grandTotalUSD * exchangeRate);
 
             document.getElementById('recInvoiceNo').innerText = order.order_number || `#${order.id}`;
+            document.getElementById('receiptTableBadge').innerText = order.table_no || 'តុទូទៅ';
             document.getElementById('recDate').innerText = new Date(order.created_at).toLocaleString();
             document.getElementById('recCashier').innerText = order.cashier_name || currentUser.full_name;
             document.getElementById('recPayment').innerText = order.payment_method || 'Cash';
