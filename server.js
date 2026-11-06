@@ -326,7 +326,7 @@ app.get('/api/orders/:id/items', async (req, res) => {
 
 // ================= ORDER & QR ORDERING APIs =================
 
-// 1. API សម្រាប់ភ្ញៀវកុម្ម៉ង់ម្ហូប[cite: 5, 10]
+// 1. API សម្រាប់ភ្ញៀវកុម្ម៉ង់ម្ហូប[cite: 5]
 app.post('/api/orders', async (req, res) => {
     const { cashier_id, table_no, total_amount, payment_method, items } = req.body;
     
@@ -552,7 +552,7 @@ app.put('/api/orders/:id/items', async (req, res) => {
     }
 });
 
-// 🍳 API សម្រាប់ផ្ទះបាយ[cite: 5, 10]
+// 🍳 API សម្រាប់ផ្ទះបាយ (គាំទ្រ Category ម្ហូបគ្រប់មុខ និងបូកសរុប Quantity ត្រឹមត្រូវ)[cite: 5]
 app.get('/api/orders/kitchen', async (req, res) => {
     try {
         const orderQuery = `
@@ -564,7 +564,17 @@ app.get('/api/orders/kitchen', async (req, res) => {
               AND EXISTS (
                   SELECT 1 FROM order_items oi
                   JOIN products p ON oi.product_id = p.id
-                  WHERE oi.order_id = o.id AND LOWER(p.category) = 'food'
+                  WHERE oi.order_id = o.id 
+                    AND (
+                        LOWER(p.category) = 'food' OR
+                        p.category LIKE '%គ្រឿងសមុទ្រ%' OR
+                        p.category LIKE '%បាយឆា%' OR
+                        p.category LIKE '%ស៊ុប%' OR
+                        p.category LIKE '%សាច់គោ%' OR
+                        p.category LIKE '%ឆាបន្លែ%' OR
+                        p.category LIKE '%ភ្លា%' OR
+                        p.category LIKE '%ម្ហូបចិន%'
+                    )
               )
             ORDER BY o.id ASC
         `;
@@ -576,31 +586,28 @@ app.get('/api/orders/kitchen', async (req, res) => {
                 SELECT 
                     p.name, 
                     SUM(oi.quantity) as quantity,
-                    COUNT(oi.id) as order_count,
-                    COALESCE(
-                        (SELECT oi2.quantity 
-                         FROM order_items oi2 
-                         WHERE oi2.order_id = $1 AND oi2.product_id = oi.product_id 
-                         ORDER BY oi2.id DESC LIMIT 1), 0
-                    ) as last_added_qty,
                     p.category
                 FROM order_items oi
                 JOIN products p ON oi.product_id = p.id
-                WHERE oi.order_id = $1 AND LOWER(p.category) = 'food'
-                GROUP BY p.id, p.name, p.category, oi.product_id
+                WHERE oi.order_id = $1 
+                  AND (
+                      LOWER(p.category) = 'food' OR
+                      p.category LIKE '%គ្រឿងសមុទ្រ%' OR
+                      p.category LIKE '%បាយឆា%' OR
+                      p.category LIKE '%ស៊ុប%' OR
+                      p.category LIKE '%សាច់គោ%' OR
+                      p.category LIKE '%ឆាបន្លែ%' OR
+                      p.category LIKE '%ភ្លា%' OR
+                      p.category LIKE '%ម្ហូបចិន%'
+                  )
+                GROUP BY p.id, p.name, p.category
             `, [order.id]);
 
-            order.items = itemsResult.rows.map(item => {
-                const totalQty = parseInt(item.quantity);
-                const orderCount = parseInt(item.order_count);
-                const lastAdded = parseInt(item.last_added_qty);
-
-                return {
-                    name: item.name,
-                    quantity: totalQty,
-                    added_qty: orderCount > 1 ? lastAdded : 0
-                };
-            });
+            order.items = itemsResult.rows.map(item => ({
+                name: item.name,
+                quantity: parseInt(item.quantity || 1),
+                added_qty: 0
+            }));
         }
 
         res.json({ success: true, data: orders });
@@ -738,7 +745,7 @@ app.get('/api/orders/cashier-activity/:cashierId', async (req, res) => {
     }
 });
 
-// 📊 API សម្រាប់ទាញយករបាយការណ៍លម្អិតតាម Category ប្រចាំថ្ងៃ (គ្រប់ Order ទាំងអស់)[cite: 10]
+// 📊 API សម្រាប់ទាញយករបាយការណ៍លម្អិតតាម Category ប្រចាំថ្ងៃ (គ្រប់ Order ទាំងអស់)
 app.get('/api/reports/category-summary', async (req, res) => {
     const { fromDate, toDate } = req.query;
     try {
