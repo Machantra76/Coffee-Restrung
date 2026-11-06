@@ -103,22 +103,32 @@
         }
         .cart-items-box { max-height: 220px; overflow-y: auto; }
 
-        /* 🖨️ Print Styles សម្រាប់ម៉ាស៊ីនព្រិន្ទ POS */
+        /* 🖨️ Print Styles សម្រាប់ម៉ាស៊ីនព្រិន្ទ A4 (រុញ Invoice ទៅខាងលើ) */
         @media print {
-            body * { visibility: hidden; }
-            #printableInvoice, #printableInvoice * { visibility: visible; }
-            #printableInvoice { 
-                position: absolute; 
-                left: 0 !important; 
-                top: 0 !important; 
-                width: 80mm !important; 
-                margin: 0 !important;
-                padding: 2mm !important;
+            body * { 
+                visibility: hidden !important; 
             }
-            .no-print { display: none !important; }
+            #printableInvoice, #printableInvoice * { 
+                visibility: visible !important; 
+            }
+            #printableInvoice { 
+                position: absolute !important; 
+                left: 0 !important; 
+                top: 0 !important; /* 🟢 នៅខាងលើបំផុតនៃក្រដាស់ A4 */
+                width: 100% !important; 
+                margin: 0 !important;
+                padding: 10mm 15mm !important;
+                font-size: 15px !important;
+            }
+            #printableInvoice .table {
+                font-size: 14px !important;
+            }
+            .no-print { 
+                display: none !important; 
+            }
             @page {
-                size: 80mm auto;
-                margin: 0mm;
+                size: A4 portrait;
+                margin: 0;
             }
         }
     </style>
@@ -325,7 +335,7 @@
         </div>
     </div>
 
-    <!-- 📱 Modal QR Code សម្រាប់ភ្ញៀវ Order (Dynamic QR per Selected Table) -->
+    <!-- 📱 Modal QR Code សម្រាប់ភ្ញៀវ Order -->
     <div class="modal fade" id="qrModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow rounded-4 text-center p-3">
@@ -347,7 +357,6 @@
                         <button class="btn btn-outline-primary fw-bold" onclick="copyOrderLink()"><i class="fa-solid fa-copy me-1"></i> ចម្លងតំណ</button>
                     </div>
 
-                    <!-- ជ្រើសរើសតុភ្លាមៗលើ Modal QR -->
                     <div class="border-top pt-2">
                         <label class="form-label small fw-bold text-secondary mb-1">ប្តូរតុដើម្បី Gen QR ផ្សេងទៀត៖</label>
                         <select id="qrTableSelector" class="form-select form-select-sm fw-bold text-center text-primary" onchange="changeQrTableFromModal(this.value)">
@@ -451,8 +460,8 @@
         let pendingOrderModalObj = null;
         let currentPendingOrder = null;
         let soundInterval = null;
-        let lastKitchenStatusMap = {}; // 🔔 សម្រាប់តាមដាន Status ពីផ្ទះបាយ
-        let acceptedOrderId = null; // 🎯 ចាំទុក ID របស់ Order មកពី QR ឬ Cashier Activity
+        let lastKitchenStatusMap = {};
+        let acceptedOrderId = null;
 
         let customTables = ['តុទី ១ (Table 1)', 'តុទី ២ (Table 2)', 'តុទី ៣ (Table 3)', 'តុទី ៤ (Table 4)', 'តុទី ៥ (Table 5)', 'តុទី ៦ (Table 6)', 'តុទី ៧ (Table 7)', 'តុទី ៨ (Table 8)'];
 
@@ -471,17 +480,11 @@
             await loadProducts();
             generateDynamicQR();
 
-            // 🚀 [មុខងារបន្ថែមថ្មី] ត្រួតពិនិត្យ URL query parameters ករណីចុចប៊ូតុង "បង់ប្រាក់" ពីទំព័រ cashier-activity.html
             checkUrlForOrderCheckout();
-
-            // 🔄 បើកមុខងារ Auto-Check QR Orders រៀងរាល់ 3 វិនាទីស្វ័យប្រវត្តិ
             setInterval(checkCustomerPendingOrders, 3000);
-
-            // 🔔 មុខងារឆែកមើល Status ពីផ្ទះបាយរៀងរាល់ 3 វិនាទី
             setInterval(checkKitchenOrderStatusUpdates, 3000);
         });
 
-        // 🚀 ទាញយក Order & items ស្វ័យប្រវត្តិ និង Mix/Group ទំនិញដែលមាន ID ដូចគ្នាបញ្ចូលគ្នាឱ្យនៅជាជួរតែមួយ[cite: 5]
         async function checkUrlForOrderCheckout() {
             const urlParams = new URLSearchParams(window.location.search);
             const targetTable = urlParams.get('table');
@@ -530,7 +533,6 @@
             }
         }
 
-        // 🔔 មុខងារឆែកមើល Status ពីផ្ទះបាយ (Preparing / Completed)
         async function checkKitchenOrderStatusUpdates() {
             try {
                 const res = await fetch('/api/orders/kitchen');
@@ -559,7 +561,6 @@
             }
         }
 
-        // 🔊 បន្លឺសំឡេងកណ្ដឹង (Bell Audio Alert)
         function playBellSound() {
             try {
                 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -567,7 +568,7 @@
                 const gainNode = audioCtx.createGain();
                 
                 oscillator.type = 'triangle';
-                oscillator.frequency.setValueAtTime(587.33, audioCtx.currentTime); // D5 Note
+                oscillator.frequency.setValueAtTime(587.33, audioCtx.currentTime);
                 gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
                 
                 oscillator.connect(gainNode);
@@ -580,7 +581,6 @@
             }
         }
 
-        // 💬 បង្ហាញ Toast Notification លើមុខ POS
         function showSalesAlert(message) {
             let toastContainer = document.getElementById('salesToastContainer');
             if (!toastContainer) {
@@ -601,7 +601,6 @@
             }, 6000);
         }
 
-        // 🔗 Dynamic QR Code Generator តាមលេខតុដែលបានជ្រើសរើស
         function generateDynamicQR(selectedTableName = null) {
             const currentTable = selectedTableName || document.getElementById('tableInput').value.trim() || 'តុទូទៅ';
             const baseUrl = `${window.location.protocol}//${window.location.host}/customer-order.html`;
@@ -632,7 +631,6 @@
             generateDynamicQR();
         }
 
-        // 🔔 មុខងារឆែកមើល Order ថ្មីពីភ្ញៀវស្កែន QR
         async function checkCustomerPendingOrders() {
             try {
                 const res = await fetch('/api/orders/customer-pending');
@@ -713,7 +711,6 @@
             pendingOrderModalObj.hide();
         }
 
-        // 🎯 ទទួលយក QR Order និង Mix/Group ទំនិញដែលមាន ID ដូចគ្នាបញ្ចូលគ្នាឱ្យនៅជាជួរតែមួយ[cite: 5]
         async function acceptCustomerOrder() {
             if (!currentPendingOrder) return;
 
