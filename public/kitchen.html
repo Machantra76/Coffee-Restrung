@@ -157,9 +157,7 @@
                         let itemsHtml = '<ul class="list-group list-group-flush small mb-3 bg-light rounded-3 overflow-hidden">';
                         if (order.items && order.items.length > 0) {
                             order.items.forEach(item => {
-                                // 💡 Clean ឈ្មោះមុខម្ហូបកុំឱ្យមានអក្សរស្ទួន ព្រោះយើងទាញយកមកបង្ហាញដាច់ដោយឡែកពីគ្នា
-                                let cleanName = item.name.replace(/\s*\(បន្ថែមថ្មី: x\d+\)/g, '');
-                                
+                                // 🟢 បង្កើតស្លាកសញ្ញាបន្ថែមថ្មី (Add-on Tag) ប្រសិនបើ item.added_qty > 0
                                 let addOnBadge = '';
                                 if (item.added_qty && item.added_qty > 0) {
                                     addOnBadge = `<div class="add-on-tag"><i class="fa-solid fa-circle-plus me-1"></i> កុម្ម៉ង់ថែមថ្មី: x${item.added_qty}</div>`;
@@ -168,7 +166,7 @@
                                 itemsHtml += `
                                     <li class="list-group-item py-2 bg-transparent border-bottom">
                                         <div class="d-flex justify-content-between align-items-center">
-                                            <span class="fw-bold text-dark fs-6"><i class="fa-solid fa-utensils me-1 text-secondary"></i> ${cleanName}</span>
+                                            <span class="fw-bold text-dark fs-6"><i class="fa-solid fa-utensils me-1 text-secondary"></i> ${item.name}</span>
                                             <span class="badge bg-danger rounded-pill px-2.5 py-1.5 fs-6">សរុប x${item.quantity}</span>
                                         </div>
                                         ${addOnBadge}
