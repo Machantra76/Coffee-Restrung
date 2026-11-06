@@ -6,27 +6,29 @@
     <title>បញ្ជាទិញម្ហូប និងភេសជ្ជៈតាមទូរសព្ទ (Customer Self-Order)</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Kantumruy Pro', sans-serif; background-color: #f8f9fa; }
+        body { font-family: 'Kantumruy Pro', sans-serif; background-color: #f8f9fa; padding-bottom: 90px; }
+        
         .product-card {
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: all 0.25s ease;
             border: none;
-            border-radius: 12px;
+            border-radius: 16px;
             background-color: #ffffff;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.06);
             overflow: hidden;
-            height: 130px;
+            height: 150px;
             display: flex;
             flex-direction: column;
             justify-content: flex-end;
             position: relative;
         }
-        .product-card:hover { transform: translateY(-3px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .product-card:active { transform: scale(0.97); }
+        .product-card:hover { transform: translateY(-3px); box-shadow: 0 6px 16px rgba(0,0,0,0.12); }
         .product-img-wrapper {
             position: absolute;
-            top: 0; left: 0; right: 0; bottom: 35px;
+            top: 0; left: 0; right: 0; bottom: 42px;
             overflow: hidden;
             background: #fff;
         }
@@ -36,20 +38,73 @@
             object-fit: contain;
         }
         .product-info {
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(4px);
             color: #fff;
-            padding: 4px 8px;
+            padding: 6px 10px;
             display: flex;
             justify-content: space-between;
             align-items: center;
             z-index: 2;
-            font-size: 0.8rem;
+            font-size: 0.82rem;
         }
+
         .category-btn {
             border-radius: 20px;
             font-size: 0.85rem;
             font-weight: 600;
-            padding: 5px 15px;
+            padding: 6px 16px;
+        }
+
+        /* 🛒 ឌីហ្សាញប៊ូតុង ORDER អណ្តែតខាងក្រោម (Floating ORDER Bar) យ៉ាងសង្ហារ */
+        .floating-order-bar {
+            position: fixed;
+            bottom: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: calc(100% - 30px);
+            max-width: 500px;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: white;
+            border-radius: 50px;
+            padding: 10px 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 10px 25px rgba(15, 23, 42, 0.35);
+            z-index: 1050;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .floating-order-btn {
+            background: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 30px;
+            font-weight: 700;
+            font-size: 0.95rem;
+            letter-spacing: 0.5px;
+            box-shadow: 0 4px 15px rgba(255, 75, 43, 0.4);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: transform 0.2s;
+        }
+
+        .floating-order-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Nav Order Button Style */
+        .btn-order-nav {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+            border: none;
+            border-radius: 20px;
+            font-weight: 700;
+            padding: 6px 14px;
+            box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
         }
     </style>
 </head>
@@ -60,8 +115,8 @@
             <span class="navbar-brand fw-bold fs-6">
                 <i class="fa-solid fa-utensils me-1 text-warning"></i> ម៉ឺនុយបញ្ជាទិញ (<span id="tableTitleDisplay" class="text-info">តុទី ១</span>)
             </span>
-            <button class="btn btn-outline-warning btn-sm position-relative fw-bold" data-bs-toggle="modal" data-bs-target="#cartModal">
-                <i class="fa-solid fa-cart-shopping me-1"></i> កន្រ្តក
+            <button class="btn btn-order-nav btn-sm position-relative" data-bs-toggle="modal" data-bs-target="#cartModal">
+                <i class="fa-solid fa-receipt me-1"></i> ORDER
                 <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="cartBadge">0</span>
             </button>
         </div>
@@ -69,9 +124,9 @@
 
     <div class="container py-3">
         <!-- 📌 បង្ហាញលេខតុស្វ័យប្រវត្តិពី QR Scan (Lock មិនឱ្យប្តូរ) -->
-        <div class="mb-3 bg-white p-2 rounded-3 shadow-sm border d-flex justify-content-between align-items-center">
+        <div class="mb-3 bg-white p-2.5 px-3 rounded-4 shadow-sm border d-flex justify-content-between align-items-center">
             <span class="small fw-bold text-secondary"><i class="fa-solid fa-chair me-1 text-primary"></i> លេខតុរបស់អ្នក (Table):</span>
-            <span id="detectedTableBadge" class="badge bg-primary px-3 py-2 fs-6">តុទី ១</span>
+            <span id="detectedTableBadge" class="badge bg-primary px-3 py-2 fs-6 rounded-pill">តុទី ១</span>
         </div>
 
         <!-- Category Buttons -->
@@ -80,17 +135,33 @@
         </div>
 
         <!-- Product Grid -->
-        <div class="row g-2" id="productsGrid">
+        <div class="row g-2.5" id="productsGrid">
             <!-- Render products -->
         </div>
+    </div>
+
+    <!-- 🚀 FLOATING ORDER BAR (ប៊ូតុង ORDER អណ្តែតខាងក្រោមយ៉ាងសង្ហារ) -->
+    <div class="floating-order-bar d-none" id="floatingOrderBar" onclick="openCartModal()">
+        <div class="d-flex align-items-center gap-2">
+            <div class="position-relative">
+                <span class="badge rounded-circle bg-danger p-2 fs-6" id="floatCartCount">0</span>
+            </div>
+            <div>
+                <div class="small text-white-50 lh-1">សរុប (Total)</div>
+                <div class="fw-bold fs-5 text-warning" id="floatCartTotal">$0.00</div>
+            </div>
+        </div>
+        <button class="floating-order-btn">
+            ORDER NOW <i class="fa-solid fa-arrow-right"></i>
+        </button>
     </div>
 
     <!-- 🛒 Modal កន្រ្តកទំនិញរបស់ភ្ញៀវ -->
     <div class="modal fade" id="cartModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-            <div class="modal-content border-0 shadow rounded-4">
+            <div class="modal-content border-0 shadow-lg rounded-4">
                 <div class="modal-header bg-dark text-white">
-                    <h5 class="modal-title fw-bold"><i class="fa-solid fa-cart-shopping me-2"></i> កន្រ្តកទំនិញរបស់អ្នក</h5>
+                    <h5 class="modal-title fw-bold"><i class="fa-solid fa-receipt me-2 text-warning"></i> បញ្ជីបញ្ជាទិញរបស់អ្នក</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
@@ -105,19 +176,19 @@
                                 </tr>
                             </thead>
                             <tbody id="customerCartBody">
-                                <tr><td colspan="4" class="text-center text-muted py-3 small">កន្រ្តកទទេ</td></tr>
+                                <tr><td colspan="4" class="text-center text-muted py-3 small">មិនទាន់មានទំនិញក្នុងបញ្ជីកុម្ម៉ង់</td></tr>
                             </tbody>
                         </table>
                     </div>
                     <div class="d-flex justify-content-between fw-bold fs-6 border-top pt-2">
                         <span>ទឹកប្រាក់សរុប (Total):</span>
-                        <span class="text-success" id="customerCartTotal">$0.00</span>
+                        <span class="text-success fs-5" id="customerCartTotal">$0.00</span>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">បិទ</button>
-                    <button type="button" class="btn btn-success fw-bold px-4" id="submitOrderBtn" onclick="submitCustomerOrder()">
-                        <i class="fa-solid fa-paper-plane me-1"></i> បញ្ជាទិញ (Confirm Order)
+                    <button type="button" class="btn btn-secondary fw-bold rounded-3" data-bs-dismiss="modal">បិទ</button>
+                    <button type="button" class="btn btn-success fw-bold px-4 rounded-3" id="submitOrderBtn" onclick="submitCustomerOrder()">
+                        <i class="fa-solid fa-paper-plane me-1"></i> បញ្ជូន ORDER (Confirm)
                     </button>
                 </div>
             </div>
@@ -129,10 +200,9 @@
         let products = [];
         let customerCart = [];
         let currentCategory = 'All';
-        let selectedTable = 'តុទី ១ (Table 1)'; // តម្លៃដើមเผื่อអត់មាន Parameter
+        let selectedTable = 'តុទី ១ (Table 1)';
 
         document.addEventListener('DOMContentLoaded', async () => {
-            // 🔍 ស្វែងរកលេខតុពី URL Query Parameter (ឧ. ?table=តុទី+២ ឬ ?table=VIP_1)
             const urlParams = new URLSearchParams(window.location.search);
             const tableParam = urlParams.get('table');
             
@@ -140,7 +210,6 @@
                 selectedTable = decodeURIComponent(tableParam);
             }
 
-            // បង្ហាញលេខតុនៅលើ Navbar និង Badge 
             document.getElementById('tableTitleDisplay').innerText = selectedTable;
             document.getElementById('detectedTableBadge').innerText = selectedTable;
 
@@ -166,9 +235,9 @@
             const categories = new Set();
             list.forEach(p => { if (p.category) categories.add(p.category.trim()); });
 
-            container.innerHTML = `<button class="btn ${currentCategory === 'All' ? 'btn-dark' : 'btn-outline-dark'} category-btn" onclick="filterCategory('All', this)">ទាំងអស់</button>`;
+            container.innerHTML = `<button class="btn ${currentCategory === 'All' ? 'btn-dark' : 'btn-outline-dark'} category-btn shadow-sm" onclick="filterCategory('All', this)">ទាំងអស់</button>`;
             categories.forEach(cat => {
-                container.innerHTML += `<button class="btn ${currentCategory === cat ? 'btn-dark' : 'btn-outline-dark'} category-btn" onclick="filterCategory('${cat}', this)">${cat}</button>`;
+                container.innerHTML += `<button class="btn ${currentCategory === cat ? 'btn-dark' : 'btn-outline-dark'} category-btn shadow-sm" onclick="filterCategory('${cat}', this)">${cat}</button>`;
             });
         }
 
@@ -192,7 +261,7 @@
             }
 
             list.forEach(p => {
-                let imgTag = `<div class="product-img-wrapper d-flex align-items-center justify-content-center text-secondary"><i class="fa-solid fa-image fs-3"></i></div>`;
+                let imgTag = `<div class="product-img-wrapper d-flex align-items-center justify-content-center text-secondary"><i class="fa-solid fa-utensils fs-3"></i></div>`;
                 if (p.image_url && p.image_url.trim() !== '') {
                     imgTag = `<div class="product-img-wrapper"><img src="${p.image_url}" alt="${p.name}"></div>`;
                 }
@@ -201,7 +270,7 @@
                         <div class="product-card" onclick="addToCustomerCart(${p.id})">
                             ${imgTag}
                             <div class="product-info">
-                                <span class="text-truncate" style="max-width: 65%;">${p.name}</span>
+                                <span class="text-truncate fw-bold" style="max-width: 60%;">${p.name}</span>
                                 <span class="text-warning fw-bold">$${Number(p.price).toFixed(2)}</span>
                             </div>
                         </div>
@@ -219,15 +288,24 @@
             renderCustomerCart();
         }
 
+        function openCartModal() {
+            const cartModalEl = document.getElementById('cartModal');
+            const modalObj = new bootstrap.Modal(cartModalEl);
+            modalObj.show();
+        }
+
         function renderCustomerCart() {
             const tbody = document.getElementById('customerCartBody');
             tbody.innerHTML = '';
             let total = 0, count = 0;
 
+            const floatBar = document.getElementById('floatingOrderBar');
+
             if (customerCart.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-3 small">កន្រ្តកទទេ</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-3 small">មិនទាន់មានទំនិញក្នុងបញ្ជីកុម្ម៉ង់</td></tr>`;
                 document.getElementById('customerCartTotal').innerText = `$0.00`;
                 document.getElementById('cartBadge').innerText = '0';
+                floatBar.classList.add('d-none');
                 return;
             }
 
@@ -240,10 +318,10 @@
                         <td class="small fw-bold">${item.name}</td>
                         <td class="text-center">
                             <button class="btn btn-sm btn-outline-secondary py-0 px-1" onclick="customerCart[${index}].quantity > 1 ? customerCart[${index}].quantity-- : customerCart.splice(${index}, 1); renderCustomerCart();">-</button>
-                            <span class="mx-1 small">${item.quantity}</span>
+                            <span class="mx-1 small fw-bold">${item.quantity}</span>
                             <button class="btn btn-sm btn-outline-secondary py-0 px-1" onclick="customerCart[${index}].quantity++; renderCustomerCart();">+</button>
                         </td>
-                        <td class="text-end small">$${sub.toFixed(2)}</td>
+                        <td class="text-end small fw-bold">$${sub.toFixed(2)}</td>
                         <td class="text-end">
                             <button class="btn btn-sm text-danger p-0" onclick="customerCart.splice(${index}, 1); renderCustomerCart();"><i class="fa-solid fa-trash"></i></button>
                         </td>
@@ -253,6 +331,11 @@
 
             document.getElementById('customerCartTotal').innerText = `$${total.toFixed(2)}`;
             document.getElementById('cartBadge').innerText = count;
+
+            // Update Floating Bar
+            document.getElementById('floatCartCount').innerText = count;
+            document.getElementById('floatCartTotal').innerText = `$${total.toFixed(2)}`;
+            floatBar.classList.remove('d-none');
         }
 
         async function submitCustomerOrder() {
@@ -285,7 +368,6 @@
                 if (result.success) {
                     alert(`✅ បញ្ជាទិញបានជោគជ័យសម្រាប់ "${selectedTable}"! សូមរង់ចាំបុគ្គលិកទទួលយកការកុម្ម៉ង់បន្ត។`);
                     
-                    // 🟢 សម្អាតកន្រ្តកទំនិញចោលទាំងស្រុងក្រោយផ្ញើរួច ដើម្បីការពារកុំឱ្យ Order លើកក្រោយគុណនឹងពីរ ($x2$)
                     customerCart = [];
                     renderCustomerCart();
                     
@@ -300,7 +382,7 @@
                 alert('មានបញ្ហាក្នុងការតភ្ជាប់ទៅកាន់ Server!');
             } finally {
                 submitBtn.disabled = false;
-                submitBtn.innerHTML = `<i class="fa-solid fa-paper-plane me-1"></i> បញ្ជាទិញ (Confirm Order)`;
+                submitBtn.innerHTML = `<i class="fa-solid fa-paper-plane me-1"></i> បញ្ជូន ORDER (Confirm)`;
             }
         }
     </script>
