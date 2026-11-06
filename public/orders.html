@@ -85,7 +85,7 @@
             </div>
         </div>
 
-        <!-- 📊 របាយការណ៍លម្អិតតាម Category (New Section) -->
+        <!-- 📊 របាយការណ៍លម្អិតតាម Category -->
         <div class="card p-4 bg-white mb-4">
             <h4 class="fw-bold mb-3 text-dark"><i class="fa-solid fa-boxes-stacked me-2 text-primary"></i> របាយការណ៍លក់តាមប្រភេទមុខទំនិញ (Sales by Category)</h4>
             <div class="table-responsive">
@@ -233,11 +233,14 @@
         async function loadOrdersHistory() {
             const cashierId = document.getElementById('cashierSelect').value;
             if (cashierId && cashierId !== 'all') {
-                return; // បើជ្រើសរើស Cashier ដាច់ដោយឡែក គឺឱ្យវាដំណើរការក្នុង loadCashierActivity()
+                return; 
             }
 
-            const fromDate = document.getElementById('fromDate').value;
-            const toDate = document.getElementById('toDate').value;
+            const rawFromDate = document.getElementById('fromDate').value;
+            const rawToDate = document.getElementById('toDate').value;
+
+            const fromDate = formatDateForApi(rawFromDate);
+            const toDate = formatDateForApi(rawToDate);
 
             try {
                 let url = '/api/orders/history';
@@ -316,10 +319,12 @@
             }
         }
 
-        // 📊 មុខងារទាញយក និងបង្ហាញរបាយការណ៍លម្អិតតាម Category
         async function loadCategorySummaryReport() {
-            const fromDate = document.getElementById('fromDate').value;
-            const toDate = document.getElementById('toDate').value;
+            const rawFromDate = document.getElementById('fromDate').value;
+            const rawToDate = document.getElementById('toDate').value;
+
+            const fromDate = formatDateForApi(rawFromDate);
+            const toDate = formatDateForApi(rawToDate);
 
             try {
                 let url = '/api/reports/category-summary';
@@ -357,6 +362,17 @@
             }
         }
 
+        function formatDateForApi(dateString) {
+            if (!dateString) return '';
+            if (dateString.includes('/')) {
+                const parts = dateString.split('/');
+                if (parts.length === 3) {
+                    return `${parts[2]}-${parts[1]}-${parts[0]}`;
+                }
+            }
+            return dateString;
+        }
+
         async function deleteOrder(orderId) {
             if (!confirm(`តើអ្នកពិតជាចង់លុបវិក្កយបត្រ #${orderId} នេះមែនទេ? (ចំនួនទំនិញនឹងត្រូវបូកសងចូលស្តុកវិញ)`)) return;
 
@@ -377,7 +393,7 @@
         }
 
         function resetFilter() {
-            const today = new Date().toISOString().split 'T')[0];
+            const today = new Date().toISOString().split('T')[0];
             document.getElementById('fromDate').value = today;
             document.getElementById('toDate').value = today;
             document.getElementById('cashierSelect').value = 'all';
