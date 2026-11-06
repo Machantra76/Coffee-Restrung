@@ -326,7 +326,7 @@ app.get('/api/orders/:id/items', async (req, res) => {
 
 // ================= ORDER & QR ORDERING APIs =================
 
-// 1. API សម្រាប់ភ្ញៀវកុម្ម៉ង់ម្ហូប (បង្កើត Order ថ្មីដោយមិនទាន់មាន payment_method)
+// 1. API សម្រាប់ភ្ញៀវកុម្ម៉ង់ម្ហូប (បានកែសម្រួលត្រឹមត្រូវមិនឱ្យគុណនឹងពីរ)[cite: 5]
 app.post('/api/orders', async (req, res) => {
     const { cashier_id, table_no, total_amount, payment_method, items } = req.body;
     
@@ -422,29 +422,17 @@ app.post('/api/orders', async (req, res) => {
                 cashier_id || null, 
                 table_no || 'Walk-in', 
                 addedAmount, 
-                null, // payment_method គឺ NULL ដំបូង ដើម្បីឱ្យលោត Active Table ភ្លាមៗ
+                null, 
                 initialStatus
             ]);
             targetOrderId = orderResult.rows[0].id;
 
             if (items && items.length > 0) {
                 for (let item of items) {
-                    const checkExistingItem = await client.query(
-                        `SELECT id, quantity FROM order_items WHERE order_id = $1 AND product_id = $2`,
-                        [targetOrderId, item.id]
+                    await client.query(
+                        `INSERT INTO order_items (order_id, product_id, quantity, price) VALUES ($1, $2, $3, $4)`,
+                        [targetOrderId, item.id, item.quantity, item.price]
                     );
-
-                    if (checkExistingItem.rows.length > 0) {
-                        await client.query(
-                            `UPDATE order_items SET quantity = quantity + $1 WHERE id = $2`,
-                            [item.quantity, checkExistingItem.rows[0].id]
-                        );
-                    } else {
-                        await client.query(
-                            `INSERT INTO order_items (order_id, product_id, quantity, price) VALUES ($1, $2, $3, $4)`,
-                            [targetOrderId, item.id, item.quantity, item.price]
-                        );
-                    }
                 }
             }
         }
