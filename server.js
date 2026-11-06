@@ -326,7 +326,7 @@ app.get('/api/orders/:id/items', async (req, res) => {
 
 // ================= ORDER & QR ORDERING APIs =================
 
-// 1. API សម្រាប់ភ្ញៀវកុម្ម៉ង់ម្ហូប (INSERT ជាជួរដេកថ្មីរាល់ពេលកុម្ម៉ង់ថែម ដើម្បីឱ្យបង្ហាញអក្សរ "កុម្ម៉ង់ថែមថ្មី")[cite: 5]
+// 1. API សម្រាប់ភ្ញៀវកុម្ម៉ង់ម្ហូប[cite: 5, 10]
 app.post('/api/orders', async (req, res) => {
     const { cashier_id, table_no, total_amount, payment_method, items } = req.body;
     
@@ -369,7 +369,6 @@ app.post('/api/orders', async (req, res) => {
                         [item.quantity, item.id]
                     );
 
-                    // 🟢 [ចំណុចសំខាន់]: INSERT ជាជួរដេកថ្មីរាល់ពេល order ថែម ដើម្បីអោយខាង Kitchen ចាប់យក added_qty បាន[cite: 5]
                     await client.query(
                         `INSERT INTO order_items (order_id, product_id, quantity, price) VALUES ($1, $2, $3, $4)`,
                         [targetOrderId, item.id, item.quantity, item.price]
@@ -440,7 +439,7 @@ app.post('/api/orders', async (req, res) => {
     }
 });
 
-// 2. API សម្រាប់ Sales Dashboard ឆែកមើល Order ថ្មីៗរង់ចាំការទទួលយក (status = 'Customer_Pending')
+// 2. API សម្រាប់ Sales Dashboard
 app.get('/api/orders/customer-pending', async (req, res) => {
     try {
         const orderQuery = `
@@ -487,7 +486,7 @@ app.post('/api/orders/:id/accept', async (req, res) => {
     }
 });
 
-// 💰 4. API សម្រាប់បង់ប្រាក់ Checkout (បំពេញ payment_method ដើម្បីឱ្យតុបាត់ពី Active Tables)
+// 💰 4. API សម្រាប់បង់ប្រាក់ Checkout
 app.post('/api/orders/:id/pay', async (req, res) => {
     const { id } = req.params;
     const { payment_method, total_amount } = req.body;
@@ -553,7 +552,7 @@ app.put('/api/orders/:id/items', async (req, res) => {
     }
 });
 
-// 🍳 API សម្រាប់ផ្ទះបាយ (បង្ហាញ added_qty សម្រាប់អក្សរ "កុម្ម៉ង់ថែមថ្មី" ព្រមទាំង Mix បញ្ចូលគ្នាសម្រាប់ยอดសរុប)[cite: 5]
+// 🍳 API សម្រាប់ផ្ទះបាយ[cite: 5, 10]
 app.get('/api/orders/kitchen', async (req, res) => {
     try {
         const orderQuery = `
@@ -738,7 +737,8 @@ app.get('/api/orders/cashier-activity/:cashierId', async (req, res) => {
         res.status(500).json({ success: false, error: 'Database error: ' + err.message });
     }
 });
-// 📊 API សម្រាប់ទាញយករបាយការណ៍លម្អិតតាម Category ប្រចាំថ្ងៃ
+
+// 📊 API សម្រាប់ទាញយករបាយការណ៍លម្អិតតាម Category ប្រចាំថ្ងៃ (គ្រប់ Order ទាំងអស់)[cite: 10]
 app.get('/api/reports/category-summary', async (req, res) => {
     const { fromDate, toDate } = req.query;
     try {
