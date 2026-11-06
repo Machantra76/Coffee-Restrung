@@ -326,7 +326,7 @@ app.get('/api/orders/:id/items', async (req, res) => {
 
 // ================= ORDER & QR ORDERING APIs =================
 
-// 1. API សម្រាប់ភ្ញៀវកុម្ម៉ង់ម្ហូប (បានកែសម្រួលត្រឹមត្រូវមិនឱ្យគុណនឹងពីរ)[cite: 5]
+// 1. API សម្រាប់ភ្ញៀវកុម្ម៉ង់ម្ហូប (Mix បញ្ចូលគ្នាដើម្បីងាយស្រួលគិតលុយ)[cite: 5]
 app.post('/api/orders', async (req, res) => {
     const { cashier_id, table_no, total_amount, payment_method, items } = req.body;
     
@@ -429,10 +429,22 @@ app.post('/api/orders', async (req, res) => {
 
             if (items && items.length > 0) {
                 for (let item of items) {
-                    await client.query(
-                        `INSERT INTO order_items (order_id, product_id, quantity, price) VALUES ($1, $2, $3, $4)`,
-                        [targetOrderId, item.id, item.quantity, item.price]
+                    const checkExistingItem = await client.query(
+                        `SELECT id, quantity FROM order_items WHERE order_id = $1 AND product_id = $2`,
+                        [targetOrderId, item.id]
                     );
+
+                    if (checkExistingItem.rows.length > 0) {
+                        await client.query(
+                            `UPDATE order_items SET quantity = quantity + $1 WHERE id = $2`,
+                            [item.quantity, checkExistingItem.rows[0].id]
+                        );
+                    } else {
+                        await client.query(
+                            `INSERT INTO order_items (order_id, product_id, quantity, price) VALUES ($1, $2, $3, $4)`,
+                            [targetOrderId, item.id, item.quantity, item.price]
+                        );
+                    }
                 }
             }
         }
@@ -564,7 +576,7 @@ app.put('/api/orders/:id/items', async (req, res) => {
     }
 });
 
-// 🍳 API សម្រាប់ផ្ទះបាយ
+// 🍳 API សម្រាប់ផ្ទះបាយ (បានកែសម្រួលផ្ញើ added_qty ដើម្បីបង្ហាញអក្សរ "កុម្ម៉ង់ថែមថ្មី")[cite: 2, 6]
 app.get('/api/orders/kitchen', async (req, res) => {
     try {
         const orderQuery = `
@@ -584,13 +596,36 @@ app.get('/api/orders/kitchen', async (req, res) => {
         const orders = orderResult.rows;
 
         for (let order of orders) {
+            // 💡 គណនាសរុប (Quantity) និងទាញយកចំនួនដែលទើបថែមចុងក្រោយ (last_added_qty)
             const itemsResult = await pool.query(`
-                SELECT p.name, oi.quantity, p.category
+                SELECT 
+                    p.name, 
+                    SUM(oi.quantity) as quantity,
+                    COUNT(oi.id) as order_count,
+                    COALESCE(
+                        (SELECT oi2.quantity 
+                         FROM order_items oi2 
+                         WHERE oi2.order_id = $1 AND oi2.product_id = oi.product_id 
+                         ORDER BY oi2.id DESC LIMIT 1), 0
+                    ) as last_added_qty,
+                    p.category
                 FROM order_items oi
                 JOIN products p ON oi.product_id = p.id
                 WHERE oi.order_id = $1 AND LOWER(p.category) = 'food'
+                GROUP BY p.id, p.name, p.category, oi.product_id
             `, [order.id]);
-            order.items = itemsResult.rows;
+
+            order.items = itemsResult.rows.map(item => {
+                const totalQty = parseInt(item.quantity);
+                const orderCount = parseInt(item.order_count);
+                const lastAdded = parseInt(item.last_added_qty);
+
+                return {
+                    name: item.name,
+                    quantity: totalQty,
+                    added_qty: orderCount > 1 ? lastAdded : 0
+                };
+            });
         }
 
         res.json({ success: true, data: orders });
