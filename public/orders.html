@@ -34,7 +34,7 @@
                     <input type="date" id="toDate" class="form-control">
                 </div>
                 <div class="col-12 col-md-4 d-flex gap-2">
-                    <button class="btn btn-primary fw-bold w-100" onclick="loadOrdersHistory()">
+                    <button class="btn btn-primary fw-bold w-100" onclick="loadAllReports()">
                         <i class="fa-solid fa-filter me-1"></i> ចម្រោះទិន្នន័យ (Filter)
                     </button>
                     <button class="btn btn-outline-secondary fw-bold" onclick="resetFilter()" title="កំណត់ឡើងវិញ">
@@ -82,6 +82,26 @@
                     <h5><i class="fa-solid fa-chart-line me-2"></i> ប្រាក់ចំណេញសរុប (Total Profit)</h5>
                     <h2 id="totalProfit" class="fw-bold display-6">$0.00</h2>
                 </div>
+            </div>
+        </div>
+
+        <!-- 📊 របាយការណ៍លម្អិតតាម Category (New Section) -->
+        <div class="card p-4 bg-white mb-4">
+            <h4 class="fw-bold mb-3 text-dark"><i class="fa-solid fa-boxes-stacked me-2 text-primary"></i> របាយការណ៍លក់តាមប្រភេទមុខទំនិញ (Sales by Category)</h4>
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover align-middle">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>ប្រភេទ (Category)</th>
+                            <th>ឈ្មោះមុខទំនិញ (Product Name)</th>
+                            <th class="text-center">ចំនួនលក់បាន (Total Qty)</th>
+                            <th class="text-end">ទឹកប្រាក់សរុប (Total Sales)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="categorySummaryTableBody">
+                        <tr><td colspan="4" class="text-center text-muted py-3">មិនមានទិន្នន័យ</td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
 
@@ -138,8 +158,13 @@
             document.getElementById('toDate').value = today;
 
             await loadCashiersList();
-            await loadOrdersHistory();
+            await loadAllReports();
         });
+
+        async function loadAllReports() {
+            await loadOrdersHistory();
+            await loadCategorySummaryReport();
+        }
 
         async function loadCashiersList() {
             try {
@@ -159,7 +184,7 @@
         async function loadCashierActivity() {
             const cashierId = document.getElementById('cashierSelect').value;
             if (cashierId === 'all') {
-                loadOrdersHistory();
+                loadAllReports();
                 return;
             }
 
@@ -208,8 +233,7 @@
         async function loadOrdersHistory() {
             const cashierId = document.getElementById('cashierSelect').value;
             if (cashierId && cashierId !== 'all') {
-                loadCashierActivity();
-                return;
+                return; // បើជ្រើសរើស Cashier ដាច់ដោយឡែក គឺឱ្យវាដំណើរការក្នុង loadCashierActivity()
             }
 
             const fromDate = document.getElementById('fromDate').value;
@@ -292,6 +316,47 @@
             }
         }
 
+        // 📊 មុខងារទាញយក និងបង្ហាញរបាយការណ៍លម្អិតតាម Category
+        async function loadCategorySummaryReport() {
+            const fromDate = document.getElementById('fromDate').value;
+            const toDate = document.getElementById('toDate').value;
+
+            try {
+                let url = '/api/reports/category-summary';
+                let queryParams = [];
+                if (fromDate) queryParams.push(`fromDate=${fromDate}`);
+                if (toDate) queryParams.push(`toDate=${toDate}`);
+                if (queryParams.length > 0) url += '?' + queryParams.join('&');
+
+                const res = await fetch(url);
+                const result = await res.json();
+
+                if (result.success) {
+                    const data = result.data || [];
+                    const tbody = document.getElementById('categorySummaryTableBody');
+                    tbody.innerHTML = '';
+
+                    if (data.length === 0) {
+                        tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-3">មិនមានទិន្នន័យលក់តាម Category ក្នុងចន្លោះថ្ងៃនេះទេ។</td></tr>`;
+                        return;
+                    }
+
+                    data.forEach(row => {
+                        tbody.innerHTML += `
+                            <tr>
+                                <td><span class="badge bg-info text-dark">${row.category_name}</span></td>
+                                <td class="fw-bold">${row.product_name}</td>
+                                <td class="text-center fw-bold text-primary">${row.total_quantity}</td>
+                                <td class="text-end fw-bold text-success">$${Number(row.total_sales).toFixed(2)}</td>
+                            </tr>
+                        `;
+                    });
+                }
+            } catch (err) {
+                console.error('Error loading category summary report:', err);
+            }
+        }
+
         async function deleteOrder(orderId) {
             if (!confirm(`តើអ្នកពិតជាចង់លុបវិក្កយបត្រ #${orderId} នេះមែនទេ? (ចំនួនទំនិញនឹងត្រូវបូកសងចូលស្តុកវិញ)`)) return;
 
@@ -301,7 +366,7 @@
 
                 if (res.ok && result.success) {
                     alert('បានលុបវិក្កយបត្រ និងបូកស្តុកសងវិញបានជោគជ័យ!');
-                    loadOrdersHistory();
+                    loadAllReports();
                 } else {
                     alert('បរាជ័យក្នុងការលុប៖ ' + (result.error || 'Server error'));
                 }
@@ -312,11 +377,11 @@
         }
 
         function resetFilter() {
-            const today = new Date().toISOString().split('T')[0];
+            const today = new Date().toISOString().split 'T')[0];
             document.getElementById('fromDate').value = today;
             document.getElementById('toDate').value = today;
             document.getElementById('cashierSelect').value = 'all';
-            loadOrdersHistory();
+            loadAllReports();
         }
 
         function logout() {
