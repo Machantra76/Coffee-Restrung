@@ -326,7 +326,7 @@ app.get('/api/orders/:id/items', async (req, res) => {
 
 // ================= ORDER & QR ORDERING APIs =================
 
-// 1. API សម្រាប់ភ្ញៀវកុម្ម៉ង់ម្ហូប (រក្សាគោលការណ៍រួមបញ្ចូលគ្នាដដែលសម្រាប់ Cashier)
+// 1. API សម្រាប់ភ្ញៀវកុម្ម៉ង់ម្ហូប (ប្រើប្រាស់ Order ID ដដែលនៅលើតុចាស់ ដើម្បីធានាវិក្កយបត្រ Cashier រួមគ្នាតែមួយ)
 app.post('/api/orders', async (req, res) => {
     const { cashier_id, table_no, total_amount, payment_method, items } = req.body;
     
@@ -351,6 +351,7 @@ app.post('/api/orders', async (req, res) => {
         const addedAmount = parseFloat(total_amount) || 0;
 
         if (existingOrder) {
+            // 🟢 ករណីមាន Order ស្រាប់នៅលើតុ (Add-on): ប្រើ Order ID ដដែល
             targetOrderId = existingOrder.id;
 
             if (items && items.length > 0) {
@@ -369,6 +370,7 @@ app.post('/api/orders', async (req, res) => {
                         [item.quantity, item.id]
                     );
 
+                    // 💡 បញ្ចូល Item ថ្មីជា Row ដាច់ដោយឡែកក្នុង order_items នៃ Order ID ដើម
                     await client.query(
                         `INSERT INTO order_items (order_id, product_id, quantity, price) VALUES ($1, $2, $3, $4)`,
                         [targetOrderId, item.id, item.quantity, item.price]
@@ -376,12 +378,14 @@ app.post('/api/orders', async (req, res) => {
                 }
             }
 
+            // បូកបន្ថែមទឹកប្រាក់ និងប្តូរ status មក Pending វិញដើម្បីឱ្យ KDS លោតបង្ហាញ
             await client.query(
-                `UPDATE orders SET total_amount = total_amount + $1, status = 'Customer_Pending' WHERE id = $2`,
+                `UPDATE orders SET total_amount = total_amount + $1, status = 'Pending' WHERE id = $2`,
                 [addedAmount, targetOrderId]
             );
 
         } else {
+            // 🟢 ករណីកុម្ម៉ង់លើកដំបូង (បង្កើត Order ID ថ្មី)
             if (items && items.length > 0) {
                 for (let item of items) {
                     const checkStock = await client.query('SELECT stock_qty, name FROM products WHERE id = $1', [item.id]);
@@ -399,7 +403,7 @@ app.post('/api/orders', async (req, res) => {
                 }
             }
 
-            const initialStatus = table_no ? 'Customer_Pending' : 'Pending';
+            const initialStatus = table_no ? 'Pending' : 'Pending';
 
             const orderQuery = `
                 INSERT INTO orders (cashier_id, table_no, total_amount, payment_method, status, created_at) 
@@ -552,8 +556,7 @@ app.put('/api/orders/:id/items', async (req, res) => {
     }
 });
 
-// 🍳 API សម្រាប់ផ្ទះបាយ (ទាញយកទំនិញតាមលំដាប់លំដោយ ID របស់ order_items ដើម្បីឱ្យឃើញការកុម្ម៉ង់បន្ថែមដាច់ដោយឡែក)
-// 🍳 API សម្រាប់ផ្ទះបាយ (បូកសរុបចំនួនទំនិញស្វ័យប្រវត្តិ និងបែងចែកដឹងពីចំនួនកុម្ម៉ង់បន្ថែមថ្មី)
+// 🍳 API សម្រាប់ផ្ទះបាយ (បូកសរុប Quantity និងបែងចែកដឹងពីចំនួនកុម្ម៉ង់បន្ថែមថ្មី Add-on យ៉ាងត្រឹមត្រូវ)
 app.get('/api/orders/kitchen', async (req, res) => {
     try {
         const orderQuery = `
@@ -583,7 +586,6 @@ app.get('/api/orders/kitchen', async (req, res) => {
         const orders = orderResult.rows;
 
         for (let order of orders) {
-            // 🟢 ទាញយកទំនិញទាំងអស់ក្នុង Order នេះ ដោយរៀបលំដាប់តាម id របស់ order_items (កុម្ម៉ង់មុន/ក្រោយ)
             const itemsResult = await pool.query(`
                 SELECT 
                     p.id as product_id,
@@ -607,7 +609,6 @@ app.get('/api/orders/kitchen', async (req, res) => {
                 ORDER BY oi.id ASC
             `, [order.id]);
 
-            // 🧮 ធ្វើការបូកសរុប Quantity សរុប និងរក្សាទុក Quantity នៃការកុម្ម៉ង់លើកដំបូង និងលើកក្រោយ (Add-on)
             let productMap = {};
             
             itemsResult.rows.forEach(item => {
@@ -615,27 +616,24 @@ app.get('/api/orders/kitchen', async (req, res) => {
                     productMap[item.product_id] = {
                         name: item.name,
                         total_qty: 0,
-                        first_qty: 0,
-                        later_qty: 0,
-                        entries_count: 0
+                        entries_count: 0,
+                        later_qty: 0
                     };
                 }
                 
                 productMap[item.product_id].entries_count += 1;
                 productMap[item.product_id].total_qty += parseInt(item.quantity || 0);
 
-                if (productMap[item.product_id].entries_count === 1) {
-                    productMap[item.product_id].first_qty = parseInt(item.quantity || 0);
-                } else {
+                // ប្រសិនបើកុម្ម៉ង់លើសពី១ដង (Add-on) រ៉ូទី២ និងបន្ទាប់ទៀតត្រូវគិតជា added_qty
+                if (productMap[item.product_id].entries_count > 1) {
                     productMap[item.product_id].later_qty += parseInt(item.quantity || 0);
                 }
             });
 
-            // 🔄 បម្លែងទិន្នន័យត្រឡប់ទៅឱ្យ Frontend វិញយ៉ាងស្អាត
             order.items = Object.values(productMap).map(prod => ({
                 name: prod.name,
                 quantity: prod.total_qty,
-                added_qty: prod.later_qty // ប្រសិនបើមានការកុម្ម៉ង់បន្ថែម វានឹងបង្ហាញចំនួនថ្មីនៅទីនេះ
+                added_qty: prod.later_qty 
             }));
         }
 
@@ -645,6 +643,7 @@ app.get('/api/orders/kitchen', async (req, res) => {
         res.status(500).json({ success: false, error: 'Database error' });
     }
 });
+
 app.patch('/api/orders/:id/status', async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
