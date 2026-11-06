@@ -481,7 +481,7 @@
             setInterval(checkKitchenOrderStatusUpdates, 3000);
         });
 
-        // 🚀 [មុខងារកែតម្រូវ] ទាញយក Order & items ស្វ័យប្រវត្តិ ព្រមទាំងហៅ renderCart() គណនាតម្លៃ
+        // 🚀 ទាញយក Order & items ស្វ័យប្រវត្តិ និង Mix/Group ទំនិញដែលមាន ID ដូចគ្នាបញ្ចូលគ្នាឱ្យនៅជាជួរតែមួយ[cite: 5]
         async function checkUrlForOrderCheckout() {
             const urlParams = new URLSearchParams(window.location.search);
             const targetTable = urlParams.get('table');
@@ -504,14 +504,23 @@
                     const res = await fetch(`/api/orders/${targetOrderId}/items`);
                     const result = await res.json();
                     if (result.success && result.items && result.items.length > 0) {
-                        cart = result.items.map((i, index) => ({
-                            id: Number(i.product_id || i.id || (index + 1)),
-                            name: i.name || 'មុខទំនិញ',
-                            price: Number(i.price || 0),
-                            quantity: Number(i.quantity || 1)
-                        }));
-                        
-                        renderCart(); // 🟢 បន្ថែមមុខងារនេះដើម្បីបង្ហាញទំនិញ និងគណនាតម្លៃសរុបក្នុង Cart ភ្លាមៗ[cite: 1, 2]!
+                        let tempCart = [];
+                        result.items.forEach(i => {
+                            const pId = Number(i.product_id || i.id || 1);
+                            const pName = i.name || 'មុខទំនិញ';
+                            const pPrice = Number(i.price || 0);
+                            const pQty = Number(i.quantity || 1);
+
+                            const existing = tempCart.find(item => item.id === pId);
+                            if (existing) {
+                                existing.quantity += pQty;
+                            } else {
+                                tempCart.push({ id: pId, name: pName, price: pPrice, quantity: pQty });
+                            }
+                        });
+
+                        cart = tempCart;
+                        renderCart();
                         
                         showSalesAlert(`📥 បានទាញយក Order #${targetOrderId} (${targetTable || 'តុទូទៅ'}) ចូលកន្រ្តកត្រៀមគិតលុយរួចរាល់!`);
                     }
@@ -623,7 +632,7 @@
             generateDynamicQR();
         }
 
-        // 🔔 មុខងារឆែកមើល Order ថ្មីពីភ្ញៀវស្កែន QR (ត្រួតពិនិត្យយកតែ Order ណាដែលគ្មាន cashier_id)
+        // 🔔 មុខងារឆែកមើល Order ថ្មីពីភ្ញៀវស្កែន QR
         async function checkCustomerPendingOrders() {
             try {
                 const res = await fetch('/api/orders/customer-pending');
@@ -704,6 +713,7 @@
             pendingOrderModalObj.hide();
         }
 
+        // 🎯 ទទួលយក QR Order និង Mix/Group ទំនិញដែលមាន ID ដូចគ្នាបញ្ចូលគ្នាឱ្យនៅជាជួរតែមួយ[cite: 5]
         async function acceptCustomerOrder() {
             if (!currentPendingOrder) return;
 
@@ -718,23 +728,29 @@
                     stopAlertSound();
                     pendingOrderModalObj.hide();
                     
-                    // 🎯 ចាំទុក ID របស់ QR Order នេះ
                     acceptedOrderId = currentPendingOrder.id;
 
                     document.getElementById('tableInput').value = currentPendingOrder.table_no || 'តុទូទៅ';
                     renderTableCards();
                     generateDynamicQR(currentPendingOrder.table_no);
 
-                    cart = currentPendingOrder.items.map((i, index) => {
+                    let tempCart = [];
+                    currentPendingOrder.items.forEach((i, index) => {
                         const validId = Number(i.product_id || i.id || i.menu_id || (index + 1));
-                        return {
-                            id: isNaN(validId) ? (index + 1) : validId,
-                            name: i.name || 'មុខទំនិញ',
-                            price: Number(i.price || 0),
-                            quantity: Number(i.quantity || 1)
-                        };
+                        const pId = isNaN(validId) ? (index + 1) : validId;
+                        const pName = i.name || 'មុខទំនិញ';
+                        const pPrice = Number(i.price || 0);
+                        const pQty = Number(i.quantity || 1);
+
+                        const existing = tempCart.find(item => item.id === pId);
+                        if (existing) {
+                            existing.quantity += pQty;
+                        } else {
+                            tempCart.push({ id: pId, name: pName, price: pPrice, quantity: pQty });
+                        }
                     });
 
+                    cart = tempCart;
                     renderCart();
                     alert('✅ បានទទួលយក Order នេះដោយជោគជ័យ!');
                 } else {
@@ -1012,7 +1028,6 @@
                 let res, result;
 
                 if (acceptedOrderId) {
-                    // 📌 បង់ប្រាក់សម្រាប់ Order ដែលមានស្រាប់ (QR ឬបញ្ជូនមកពី Cashier Activity)
                     res = await fetch(`/api/orders/${acceptedOrderId}/pay`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -1023,7 +1038,6 @@
                     });
                     result = await res.json();
                 } else {
-                    // 📌 ការលក់ធម្មតា (Walk-in)
                     const orderData = {
                         cashier_id: currentUser.id,
                         table_no: tableNo,
@@ -1046,7 +1060,7 @@
 
                 if (result.success) {
                     const finalId = acceptedOrderId ? acceptedOrderId : (result.order ? result.order.id : '00');
-                    acceptedOrderId = null; // Reset វិញក្រោយបង់ប្រាក់រួច
+                    acceptedOrderId = null;
                     showReceiptModal(finalId, paymentMethod, receivedUSD);
                     await loadProducts(); 
                 } else {
