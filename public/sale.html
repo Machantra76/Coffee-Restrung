@@ -481,7 +481,7 @@
             setInterval(checkKitchenOrderStatusUpdates, 3000);
         });
 
-        // 🚀 [មុខងារបន្ថែមថ្មី] ទាញយក Order & items ស្វ័យប្រវត្តិ ពេលបញ្ជូនមកពី cashier-activity.html
+        // 🚀 [មុខងារកែតម្រូវ] ទាញយក Order & items ស្វ័យប្រវត្តិ ព្រមទាំងហៅ renderCart() គណនាតម្លៃ
         async function checkUrlForOrderCheckout() {
             const urlParams = new URLSearchParams(window.location.search);
             const targetTable = urlParams.get('table');
@@ -510,7 +510,9 @@
                             price: Number(i.price || 0),
                             quantity: Number(i.quantity || 1)
                         }));
-                        renderCart();
+                        
+                        renderCart(); // 🟢 បន្ថែមមុខងារនេះដើម្បីបង្ហាញទំនិញ និងគណនាតម្លៃសរុបក្នុង Cart ភ្លាមៗ[cite: 1, 2]!
+                        
                         showSalesAlert(`📥 បានទាញយក Order #${targetOrderId} (${targetTable || 'តុទូទៅ'}) ចូលកន្រ្តកត្រៀមគិតលុយរួចរាល់!`);
                     }
                 } catch (err) {
