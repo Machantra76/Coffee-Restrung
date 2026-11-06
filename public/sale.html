@@ -452,7 +452,7 @@
         let currentPendingOrder = null;
         let soundInterval = null;
         let lastKitchenStatusMap = {}; // 🔔 សម្រាប់តាមដាន Status ពីផ្ទះបាយ
-        let acceptedOrderId = null; // 🎯 ចាំទុក ID របស់ Order មកពី QR
+        let acceptedOrderId = null; // 🎯 ចាំទុក ID របស់ Order មកពី QR ឬ Cashier Activity
 
         let customTables = ['តុទី ១ (Table 1)', 'តុទី ២ (Table 2)', 'តុទី ៣ (Table 3)', 'តុទី ៤ (Table 4)', 'តុទី ៥ (Table 5)', 'តុទី ៦ (Table 6)', 'តុទី ៧ (Table 7)', 'តុទី ៨ (Table 8)'];
 
@@ -471,12 +471,53 @@
             await loadProducts();
             generateDynamicQR();
 
+            // 🚀 [មុខងារបន្ថែមថ្មី] ត្រួតពិនិត្យ URL query parameters ករណីចុចប៊ូតុង "បង់ប្រាក់" ពីទំព័រ cashier-activity.html
+            checkUrlForOrderCheckout();
+
             // 🔄 បើកមុខងារ Auto-Check QR Orders រៀងរាល់ 3 វិនាទីស្វ័យប្រវត្តិ
             setInterval(checkCustomerPendingOrders, 3000);
 
             // 🔔 មុខងារឆែកមើល Status ពីផ្ទះបាយរៀងរាល់ 3 វិនាទី
             setInterval(checkKitchenOrderStatusUpdates, 3000);
         });
+
+        // 🚀 [មុខងារបន្ថែមថ្មី] ទាញយក Order & items ស្វ័យប្រវត្តិ ពេលបញ្ជូនមកពី cashier-activity.html
+        async function checkUrlForOrderCheckout() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const targetTable = urlParams.get('table');
+            const targetOrderId = urlParams.get('order_id');
+
+            if (targetOrderId) {
+                acceptedOrderId = Number(targetOrderId);
+
+                if (targetTable) {
+                    const decodedTable = decodeURIComponent(targetTable);
+                    if (!customTables.includes(decodedTable)) {
+                        customTables.push(decodedTable);
+                    }
+                    document.getElementById('tableInput').value = decodedTable;
+                    renderTableCards();
+                    generateDynamicQR(decodedTable);
+                }
+
+                try {
+                    const res = await fetch(`/api/orders/${targetOrderId}/items`);
+                    const result = await res.json();
+                    if (result.success && result.items && result.items.length > 0) {
+                        cart = result.items.map((i, index) => ({
+                            id: Number(i.product_id || i.id || (index + 1)),
+                            name: i.name || 'មុខទំនិញ',
+                            price: Number(i.price || 0),
+                            quantity: Number(i.quantity || 1)
+                        }));
+                        renderCart();
+                        showSalesAlert(`📥 បានទាញយក Order #${targetOrderId} (${targetTable || 'តុទូទៅ'}) ចូលកន្រ្តកត្រៀមគិតលុយរួចរាល់!`);
+                    }
+                } catch (err) {
+                    console.error('Error fetching order items from URL parameters:', err);
+                }
+            }
+        }
 
         // 🔔 មុខងារឆែកមើល Status ពីផ្ទះបាយ (Preparing / Completed)
         async function checkKitchenOrderStatusUpdates() {
@@ -528,7 +569,7 @@
             }
         }
 
-        // 💬 បង្ហាញ Toast Notification លើหน้า POS
+        // 💬 បង្ហាញ Toast Notification លើមុខ POS
         function showSalesAlert(message) {
             let toastContainer = document.getElementById('salesToastContainer');
             if (!toastContainer) {
@@ -969,7 +1010,7 @@
                 let res, result;
 
                 if (acceptedOrderId) {
-                    // 📌 បង់ប្រាក់សម្រាប់ QR Order ที่ມີស្រាប់ (មិនបាច់កាត់ស្តុកซ้ำ)
+                    // 📌 បង់ប្រាក់សម្រាប់ Order ដែលមានស្រាប់ (QR ឬបញ្ជូនមកពី Cashier Activity)
                     res = await fetch(`/api/orders/${acceptedOrderId}/pay`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
