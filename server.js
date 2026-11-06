@@ -52,6 +52,7 @@ async function initDB() {
                 total_amount NUMERIC(10, 2) NOT NULL,
                 payment_method VARCHAR(50),
                 status VARCHAR(50) DEFAULT 'Customer_Pending',
+                kitchen_status VARCHAR(50) DEFAULT 'Pending',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
 
@@ -78,6 +79,7 @@ async function initDB() {
             ALTER TABLE products ADD COLUMN IF NOT EXISTS cost_price NUMERIC(10, 2) DEFAULT 0;
             ALTER TABLE products ADD COLUMN IF NOT EXISTS unit VARCHAR(50) DEFAULT 'ដប';
             ALTER TABLE orders ADD COLUMN IF NOT EXISTS table_no VARCHAR(50);
+            ALTER TABLE orders ADD COLUMN IF NOT EXISTS kitchen_status VARCHAR(50) DEFAULT 'Pending';
             ALTER TABLE orders ALTER COLUMN status SET DEFAULT 'Customer_Pending';
         `);
 
@@ -326,7 +328,7 @@ app.get('/api/orders/:id/items', async (req, res) => {
 
 // ================= ORDER & QR ORDERING APIs =================
 
-// 1. API សម្រាប់ភ្ញៀវកុម្ម៉ង់ម្ហូប[cite: 5]
+// 1. API សម្រាប់ភ្ញៀវកុម្ម៉ង់ម្ហូប (បង្កើត Order លេខថ្មីដាច់ដោយឡែកសម្រាប់ផ្ទះបាយ តែរក្សាតម្លៃសរុបតុរួមគ្នាសម្រាប់ Cashier)
 app.post('/api/orders', async (req, res) => {
     const { cashier_id, table_no, total_amount, payment_method, items } = req.body;
     
@@ -334,101 +336,56 @@ app.post('/api/orders', async (req, res) => {
     try {
         await client.query('BEGIN');
 
-        let existingOrder = null;
-        if (table_no && table_no !== 'Walk-in') {
-            const checkOrderQuery = `
-                SELECT id, total_amount FROM orders 
-                WHERE table_no = $1 AND (payment_method IS NULL OR payment_method = '')
-                ORDER BY id DESC LIMIT 1
-            `;
-            const checkRes = await client.query(checkOrderQuery, [table_no]);
-            if (checkRes.rows.length > 0) {
-                existingOrder = checkRes.rows[0];
+        const addedAmount = parseFloat(total_amount) || 0;
+
+        if (items && items.length > 0) {
+            for (let item of items) {
+                const checkStock = await client.query('SELECT stock_qty, name FROM products WHERE id = $1', [item.id]);
+                if (checkStock.rows.length === 0) {
+                    throw new Error(`ទំនិញ ID ${item.id} មិនមានក្នុងប្រព័ន្ធទេ។`);
+                }
+                const currentStock = checkStock.rows[0].stock_qty || 0;
+                if (currentStock < item.quantity) {
+                    throw new Error(`ទំនិញ "${checkStock.rows[0].name}" ក្នុងស្តុកសល់តែ ${currentStock} ប៉ុណ្ណោះ!`);
+                }
+                
+                await client.query(
+                    'UPDATE products SET stock_qty = stock_qty - $1 WHERE id = $2',
+                    [item.quantity, item.id]
+                );
             }
         }
 
-        let targetOrderId;
-        const addedAmount = parseFloat(total_amount) || 0;
+        const initialStatus = table_no ? 'Pending' : 'Pending';
 
-        if (existingOrder) {
-            targetOrderId = existingOrder.id;
+        // 🟢 បង្កើត Order លេខថ្មីជានិច្ច មិនយកទៅបញ្ចូលគ្នាជាមួយ Order ចាស់ក្នុងតារាង orders ឡើយ ដើម្បីឱ្យផ្ទះបាយឃើញដាច់ដោយឡែក
+        const orderQuery = `
+            INSERT INTO orders (cashier_id, table_no, total_amount, payment_method, status, kitchen_status, created_at) 
+            VALUES ($1, $2, $3, $4, $5, 'Pending', CURRENT_TIMESTAMP) 
+            RETURNING id, total_amount, created_at, status
+        `;
+        const orderResult = await client.query(orderQuery, [
+            cashier_id || null, 
+            table_no || 'Walk-in', 
+            addedAmount, 
+            null, 
+            initialStatus
+        ]);
+        const targetOrderId = orderResult.rows[0].id;
 
-            if (items && items.length > 0) {
-                for (let item of items) {
-                    const checkStock = await client.query('SELECT stock_qty, name FROM products WHERE id = $1', [item.id]);
-                    if (checkStock.rows.length === 0) {
-                        throw new Error(`ទំនិញ ID ${item.id} មិនមានក្នុងប្រព័ន្ធទេ។`);
-                    }
-                    const currentStock = checkStock.rows[0].stock_qty || 0;
-                    if (currentStock < item.quantity) {
-                        throw new Error(`ទំនិញ "${checkStock.rows[0].name}" ក្នុងស្តុកសល់តែ ${currentStock} ប៉ុណ្ណោះ!`);
-                    }
-                    
-                    await client.query(
-                        'UPDATE products SET stock_qty = stock_qty - $1 WHERE id = $2',
-                        [item.quantity, item.id]
-                    );
-
-                    await client.query(
-                        `INSERT INTO order_items (order_id, product_id, quantity, price) VALUES ($1, $2, $3, $4)`,
-                        [targetOrderId, item.id, item.quantity, item.price]
-                    );
-                }
-            }
-
-            await client.query(
-                `UPDATE orders SET total_amount = total_amount + $1, status = 'Customer_Pending' WHERE id = $2`,
-                [addedAmount, targetOrderId]
-            );
-
-        } else {
-            if (items && items.length > 0) {
-                for (let item of items) {
-                    const checkStock = await client.query('SELECT stock_qty, name FROM products WHERE id = $1', [item.id]);
-                    if (checkStock.rows.length === 0) {
-                        throw new Error(`ទំនិញ ID ${item.id} មិនមានក្នុងប្រព័ន្ធទេ។`);
-                    }
-                    const currentStock = checkStock.rows[0].stock_qty || 0;
-                    if (currentStock < item.quantity) {
-                        throw new Error(`ទំនិញ "${checkStock.rows[0].name}" ក្នុងស្តុកសល់តែ ${currentStock} ប៉ុណ្ណោះ!`);
-                    }
-                    await client.query(
-                        'UPDATE products SET stock_qty = stock_qty - $1 WHERE id = $2',
-                        [item.quantity, item.id]
-                    );
-                }
-            }
-
-            const initialStatus = table_no ? 'Customer_Pending' : 'Pending';
-
-            const orderQuery = `
-                INSERT INTO orders (cashier_id, table_no, total_amount, payment_method, status, created_at) 
-                VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP) 
-                RETURNING id, total_amount, created_at, status
-            `;
-            const orderResult = await client.query(orderQuery, [
-                cashier_id || null, 
-                table_no || 'Walk-in', 
-                addedAmount, 
-                null, 
-                initialStatus
-            ]);
-            targetOrderId = orderResult.rows[0].id;
-
-            if (items && items.length > 0) {
-                for (let item of items) {
-                    await client.query(
-                        `INSERT INTO order_items (order_id, product_id, quantity, price) VALUES ($1, $2, $3, $4)`,
-                        [targetOrderId, item.id, item.quantity, item.price]
-                    );
-                }
+        if (items && items.length > 0) {
+            for (let item of items) {
+                await client.query(
+                    `INSERT INTO order_items (order_id, product_id, quantity, price) VALUES ($1, $2, $3, $4)`,
+                    [targetOrderId, item.id, item.quantity, item.price]
+                );
             }
         }
 
         await client.query('COMMIT');
         res.status(201).json({ 
             success: true, 
-            message: existingOrder ? 'បានកុម្ម៉ង់បន្ថែមជោគជ័យ!' : 'Order created successfully', 
+            message: 'Order created successfully', 
             order: { id: targetOrderId } 
         });
     } catch (err) {
@@ -486,15 +443,28 @@ app.post('/api/orders/:id/accept', async (req, res) => {
     }
 });
 
-// 💰 4. API សម្រាប់បង់ប្រាក់ Checkout
+// 💰 4. API សម្រាប់បង់ប្រាក់ Checkout (គិតលុយរួមបញ្ចូលគ្នាមួយតុ)
 app.post('/api/orders/:id/pay', async (req, res) => {
     const { id } = req.params;
     const { payment_method, total_amount } = req.body;
     try {
-        await pool.query(
-            `UPDATE orders SET payment_method = $1, total_amount = $2, status = 'Completed' WHERE id = $3`,
-            [payment_method || 'Cash', parseFloat(total_amount) || 0, id]
-        );
+        // រកមើល table_no របស់ Order ນี้
+        const orderRes = await pool.query('SELECT table_no FROM orders WHERE id = $1', [id]);
+        if (orderRes.rows.length > 0) {
+            const tableNo = orderRes.rows[0].table_no;
+            // ប្រសិនបើមានតុ ធ្វើការ Checkout គ្រប់ Order ទាំងអស់ដែលមានតុនេះ និងមិនទាន់បានបង់ប្រាក់
+            if (tableNo && tableNo !== 'Walk-in') {
+                await pool.query(
+                    `UPDATE orders SET payment_method = $1, status = 'Completed' WHERE table_no = $2 AND (payment_method IS NULL OR payment_method = '')`,
+                    [payment_method || 'Cash', tableNo]
+                );
+            } else {
+                await pool.query(
+                    `UPDATE orders SET payment_method = $1, total_amount = $2, status = 'Completed' WHERE id = $3`,
+                    [payment_method || 'Cash', parseFloat(total_amount) || 0, id]
+                );
+            }
+        }
         res.json({ success: true, message: 'បានបង់ប្រាក់ និងបញ្ចប់វិក្កយបត្រជោគជ័យ!' });
     } catch (err) {
         console.error('Pay Order Error:', err);
@@ -552,16 +522,15 @@ app.put('/api/orders/:id/items', async (req, res) => {
     }
 });
 
-// 🍳 API សម្រាប់ផ្ទះបាយ (គាំទ្រ Category ម្ហូបគ្រប់មុខ និងបូកសរុប Quantity ត្រឹមត្រូវ)[cite: 5]
-// 🍳 API សម្រាប់ផ្ទះបាយ (ទម្រង់ទី២៖ បង្ហាញ និងបូកសរុបតែមុខម្ហូបថ្មីៗសម្រាប់រៀបចំ)
+// 🍳 API សម្រាប់ផ្ទះបាយ (បង្ហាញតែ Order ថ្មីៗដែលមិនទាន់បានធ្វើ ដោយមិនយករបស់ចាស់មកលាយឡំ)
 app.get('/api/orders/kitchen', async (req, res) => {
     try {
         const orderQuery = `
-            SELECT DISTINCT o.id, o.table_no, o.total_amount, o.payment_method, o.status, o.created_at, u.full_name as cashier_name
+            SELECT DISTINCT o.id, o.table_no, o.total_amount, o.payment_method, o.status, o.kitchen_status, o.created_at, u.full_name as cashier_name
             FROM orders o
             LEFT JOIN users u ON o.cashier_id = u.id
-            WHERE o.status != 'Customer_Pending'
-              AND (o.status IN ('Pending', 'Preparing') OR o.status IS NULL)
+            WHERE (o.kitchen_status = 'Pending' OR o.kitchen_status IS NULL)
+              AND (o.payment_method IS NULL OR o.payment_method = '')
               AND EXISTS (
                   SELECT 1 FROM order_items oi
                   JOIN products p ON oi.product_id = p.id
@@ -583,7 +552,6 @@ app.get('/api/orders/kitchen', async (req, res) => {
         const orders = orderResult.rows;
 
         for (let order of orders) {
-            // 🟢 ទាញយក និងបូកសរុបចំនួន quantity ត្រឹមត្រូវតាម Order នីមួយៗ
             const itemsResult = await pool.query(`
                 SELECT 
                     p.name, 
@@ -623,7 +591,9 @@ app.patch('/api/orders/:id/status', async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
     try {
-        await pool.query('UPDATE orders SET status = $1 WHERE id = $2', [status, id]);
+        // កំណត់ update kitchen_status ផងដែរ ពេលចុងភៅចុច Start Preparing ឬ Completed
+        let kitchenStatusUpdate = status;
+        await pool.query('UPDATE orders SET status = $1, kitchen_status = $2 WHERE id = $3', [status, kitchenStatusUpdate, id]);
         res.json({ success: true, message: 'Updated order status successfully' });
     } catch (err) {
         res.status(500).json({ success: false, error: 'Database error' });
