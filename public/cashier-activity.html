@@ -331,10 +331,10 @@
                         const status = o.status || 'Completed';
                         const cashier = o.cashier_name || 'បុគ្គលិក';
                         
-                        // 🔍 ឆែកមើលថាតើ Order នេះបានបង់ប្រាក់រួចរាល់ហើយឬยัง
-                        const isPaid = (o.payment_method && o.payment_method.trim() !== '') || status === 'Completed';
+                        // 🟢 ពិនិត្យតែលើ payment_method តែប៉ុណ្ណោះ ដើម្បីដឹងថាបានគិតលុយរួចរាល់ឬยัง (មិនពាក់ព័ន្ធនឹង status របស់ផ្ទះបាយទេ)
+                        const isPaid = o.payment_method && o.payment_method.trim() !== '';
 
-                        // 🎨 ប៊ូតុងပြောင်းស្វ័យប្រវត្តិ (បង់ប្រាក់ vs បានគិតលុយរួច)
+                        // 🎨 ប៊ូតុងပြောင်းស្វ័យប្រវត្តិ
                         let actionButtonHtml = '';
                         if (isPaid) {
                             actionButtonHtml = `
@@ -356,8 +356,8 @@
                                 <td><span class="badge bg-info text-dark">${tableNo}</span></td>
                                 <td class="small">${cashier}</td>
                                 <td class="fw-bold text-success">$${Number(o.total_amount).toFixed(2)}</td>
-                                <td><span class="badge bg-secondary">${o.payment_method || 'Cash'}</span></td>
-                                <td><span class="badge ${isPaid ? 'bg-success' : 'bg-warning text-dark'}">${status}</span></td>
+                                <td><span class="badge bg-secondary">${o.payment_method || 'ជំពាក់/មិនទាន់បង់'}</span></td>
+                                <td><span class="badge ${status === 'Completed' ? 'bg-success' : 'bg-warning text-dark'}">${status}</span></td>
                                 <td>${new Date(o.created_at).toLocaleString()}</td>
                                 <td class="text-end">
                                     <div class="action-btns-group">
