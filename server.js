@@ -738,6 +738,45 @@ app.get('/api/orders/cashier-activity/:cashierId', async (req, res) => {
         res.status(500).json({ success: false, error: 'Database error: ' + err.message });
     }
 });
+// 📊 API សម្រាប់ទាញយករបាយការណ៍លម្អិតតាម Category ប្រចាំថ្ងៃ
+app.get('/api/reports/category-summary', async (req, res) => {
+    const { fromDate, toDate } = req.query;
+    try {
+        let whereClauses = [];
+        let params = [];
+
+        if (fromDate) {
+            params.push(`${fromDate} 00:00:00`);
+            whereClauses.push(`o.created_at >= $${params.length}`);
+        }
+        if (toDate) {
+            params.push(`${toDate} 23:59:59`);
+            whereClauses.push(`o.created_at <= $${params.length}`);
+        }
+
+        const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+
+        const query = `
+            SELECT 
+                COALESCE(p.category, 'General') as category_name,
+                p.name as product_name,
+                SUM(oi.quantity) as total_quantity,
+                SUM(oi.quantity * oi.price) as total_sales
+            FROM order_items oi
+            JOIN orders o ON oi.order_id = o.id
+            JOIN products p ON oi.product_id = p.id
+            ${whereSql}
+            GROUP BY p.category, p.name
+            ORDER BY category_name ASC, total_quantity DESC;
+        `;
+
+        const result = await pool.query(query, params);
+        res.json({ success: true, data: result.rows });
+    } catch (err) {
+        console.error('Category Summary Report Error:', err);
+        res.status(500).json({ success: false, error: 'Database error: ' + err.message });
+    }
+});
 
 // Root Route
 app.get('/', (req, res) => {
