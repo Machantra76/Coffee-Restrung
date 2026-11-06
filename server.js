@@ -552,7 +552,7 @@ app.put('/api/orders/:id/items', async (req, res) => {
     }
 });
 
-// 🍳 API សម្រាប់ផ្ទះបាយ (បង្ហាញសរុប ព្រមទាំងបំពាក់ស្លាកសម្គាល់ចំនួនកុម្ម៉ង់បន្ថែមថ្មី / Add-on Tagging)
+// 🍳 API សម្រាប់ផ្ទះបាយ (ទាញយកទំនិញតាមលំដាប់លំដោយ ID របស់ order_items ដើម្បីឱ្យឃើញការកុម្ម៉ង់បន្ថែមដាច់ដោយឡែក)
 app.get('/api/orders/kitchen', async (req, res) => {
     try {
         const orderQuery = `
@@ -582,19 +582,14 @@ app.get('/api/orders/kitchen', async (req, res) => {
         const orders = orderResult.rows;
 
         for (let order of orders) {
-            // 🟢 ទាញយកចំនួនសរុប និងចំនួនចុងក្រោយបង្អស់ដែលទើបកុម្ម៉ង់បន្ថែម (Last Added Qty)
+            // 🟢 ទាញយក Item នីមួយៗតាមลำดับ id របស់ order_items (កុម្ម៉ង់មុននៅខាងលើ កុម្ម៉ង់ក្រោយនៅខាងក្រោម)
             const itemsResult = await pool.query(`
                 SELECT 
+                    p.id as product_id,
                     p.name, 
-                    SUM(oi.quantity) as quantity,
-                    COUNT(oi.id) as order_count,
-                    COALESCE(
-                        (SELECT oi2.quantity 
-                         FROM order_items oi2 
-                         WHERE oi2.order_id = $1 AND oi2.product_id = oi.product_id 
-                         ORDER BY oi2.id DESC LIMIT 1), 0
-                    ) as last_added_qty,
-                    p.category
+                    oi.quantity,
+                    p.category,
+                    oi.id as item_id
                 FROM order_items oi
                 JOIN products p ON oi.product_id = p.id
                 WHERE oi.order_id = $1 
@@ -608,24 +603,25 @@ app.get('/api/orders/kitchen', async (req, res) => {
                       p.category LIKE '%ភ្លា%' OR
                       p.category LIKE '%ម្ហូបចិន%'
                   )
-                GROUP BY p.id, p.name, p.category, oi.product_id
+                ORDER BY oi.id ASC
             `, [order.id]);
 
-            order.items = itemsResult.rows.map(item => {
-                const totalQty = parseInt(item.quantity || 1);
-                const orderCount = parseInt(item.order_count || 1);
-                const lastAdded = parseInt(item.last_added_qty || 0);
+            // 🔍 ពិនិត្យមើលថាតើទំនិញណាត្រូវបានកុម្ម៉ង់លើសពី១ដង (Add-on) ដើម្បីដាក់ស្លាកសម្គាល់
+            let productOccurrence = {};
+            itemsResult.rows.forEach(item => {
+                productOccurrence[item.product_id] = (productOccurrence[item.product_id] || 0) + 1;
+            });
 
-                // ប្រសិនបើมีการកុម្ម៉ង់លើសពី១ដង (Add-on) យើងបង្ហាញអក្សរសម្គាល់ (ថ្មី: x...) ឱ្យចុងភៅដឹង
-                let displayName = item.name;
-                if (orderCount > 1 && lastAdded > 0) {
-                    displayName = `${item.name} (បន្ថែមថ្មី: x${lastAdded})`;
-                }
+            let seenCount = {};
+            order.items = itemsResult.rows.map(item => {
+                seenCount[item.product_id] = (seenCount[item.product_id] || 0) + 1;
+                
+                let isAddOn = (productOccurrence[item.product_id] > 1 && seenCount[item.product_id] > 1);
 
                 return {
-                    name: displayName,
-                    quantity: totalQty,
-                    added_qty: orderCount > 1 ? lastAdded : 0
+                    name: item.name,
+                    quantity: parseInt(item.quantity || 1),
+                    added_qty: isAddOn ? parseInt(item.quantity || 1) : 0
                 };
             });
         }
