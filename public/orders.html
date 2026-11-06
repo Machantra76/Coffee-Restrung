@@ -10,10 +10,37 @@
     <style>
         body { font-family: 'Kantumruy Pro', sans-serif; background-color: #f1f5f9; }
         .card { border: none; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+
+        /* 🖨️ KTS & Print Setup (បោះពុម្ពយកតែ Sales by Category) */
+        @media print {
+            body * { 
+                visibility: hidden !important; 
+            }
+            #categoryReportCard, #categoryReportCard * { 
+                visibility: visible !important; 
+            }
+            #categoryReportCard { 
+                position: absolute !important; 
+                left: 0 !important; 
+                top: 0 !important; 
+                width: 100% !important; 
+                margin: 0 !important;
+                padding: 10mm !important;
+                box-shadow: none !important;
+                border: none !important;
+            }
+            .no-print { 
+                display: none !important; 
+            }
+            @page {
+                size: A4 portrait;
+                margin: 10mm;
+            }
+        }
     </style>
 </head>
 <body>
-    <nav class="navbar navbar-dark bg-dark px-4 py-3 shadow-sm">
+    <nav class="navbar navbar-dark bg-dark px-4 py-3 shadow-sm no-print">
         <span class="navbar-brand fw-bold fs-4"><i class="fa-solid fa-receipt me-2"></i> របាយការណ៍ការលក់ និងប្រាក់ចំណេញ (Reports)</span>
         <div>
             <a href="pos.html" class="btn btn-outline-light btn-sm me-2"><i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ក្រោយ / Back</a>
@@ -23,7 +50,7 @@
 
     <div class="container py-4">
         <!-- Date Filter Section -->
-        <div class="card p-3 bg-white mb-4">
+        <div class="card p-3 bg-white mb-4 no-print">
             <div class="row g-3 align-items-end">
                 <div class="col-12 col-md-4">
                     <label class="form-label fw-bold small text-secondary">ចាប់ពីថ្ងៃ (From Date):</label>
@@ -45,7 +72,7 @@
         </div>
 
         <!-- Cashier Activity Filter Section -->
-        <div class="card p-3 bg-white mb-4">
+        <div class="card p-3 bg-white mb-4 no-print">
             <h5 class="fw-bold mb-3 text-dark"><i class="fa-solid fa-user-tie me-2 text-primary"></i> ត្រួតពិនិត្យការលក់តាមបុគ្គលិក (Cashier Sales Monitoring)</h5>
             <div class="row g-3 align-items-end">
                 <div class="col-12 col-md-6">
@@ -64,7 +91,7 @@
         </div>
 
         <!-- Metric Summary Cards -->
-        <div class="row g-4 mb-4">
+        <div class="row g-4 mb-4 no-print">
             <div class="col-md-4">
                 <div class="card p-4 bg-primary text-white">
                     <h5><i class="fa-solid fa-file-invoice me-2"></i> ចំនួនវិក្កយបត្រសរុប (Orders)</h5>
@@ -85,9 +112,17 @@
             </div>
         </div>
 
-        <!-- 📊 របាយការណ៍លម្អិតតាម Category -->
-        <div class="card p-4 bg-white mb-4">
-            <h4 class="fw-bold mb-3 text-dark"><i class="fa-solid fa-boxes-stacked me-2 text-primary"></i> របាយការណ៍លក់តាមប្រភេទមុខទំនិញ (Sales by Category)</h4>
+        <!-- 📊 របាយការណ៍លម្អិតតាម Category (រក្សាទុកតែផ្នែកនេះពេល Print) -->
+        <div class="card p-4 bg-white mb-4" id="categoryReportCard">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                    <h4 class="fw-bold text-dark mb-1"><i class="fa-solid fa-boxes-stacked me-2 text-primary"></i> របាយការណ៍លក់តាមប្រភេទមុខទំនិញ (Sales by Category)</h4>
+                    <p class="text-muted small mb-0 d-none d-print-block">កាលបរិច្ឆេទចម្រោះ: <span id="printDateRange"></span></p>
+                </div>
+                <button class="btn btn-success fw-bold no-print" onclick="window.print()">
+                    <i class="fa-solid fa-print me-1"></i> បោះពុម្ពរបាយការណ៍ (Print Report)
+                </button>
+            </div>
             <div class="table-responsive">
                 <table class="table table-bordered table-hover align-middle">
                     <thead class="table-dark">
@@ -101,12 +136,19 @@
                     <tbody id="categorySummaryTableBody">
                         <tr><td colspan="4" class="text-center text-muted py-3">មិនមានទិន្នន័យ</td></tr>
                     </tbody>
+                    <tfoot class="table-light fw-bold" id="categorySummaryFooter">
+                        <tr>
+                            <td colspan="2" class="text-end">សរុបរួម / Grand Total:</td>
+                            <td class="text-center text-primary" id="footerTotalQty">0</td>
+                            <td class="text-end text-success" id="footerTotalSales">$0.00</td>
+                        </tr>
+                    </tfoot>
                 </table>
             </div>
         </div>
 
         <!-- 📊 Daily Summary Table -->
-        <div class="card p-4 bg-white mb-4">
+        <div class="card p-4 bg-white mb-4 no-print">
             <h4 class="fw-bold mb-3 text-dark"><i class="fa-solid fa-calendar-days me-2 text-primary"></i> របាយការណ៍សង្ខេបប្រាក់ចំណេញតាមថ្ងៃ (Daily Profit Summary)</h4>
             <div class="table-responsive">
                 <table class="table table-bordered table-hover align-middle">
@@ -124,7 +166,7 @@
         </div>
 
         <!-- Orders History Table -->
-        <div class="card p-4 bg-white">
+        <div class="card p-4 bg-white no-print">
             <h4 class="fw-bold mb-3 text-dark"><i class="fa-solid fa-list-check me-2"></i> បញ្ជីប្រវត្តិវិក្កយបត្រលម្អិត</h4>
             <div class="table-responsive">
                 <table class="table table-hover align-middle">
@@ -326,6 +368,8 @@
             const fromDate = formatDateForApi(rawFromDate);
             const toDate = formatDateForApi(rawToDate);
 
+            document.getElementById('printDateRange').innerText = `${fromDate || 'ទាំងអស់'} ដល់ ${toDate || 'ទាំងអស់'}`;
+
             try {
                 let url = '/api/reports/category-summary';
                 let queryParams = [];
@@ -343,19 +387,32 @@
 
                     if (data.length === 0) {
                         tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-3">មិនមានទិន្នន័យលក់តាម Category ក្នុងចន្លោះថ្ងៃនេះទេ។</td></tr>`;
+                        document.getElementById('footerTotalQty').innerText = '0';
+                        document.getElementById('footerTotalSales').innerText = '$0.00';
                         return;
                     }
 
+                    let grandTotalQty = 0;
+                    let grandTotalSales = 0;
+
                     data.forEach(row => {
+                        const q = Number(row.total_quantity || 0);
+                        const s = Number(row.total_sales || 0);
+                        grandTotalQty += q;
+                        grandTotalSales += s;
+
                         tbody.innerHTML += `
                             <tr>
                                 <td><span class="badge bg-info text-dark">${row.category_name}</span></td>
                                 <td class="fw-bold">${row.product_name}</td>
-                                <td class="text-center fw-bold text-primary">${row.total_quantity}</td>
-                                <td class="text-end fw-bold text-success">$${Number(row.total_sales).toFixed(2)}</td>
+                                <td class="text-center fw-bold text-primary">${q}</td>
+                                <td class="text-end fw-bold text-success">$${s.toFixed(2)}</td>
                             </tr>
                         `;
                     });
+
+                    document.getElementById('footerTotalQty').innerText = grandTotalQty;
+                    document.getElementById('footerTotalSales').innerText = `$${grandTotalSales.toFixed(2)}`;
                 }
             } catch (err) {
                 console.error('Error loading category summary report:', err);
