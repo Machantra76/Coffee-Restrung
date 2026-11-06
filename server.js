@@ -553,7 +553,6 @@ app.put('/api/orders/:id/items', async (req, res) => {
 });
 
 // 🍳 API សម្រាប់ផ្ទះបាយ[cite: 5, 10]
-// 🍳 API សម្រាប់ផ្ទះបាយ
 app.get('/api/orders/kitchen', async (req, res) => {
     try {
         const orderQuery = `
@@ -573,24 +572,35 @@ app.get('/api/orders/kitchen', async (req, res) => {
         const orders = orderResult.rows;
 
         for (let order of orders) {
-            // 🟢 កែសម្រួល SQL Query ឱ្យបូកសរុបចំនួន quantity ត្រឹមត្រូវតាម Order នីមួយៗ
             const itemsResult = await pool.query(`
                 SELECT 
                     p.name, 
                     SUM(oi.quantity) as quantity,
+                    COUNT(oi.id) as order_count,
+                    COALESCE(
+                        (SELECT oi2.quantity 
+                         FROM order_items oi2 
+                         WHERE oi2.order_id = $1 AND oi2.product_id = oi.product_id 
+                         ORDER BY oi2.id DESC LIMIT 1), 0
+                    ) as last_added_qty,
                     p.category
                 FROM order_items oi
                 JOIN products p ON oi.product_id = p.id
                 WHERE oi.order_id = $1 AND LOWER(p.category) = 'food'
-                GROUP BY p.id, p.name, p.category
+                GROUP BY p.id, p.name, p.category, oi.product_id
             `, [order.id]);
 
-            // 🟢 បញ្ជូនទិន្នន័យ quantity ទៅឱ្យ Front-end យ៉ាងត្រឹមត្រូវ
-            order.items = itemsResult.rows.map(item => ({
-                name: item.name,
-                quantity: parseInt(item.quantity || 1),
-                added_qty: 0
-            }));
+            order.items = itemsResult.rows.map(item => {
+                const totalQty = parseInt(item.quantity);
+                const orderCount = parseInt(item.order_count);
+                const lastAdded = parseInt(item.last_added_qty);
+
+                return {
+                    name: item.name,
+                    quantity: totalQty,
+                    added_qty: orderCount > 1 ? lastAdded : 0
+                };
+            });
         }
 
         res.json({ success: true, data: orders });
@@ -599,6 +609,7 @@ app.get('/api/orders/kitchen', async (req, res) => {
         res.status(500).json({ success: false, error: 'Database error' });
     }
 });
+
 app.patch('/api/orders/:id/status', async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
