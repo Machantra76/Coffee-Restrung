@@ -13,6 +13,19 @@
         .border-pending { border-left: 8px solid #ffc107 !important; }
         .border-preparing { border-left: 8px solid #0d6efd !important; }
         .summary-card { border-radius: 12px; border: none; }
+        
+        /* 🎨 ស្លាកសញ្ញាអក្សរក្រហមធំច្បាស់សម្រាប់មុខម្ហូបដែលកុម្ម៉ង់ថែម */
+        .add-on-tag {
+            color: #dc3545;
+            background-color: #ffe6e6;
+            border: 1.5px solid #dc3545;
+            font-size: 0.95rem;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 6px;
+            display: inline-block;
+            margin-top: 4px;
+        }
     </style>
 </head>
 <body>
@@ -33,7 +46,7 @@
     <!-- Main Content -->
     <div class="container-fluid py-4 px-3 px-md-4">
         
-        <!-- 📊 ផ្នែករបាយការណ៍សង្ខេបផ្ទះបាយ (Kitchen Summary Reports) -->
+        <!-- 📊 ផ្នែករបាយការណ៍សង្ខេបផ្ទះបាយ -->
         <div class="row g-3 mb-4">
             <div class="col-12 col-md-4">
                 <div class="card summary-card p-3 bg-warning text-dark shadow-sm">
@@ -144,10 +157,19 @@
                         let itemsHtml = '<ul class="list-group list-group-flush small mb-3 bg-light rounded-3 overflow-hidden">';
                         if (order.items && order.items.length > 0) {
                             order.items.forEach(item => {
+                                // 💡 ឆែកមើលថាតើមានទំនិញកុម្ម៉ង់ថែមថ្មី (added_qty) ឬទេ
+                                let addOnBadge = '';
+                                if (item.added_qty && item.added_qty > 0) {
+                                    addOnBadge = `<div class="add-on-tag"><i class="fa-solid fa-circle-plus me-1"></i> កុម្ម៉ង់ថែមថ្មី x${item.added_qty}</div>`;
+                                }
+
                                 itemsHtml += `
-                                    <li class="list-group-item d-flex justify-content-between align-items-center py-2 bg-transparent">
-                                        <span class="fw-bold text-dark"><i class="fa-solid fa-utensils me-1 text-secondary"></i> ${item.name}</span>
-                                        <span class="badge bg-danger rounded-pill px-2 py-1">x${item.quantity}</span>
+                                    <li class="list-group-item py-2 bg-transparent border-bottom">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span class="fw-bold text-dark fs-6"><i class="fa-solid fa-utensils me-1 text-secondary"></i> ${item.name}</span>
+                                            <span class="badge bg-danger rounded-pill px-2.5 py-1.5 fs-6">x${item.quantity}</span>
+                                        </div>
+                                        ${addOnBadge}
                                     </li>
                                 `;
                             });
@@ -204,7 +226,6 @@
             document.getElementById('reportPendingCount').innerText = pending;
             document.getElementById('reportPreparingCount').innerText = preparing;
             
-            // ទាញយកចំនួន Completed ពីដំណាក់កាលលក់ (ឬរក្សាទុកក្នុង Local Storage)
             const completedCount = localStorage.getItem('kitchen_completed_count') || 0;
             document.getElementById('reportCompletedCount').innerText = completedCount;
         }
@@ -219,10 +240,8 @@
                 const result = await res.json();
                 if (result.success) {
                     if (newStatus === 'Completed') {
-                        // 🔔 បង្កើតការជូនដំណឹង Toast លើ Screen ផ្ទះបាយ
                         alert(`✅ បានធ្វើរួចរាល់សម្រាប់ ${tableNo}! ប្រព័ន្ធបានផ្ញើព័ត៌មានទៅផ្នែក Sales/រត់តុ រួចរាល់។`);
                         
-                        // កើនចំនួនរបាយការណ៍សរុបថ្ងៃនេះ
                         let count = parseInt(localStorage.getItem('kitchen_completed_count') || 0);
                         localStorage.setItem('kitchen_completed_count', count + 1);
                     }
