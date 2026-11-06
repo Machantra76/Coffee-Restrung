@@ -553,7 +553,7 @@ app.put('/api/orders/:id/items', async (req, res) => {
 });
 
 // 🍳 API សម្រាប់ផ្ទះបាយ (គាំទ្រ Category ម្ហូបគ្រប់មុខ និងបូកសរុប Quantity ត្រឹមត្រូវ)[cite: 5]
-// 🍳 API សម្រាប់ផ្ទះបាយ (បង្ហាញតែមុខម្ហូបថ្មីៗដែលទើបកុម្ម៉ង់ ឬមិនទាន់បានរៀបចំរួច)
+// 🍳 API សម្រាប់ផ្ទះបាយ (ទម្រង់ទី២៖ បង្ហាញ និងបូកសរុបតែមុខម្ហូបថ្មីៗសម្រាប់រៀបចំ)
 app.get('/api/orders/kitchen', async (req, res) => {
     try {
         const orderQuery = `
@@ -583,13 +583,12 @@ app.get('/api/orders/kitchen', async (req, res) => {
         const orders = orderResult.rows;
 
         for (let order of orders) {
-            // 🟢 កែសម្រួល៖ ទាញយកតែ Item ណាដែលស្ថិតក្នុង Order នោះ ហើយមិនទាន់ត្រូវបានសម្អាត ឬបែងចែកច្បាស់លាស់
+            // 🟢 ទាញយក និងបូកសរុបចំនួន quantity ត្រឹមត្រូវតាម Order នីមួយៗ
             const itemsResult = await pool.query(`
                 SELECT 
                     p.name, 
-                    oi.quantity as quantity,
-                    p.category,
-                    oi.id as item_id
+                    SUM(oi.quantity) as quantity,
+                    p.category
                 FROM order_items oi
                 JOIN products p ON oi.product_id = p.id
                 WHERE oi.order_id = $1 
@@ -603,10 +602,9 @@ app.get('/api/orders/kitchen', async (req, res) => {
                       p.category LIKE '%ភ្លា%' OR
                       p.category LIKE '%ម្ហូបចិន%'
                   )
-                ORDER BY oi.id DESC
+                GROUP BY p.id, p.name, p.category
             `, [order.id]);
 
-            // ប្រសិនបើជា Order លើកទី២ (Add-on) យើងអាចកំណត់ឱ្យវាបង្ហាញតែ Item ថ្មី ឬបង្ហាញ Item ទាំងអស់ ប៉ុន្តែដាក់ស្លាកសម្គាល់ច្បាស់ៗ
             order.items = itemsResult.rows.map(item => ({
                 name: item.name,
                 quantity: parseInt(item.quantity || 1),
