@@ -199,7 +199,8 @@
                         if (order.items && order.items.length > 0) {
                             order.items.forEach(item => {
                                 const itemName = item.name || 'មុខទំនិញ';
-                                const itemQty = Number(item.quantity || 1);
+                                // 🟢 ឆែកទាញយកចំនួន (Quantity) ឱ្យបានត្រឹមត្រូវពីគ្រប់ Property
+                                const itemQty = Number(item.quantity !== undefined ? item.quantity : (item.qty !== undefined ? item.qty : 1));
                                 const orderItemKey = `${order.id}_${itemName}`;
 
                                 if (!cumulativeItemSummaryMap[itemName]) {
@@ -274,7 +275,7 @@
                             if (order.items && order.items.length > 0) {
                                 order.items.forEach(item => {
                                     const itemName = item.name || 'មុខទំនិញ';
-                                    const itemQty = Number(item.quantity || 1);
+                                    const itemQty = Number(item.quantity !== undefined ? item.quantity : (item.qty !== undefined ? item.qty : 1));
 
                                     let addOnBadge = '';
                                     if (item.added_qty && item.added_qty > 0) {
