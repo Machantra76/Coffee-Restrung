@@ -13,19 +13,6 @@
         .border-pending { border-left: 8px solid #ffc107 !important; }
         .border-preparing { border-left: 8px solid #0d6efd !important; }
         .summary-card { border-radius: 12px; border: none; }
-        
-        /* 🎨 ស្លាកសញ្ញាអក្សរក្រហមធំច្បាស់សម្រាប់មុខម្ហូបដែលកុម្ម៉ង់ថែម */
-        .add-on-tag {
-            color: #dc3545;
-            background-color: #ffe6e6;
-            border: 1.5px solid #dc3545;
-            font-size: 0.85rem;
-            font-weight: 700;
-            padding: 2px 6px;
-            border-radius: 6px;
-            display: inline-block;
-            margin-top: 4px;
-        }
     </style>
 </head>
 <body>
@@ -157,19 +144,12 @@
                         let itemsHtml = '<ul class="list-group list-group-flush small mb-3 bg-light rounded-3 overflow-hidden">';
                         if (order.items && order.items.length > 0) {
                             order.items.forEach(item => {
-                                // 💡 ពិនិត្យមើលប្រសិនបើមានការកុម្ម៉ង់បន្ថែម (added_qty > 0) ឱ្យលោតស្លាកពណ៌ក្រហមបង្ហាញភ្លាម
-                                let addOnBadge = '';
-                                if (item.added_qty && item.added_qty > 0) {
-                                    addOnBadge = `<div class="add-on-tag"><i class="fa-solid fa-circle-plus me-1"></i> កុម្ម៉ង់ថែមថ្មី: x${item.added_qty}</div>`;
-                                }
-
                                 itemsHtml += `
                                     <li class="list-group-item py-2 bg-transparent border-bottom">
                                         <div class="d-flex justify-content-between align-items-center">
                                             <span class="fw-bold text-dark fs-6"><i class="fa-solid fa-utensils me-1 text-secondary"></i> ${item.name}</span>
-                                            <span class="badge bg-danger rounded-pill px-2.5 py-1.5 fs-6">សរុប x${item.quantity}</span>
+                                            <span class="badge bg-danger rounded-pill px-2.5 py-1.5 fs-6">ចំនួន x${item.quantity}</span>
                                         </div>
-                                        ${addOnBadge}
                                     </li>
                                 `;
                             });
@@ -251,7 +231,7 @@
                 }
             } catch (err) {
                 console.error('Error updating status:', err);
-                alert('មានបញ្ហាក្នុងการតភ្ជាប់ទៅកាន់ Server!');
+                alert('មានបញ្ហាក្នុងការតភ្ជាប់ទៅកាន់ Server!');
             }
         }
 
