@@ -10,7 +10,6 @@
     <style>
         body { font-family: 'Kantumruy Pro', sans-serif; background-color: #f4f7fa; }
         
-        /* 🌟 កូដរចនាកាត និង Glowing Border Effect ពេលយកម៉ៅដាក់លើផលិតផល */
         .product-card {
             cursor: pointer;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -28,7 +27,6 @@
             height: 140px;
         }
 
-        /* 🌟 ពេលយកម៉ៅដាក់លើ (Hover) ឱ្យលេចចេញស៊ុមភ្លឺស្រស់ស្អាត (Neon Glow Effect) */
         .product-card:hover {
             transform: translateY(-5px) scale(1.02);
             border-color: #0d6efd !important;
@@ -82,7 +80,6 @@
             transition: all 0.2s ease;
         }
 
-        /* 🪑 រចនាបថតុ (Table Card Style) */
         .table-card {
             cursor: pointer;
             border: 2px solid #e2e8f0;
@@ -107,14 +104,9 @@
         }
         .cart-items-box { max-height: 220px; overflow-y: auto; }
 
-        /* 🖨️ Print Styles សម្រាប់ម៉ាស៊ីនព្រិន្ទ A4 */
         @media print {
-            body * { 
-                visibility: hidden !important; 
-            }
-            #printableInvoice, #printableInvoice * { 
-                visibility: visible !important; 
-            }
+            body * { visibility: hidden !important; }
+            #printableInvoice, #printableInvoice * { visibility: visible !important; }
             #printableInvoice { 
                 position: absolute !important; 
                 left: 0 !important; 
@@ -124,16 +116,8 @@
                 padding: 10mm 15mm !important;
                 font-size: 15px !important;
             }
-            #printableInvoice .table {
-                font-size: 14px !important;
-            }
-            .no-print { 
-                display: none !important; 
-            }
-            @page {
-                size: A4 portrait;
-                margin: 0;
-            }
+            .no-print { display: none !important; }
+            @page { size: A4 portrait; margin: 0; }
         }
     </style>
 </head>
@@ -165,29 +149,21 @@
                         <h4 class="fw-bold text-dark fs-5 fs-md-4 mb-0"><i class="fa-solid fa-boxes-stacked me-2"></i> មុខទំនិញ / Menu Items</h4>
                         <p class="text-muted small mb-0">ចុចលើទំនិញដើម្បីបន្ថែមចូលកន្រ្តក | Click item to add to cart</p>
                     </div>
-                    <!-- អត្រាប្តូរប្រាក់ -->
                     <div class="bg-white px-3 py-1 rounded-3 shadow-sm border small">
                         <span class="fw-bold text-secondary">អត្រាប្តូរប្រាក់ / Rate:</span> 
                         <span class="text-primary fw-bold">1$ = <input type="number" id="exchangeRate" value="4100" class="form-control form-control-sm d-inline-block text-center fw-bold text-primary p-0 border-0 bg-transparent" style="width: 60px;" onchange="renderCart()"> Riel</span>
                     </div>
                 </div>
 
-                <!-- 🏷️ Category Filter Buttons -->
-                <div class="d-flex flex-wrap gap-2 mb-3" id="categoryButtons">
-                    <!-- Dynamic Rendered Buttons -->
-                </div>
+                <div class="d-flex flex-wrap gap-2 mb-3" id="categoryButtons"></div>
 
-                <!-- Product Grid List -->
-                <div class="row g-2" id="productsGrid">
-                    <!-- Load dynamically -->
-                </div>
+                <div class="row g-2" id="productsGrid"></div>
             </div>
 
             <!-- ខាងស្តាំ៖ កន្រ្តក និងការគណនាប្រាក់ -->
             <div class="col-12 col-md-5 col-lg-4">
                 <div class="card shadow-sm border-0 rounded-4 p-3 cart-container bg-white d-flex flex-column justify-content-between">
                     <div>
-                        <!-- 🪑 បញ្ចូលលេខតុដោយដៃ និងប៊ូតុងរើសតុ -->
                         <div class="mb-2 d-flex justify-content-between align-items-center bg-light p-2 rounded-3 border">
                             <label for="tableInput" class="fw-bold small text-secondary mb-0"><i class="fa-solid fa-chair me-1"></i> លេខតុ / Table:</label>
                             <div class="d-flex align-items-center gap-1">
@@ -196,9 +172,15 @@
                             </div>
                         </div>
 
+                        <!-- 🟢 ប៊ូតុងទាញយក Order ទាំងអស់របស់តុនេះមកគិតលុយរួមគ្នា -->
+                        <div class="mb-2">
+                            <button class="btn btn-outline-primary btn-sm w-100 fw-bold shadow-sm" onclick="loadUnpaidOrdersForTable()">
+                                <i class="fa-solid fa-sync me-1"></i> ទាញយក Order មិនទាន់បង់ប្រាក់របស់តុនេះ
+                            </button>
+                        </div>
+
                         <h4 class="fw-bold text-dark mb-2 fs-5 fs-md-4"><i class="fa-solid fa-cart-shopping me-2"></i> កន្រ្តកវិក្កយបត្រ / Cart</h4>
                         
-                        <!-- Cart Table -->
                         <div class="cart-items-box border rounded-3 p-1 mb-2 bg-light">
                             <table class="table table-sm align-middle mb-0" style="font-size: 0.9rem;">
                                 <thead class="table-light">
@@ -217,7 +199,6 @@
                         </div>
                     </div>
 
-                    <!-- Calculation & Checkout Section -->
                     <div class="border-top pt-2">
                         <div class="d-flex justify-content-between small mb-1">
                             <span class="text-muted">ទឹកប្រាក់រួម / Subtotal:</span>
@@ -279,7 +260,7 @@
         </div>
     </div>
 
-    <!-- 🔔 팝업 Modal សម្រាប់ជូនដំណឹង QR Order ចូលមកថ្មី -->
+    <!-- 🔔 Popup Modal សម្រាប់ QR Order -->
     <div class="modal fade" id="pendingOrderModal" data-bs-backdrop="static" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow-lg rounded-4">
@@ -299,9 +280,7 @@
                                     <th class="text-end">តម្លៃ ($)</th>
                                 </tr>
                             </thead>
-                            <tbody id="popupOrderItems">
-                                <!-- Loaded dynamically -->
-                            </tbody>
+                            <tbody id="popupOrderItems"></tbody>
                         </table>
                     </div>
                     <div class="d-flex justify-content-between fw-bold mb-3">
@@ -317,7 +296,7 @@
         </div>
     </div>
 
-    <!-- 🪑 Modal រើសលេខតុ និងបង្កើតកាតតុថ្មី -->
+    <!-- 🪑 Modal រើសលេខតុ -->
     <div class="modal fade" id="tableModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow rounded-4">
@@ -331,15 +310,13 @@
                         <button class="btn btn-primary fw-bold" type="button" onclick="addNewTableCard()"><i class="fa-solid fa-plus me-1"></i> បន្ថែមតុថ្មី</button>
                     </div>
                     <hr>
-                    <div class="row g-2" id="tableGrid" style="max-height: 250px; overflow-y: auto;">
-                        <!-- Render តុស្វ័យប្រវត្តិ -->
-                    </div>
+                    <div class="row g-2" id="tableGrid" style="max-height: 250px; overflow-y: auto;"></div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- 📱 Modal QR Code សម្រាប់ភ្ញៀវ Order -->
+    <!-- 📱 Modal QR Code -->
     <div class="modal fade" id="qrModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow rounded-4 text-center p-3">
@@ -353,7 +330,7 @@
                 <div class="modal-body">
                     <p class="text-muted small mb-2">ស្កែន QR Code នេះដើម្បីបើកម៉ឺនុយបញ្ជាទិញភ្ជាប់ជាមួយលេខតុនេះស្វ័យប្រវត្តិ៖</p>
                     <div class="bg-light p-3 d-inline-block rounded-4 shadow-sm mb-3 position-relative">
-                        <img id="qrImageDisplay" src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=https://coffee-restrung.onrender.com/customer-order.html?table=%E1%9E%8F%E1%9E%BB%E1%9E%91%E1%9E%AF%E1%9E%9B%E1%9E%B6" alt="Customer QR" class="img-fluid rounded" style="width: 180px; height: 180px;">
+                        <img id="qrImageDisplay" src="" alt="Customer QR" class="img-fluid rounded" style="width: 180px; height: 180px;">
                     </div>
                     
                     <div class="input-group input-group-sm mb-3">
@@ -363,16 +340,14 @@
 
                     <div class="border-top pt-2">
                         <label class="form-label small fw-bold text-secondary mb-1">ប្តូរតុដើម្បី Gen QR ផ្សេងទៀត៖</label>
-                        <select id="qrTableSelector" class="form-select form-select-sm fw-bold text-center text-primary" onchange="changeQrTableFromModal(this.value)">
-                            <!-- Render dynamic tables -->
-                        </select>
+                        <select id="qrTableSelector" class="form-select form-select-sm fw-bold text-center text-primary" onchange="changeQrTableFromModal(this.value)"></select>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- 🖨️ Modal បង្ហាញវិក្កយបត្រសម្រាប់ Print -->
+    <!-- 🖨️ Modal វិក្កយបត្រ Print -->
     <div class="modal fade" id="receiptModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow rounded-4">
@@ -401,9 +376,7 @@
                                     <th class="text-end">សរុប</th>
                                 </tr>
                             </thead>
-                            <tbody id="recItemsBody">
-                                <!-- Items -->
-                            </tbody>
+                            <tbody id="recItemsBody"></tbody>
                         </table>
                     </div>
                     <div class="border-top pt-2 small">
@@ -453,7 +426,7 @@
         </div>
     </div>
 
-    <!-- 🥤 Modal សម្រាប់ជ្រើសរើសកម្រិតជាតិស្ករ (សម្រាប់ Category Coffee) -->
+    <!-- 🥤 Modal កម្រិតស្ករ -->
     <div class="modal fade" id="sweetnessModal" tabindex="-1" data-bs-backdrop="static">
         <div class="modal-dialog modal-dialog-centered modal-sm">
             <div class="modal-content border-0 shadow-lg rounded-4 text-center p-3">
@@ -489,7 +462,6 @@
         let lastKitchenStatusMap = {};
         let acceptedOrderId = null;
 
-        // 🥤 Biến cho Sweetness Modal
         let sweetnessModalObj = null;
         let selectedProductForSweetness = null;
 
@@ -505,8 +477,6 @@
             document.getElementById('cashierDisplay').innerText = `Cashier: ${currentUser.full_name}`;
             receiptModalObj = new bootstrap.Modal(document.getElementById('receiptModal'));
             pendingOrderModalObj = new bootstrap.Modal(document.getElementById('pendingOrderModal'));
-            
-            // 🥤  khởi tạo Sweetness Modal
             sweetnessModalObj = new bootstrap.Modal(document.getElementById('sweetnessModal'));
 
             renderTableCards();
@@ -518,51 +488,73 @@
             setInterval(checkKitchenOrderStatusUpdates, 3000);
         });
 
+        // 🟢 មុខងារទាញយក Order ទាំងអស់ដែលមិនទាន់បង់ប្រាក់តាមតុមកដាក់បញ្ចូលគ្នាក្នុងកន្ត្រក[cite: 3]
+        async function loadUnpaidOrdersForTable() {
+            const tableNo = document.getElementById('tableInput').value.trim();
+            if (!tableNo) {
+                alert('សូមជ្រើសរើស ឬបញ្ចូលលេខតុសិន!');
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/orders/unpaid-by-table?table_no=${encodeURIComponent(tableNo)}`);
+                const result = await res.json();
+
+                if (result.success) {
+                    if (result.items.length === 0) {
+                        alert(`តុ "${tableNo}" គ្មាន Order ណាមួយដែលត្រូវគិតលុយទេ!`);
+                        return;
+                    }
+
+                    let tempCart = [];
+                    result.items.forEach(i => {
+                        const pId = Number(i.product_id || 1);
+                        const pName = i.name || 'មុខទំនិញ';
+                        const pPrice = Number(i.price || 0);
+                        const pQty = Number(i.quantity || 1);
+
+                        const existing = tempCart.find(item => item.id === pId);
+                        if (existing) {
+                            existing.quantity += pQty;
+                        } else {
+                            tempCart.push({
+                                cartItemId: `${pId}_ធម្មតា`,
+                                id: pId,
+                                name: pName,
+                                price: pPrice,
+                                quantity: pQty
+                            });
+                        }
+                    });
+
+                    cart = tempCart;
+                    renderCart();
+                    showSalesAlert(`📥 បានទាញយក Order ទាំងអស់របស់ ${tableNo} ចូលកន្រ្តកត្រៀមគិតលុយរួចរាល់!`);
+                } else {
+                    alert('⚠️ រកមិនឃើញទិន្នន័យ: ' + result.error);
+                }
+            } catch (err) {
+                console.error('Error loading unpaid orders for table:', err);
+                alert('មានបញ្ហាក្នុងការតភ្ជាប់ទៅកាន់ Server!');
+            }
+        }
+
         async function checkUrlForOrderCheckout() {
             const urlParams = new URLSearchParams(window.location.search);
             const targetTable = urlParams.get('table');
             const targetOrderId = urlParams.get('order_id');
 
-            if (targetOrderId) {
-                acceptedOrderId = Number(targetOrderId);
-
-                if (targetTable) {
-                    const decodedTable = decodeURIComponent(targetTable);
-                    if (!customTables.includes(decodedTable)) {
-                        customTables.push(decodedTable);
-                    }
-                    document.getElementById('tableInput').value = decodedTable;
-                    renderTableCards();
-                    generateDynamicQR(decodedTable);
+            if (targetTable) {
+                const decodedTable = decodeURIComponent(targetTable);
+                if (!customTables.includes(decodedTable)) {
+                    customTables.push(decodedTable);
                 }
+                document.getElementById('tableInput').value = decodedTable;
+                renderTableCards();
+                generateDynamicQR(decodedTable);
 
-                try {
-                    const res = await fetch(`/api/orders/${targetOrderId}/items`);
-                    const result = await res.json();
-                    if (result.success && result.items && result.items.length > 0) {
-                        let tempCart = [];
-                        result.items.forEach(i => {
-                            const pId = Number(i.product_id || i.id || 1);
-                            const pName = i.name || 'មុខទំនិញ';
-                            const pPrice = Number(i.price || 0);
-                            const pQty = Number(i.quantity || 1);
-
-                            const existing = tempCart.find(item => item.id === pId);
-                            if (existing) {
-                                existing.quantity += pQty;
-                            } else {
-                                tempCart.push({ id: pId, name: pName, price: pPrice, quantity: pQty });
-                            }
-                        });
-
-                        cart = tempCart;
-                        renderCart();
-                        
-                        showSalesAlert(`📥 បានទាញយក Order #${targetOrderId} (${targetTable || 'តុទូទៅ'}) ចូលកន្រ្តកត្រៀមគិតលុយរួចរាល់!`);
-                    }
-                } catch (err) {
-                    console.error('Error fetching order items from URL parameters:', err);
-                }
+                // 🟢 ហៅទាញយក Order ទាំងអស់របស់តុនេះស្វ័យប្រវត្តិ
+                loadUnpaidOrdersForTable();
             }
         }
 
@@ -609,9 +601,7 @@
                 
                 oscillator.start();
                 oscillator.stop(audioCtx.currentTime + 0.6);
-            } catch (e) {
-                console.log('Audio blocked or not supported');
-            }
+            } catch (e) {}
         }
 
         function showSalesAlert(message) {
@@ -629,9 +619,7 @@
             toast.innerHTML = `<i class="fa-solid fa-bell-concierge me-2 text-primary fs-5"></i> ${message}`;
             toastContainer.appendChild(toast);
 
-            setTimeout(() => {
-                toast.remove();
-            }, 6000);
+            setTimeout(() => { toast.remove(); }, 6000);
         }
 
         function generateDynamicQR(selectedTableName = null) {
@@ -657,6 +645,7 @@
             document.getElementById('tableInput').value = tableName;
             renderTableCards();
             generateDynamicQR(tableName);
+            loadUnpaidOrdersForTable();
         }
 
         function onTableInputChange() {
@@ -670,15 +659,12 @@
                 const result = await res.json();
                 if (result.success && result.data.length > 0) {
                     const customerOrders = result.data.filter(order => !order.cashier_id);
-                    
                     if (customerOrders.length > 0) {
                         currentPendingOrder = customerOrders[0];
                         showPendingOrderPopup(currentPendingOrder);
                     }
                 }
-            } catch (err) {
-                console.error('Error checking pending orders:', err);
-            }
+            } catch (err) {}
         }
 
         function showPendingOrderPopup(order) {
@@ -719,17 +705,13 @@
                 
                 oscillator.start();
                 oscillator.stop(audioCtx.currentTime + 0.4);
-            } catch (e) {
-                console.log('Audio not supported or blocked by browser');
-            }
+            } catch (e) {}
         }
 
         function startAlertSound() {
             if (soundInterval) clearInterval(soundInterval);
             playBeepSound();
-            soundInterval = setInterval(() => {
-                playBeepSound();
-            }, 3500);
+            soundInterval = setInterval(() => { playBeepSound(); }, 3500);
         }
 
         function stopAlertSound() {
@@ -758,36 +740,16 @@
                     stopAlertSound();
                     pendingOrderModalObj.hide();
                     
-                    acceptedOrderId = currentPendingOrder.id;
-
                     document.getElementById('tableInput').value = currentPendingOrder.table_no || 'តុទូទៅ';
                     renderTableCards();
                     generateDynamicQR(currentPendingOrder.table_no);
+                    loadUnpaidOrdersForTable();
 
-                    let tempCart = [];
-                    currentPendingOrder.items.forEach((i, index) => {
-                        const validId = Number(i.product_id || i.id || i.menu_id || (index + 1));
-                        const pId = isNaN(validId) ? (index + 1) : validId;
-                        const pName = i.name || 'មុខទំនិញ';
-                        const pPrice = Number(i.price || 0);
-                        const pQty = Number(i.quantity || 1);
-
-                        const existing = tempCart.find(item => item.id === pId);
-                        if (existing) {
-                            existing.quantity += pQty;
-                        } else {
-                            tempCart.push({ id: pId, name: pName, price: pPrice, quantity: pQty });
-                        }
-                    });
-
-                    cart = tempCart;
-                    renderCart();
                     alert('✅ បានទទួលយក Order នេះដោយជោគជ័យ!');
                 } else {
                     alert('⚠️ មានបញ្ហា: ' + result.error);
                 }
             } catch (err) {
-                console.error('Accept Order Error:', err);
                 alert('មានបញ្ហាក្នុងការតភ្ជាប់ទៅកាន់ Server!');
             }
         }
@@ -832,6 +794,7 @@
             document.getElementById('tableInput').value = tableName;
             renderTableCards();
             generateDynamicQR(tableName);
+            loadUnpaidOrdersForTable();
             const modalEl = document.getElementById('tableModal');
             const modal = bootstrap.Modal.getInstance(modalEl);
             modal.hide();
@@ -846,9 +809,7 @@
                     generateCategoryButtons(products);
                     displayProducts(products);
                 }
-            } catch (err) {
-                console.error('Error loading products:', err);
-            }
+            } catch (err) {}
         }
 
         function generateCategoryButtons(list) {
@@ -914,12 +875,7 @@
                 }
 
                 const stockQty = p.stock_qty !== undefined ? p.stock_qty : 0;
-                let stockBadgeClass = 'bg-success';
-                if (stockQty <= 0) {
-                    stockBadgeClass = 'bg-danger';
-                } else if (stockQty <= 5) {
-                    stockBadgeClass = 'bg-warning text-dark';
-                }
+                let stockBadgeClass = stockQty <= 0 ? 'bg-danger' : (stockQty <= 5 ? 'bg-warning text-dark' : 'bg-success');
 
                 grid.innerHTML += `
                     <div class="col-6 col-sm-4 col-md-3 col-lg-2">
@@ -938,7 +894,6 @@
             });
         }
 
-        // 🟢 កែសម្រួលមុខងារ addToCart ឱ្យឆែកមើល Category "Coffee" ដើម្បីឱ្យលោតផ្ទាំងរើសកម្រិតស្ករ
         function addToCart(productId) {
             const product = products.find(p => p.id === productId);
             if (!product) return;
@@ -953,7 +908,6 @@
             }
         }
 
-        // 🟢 មុខងារជ្រើសរើសកម្រិតស្ករពី Modal
         function selectSweetness(sweetnessLevel) {
             if (!selectedProductForSweetness) return;
             appendItemToCart(selectedProductForSweetness, sweetnessLevel);
@@ -961,7 +915,6 @@
             sweetnessModalObj.hide();
         }
 
-        // 🟢 មុខងារបន្ថែមទំនិញចូលកន្រ្តក (រួមទាំងកម្រិតស្ករ)
         function appendItemToCart(product, sweetness) {
             const cartItemId = `${product.id}_${sweetness}`;
             const displayName = sweetness === 'ធម្មតា' ? product.name : `${product.name} (${sweetness})`;
@@ -1064,6 +1017,7 @@
             }
         }
 
+        // 🟢 មុខងារ Checkout បង់ប្រាក់រួបរួមតាមតុ[cite: 3]
         async function checkout() {
             if (cart.length === 0) {
                 alert('សូមជ្រើសរើសទំនិញយ៉ាងហោចណាស់មួយ! / Please select at least one item!');
@@ -1080,19 +1034,24 @@
             const tableNo = document.getElementById('tableInput').value || 'Walk-in';
 
             try {
-                let res, result;
+                // ហៅ API បង់ប្រាក់រملកគ្រប់ Orders ទាំងអស់របស់តុនេះក្នុងពេលតែមួយ[cite: 3]
+                const res = await fetch('/api/orders/pay-by-table', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        table_no: tableNo,
+                        payment_method: paymentMethod,
+                        total_amount: finalCalculatedTotal,
+                        cashier_id: currentUser.id
+                    })
+                });
+                const result = await res.json();
 
-                if (acceptedOrderId) {
-                    res = await fetch(`/api/orders/${acceptedOrderId}/pay`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            payment_method: paymentMethod,
-                            total_amount: finalCalculatedTotal
-                        })
-                    });
-                    result = await res.json();
+                if (result.success) {
+                    showReceiptModal(result.order_ids ? result.order_ids.join(', ') : 'សរុប', paymentMethod, receivedUSD);
+                    await loadProducts(); 
                 } else {
+                    // ប្រសិនបើគ្មាន Order តាមតុទេ អាចបង្កើតជា Order ធម្មតាជំនួសវិញ
                     const orderData = {
                         cashier_id: currentUser.id,
                         table_no: tableNo,
@@ -1100,27 +1059,25 @@
                         payment_method: paymentMethod,
                         items: cart.map(item => ({
                             id: item.id,
-                            name: item.name, // 🟢 បញ្ជូនឈ្មោះរួមទាំងកម្រិតស្ករទៅកាន់ Server / Invoice / Kitchen
+                            name: item.name,
                             quantity: item.quantity,
                             price: item.price
                         }))
                     };
 
-                    res = await fetch('/api/orders', {
+                    const fallbackRes = await fetch('/api/orders', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(orderData)
                     });
-                    result = await res.json();
-                }
+                    const fallbackResult = await fallbackRes.json();
 
-                if (result.success) {
-                    const finalId = acceptedOrderId ? acceptedOrderId : (result.order ? result.order.id : '00');
-                    acceptedOrderId = null;
-                    showReceiptModal(finalId, paymentMethod, receivedUSD);
-                    await loadProducts(); 
-                } else {
-                    alert('⚠️ មិនអាចលក់បានទេ: ' + result.error);
+                    if (fallbackResult.success) {
+                        showReceiptModal(fallbackResult.order ? fallbackResult.order.id : '00', paymentMethod, receivedUSD);
+                        await loadProducts();
+                    } else {
+                        alert('⚠️ មិនអាចលក់បានទេ: ' + (result.error || fallbackResult.error));
+                    }
                 }
             } catch (err) {
                 console.error('Checkout Error:', err);
