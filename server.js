@@ -326,7 +326,7 @@ app.get('/api/orders/:id/items', async (req, res) => {
 
 // ================= ORDER & QR ORDERING APIs =================
 
-// 1. API សម្រាប់ភ្ញៀវកុម្ម៉ង់ម្ហូប (រក្សាគោលការណ៍រួមបញ្ចូលគ្នាដដែលសម្រាប់ Cashier)
+// 1. API សម្រាប់ភ្ញៀវកុម្ម៉ង់ម្ហូប (បង្កើត Order ថ្មីជានិច្ច មិនបាច់ Update ចូល Order ចាស់ទេ)[cite: 3]
 app.post('/api/orders', async (req, res) => {
     const { cashier_id, table_no, total_amount, payment_method, items } = req.body;
     
@@ -334,101 +334,53 @@ app.post('/api/orders', async (req, res) => {
     try {
         await client.query('BEGIN');
 
-        let existingOrder = null;
-        if (table_no && table_no !== 'Walk-in') {
-            const checkOrderQuery = `
-                SELECT id, total_amount FROM orders 
-                WHERE table_no = $1 AND (payment_method IS NULL OR payment_method = '')
-                ORDER BY id DESC LIMIT 1
-            `;
-            const checkRes = await client.query(checkOrderQuery, [table_no]);
-            if (checkRes.rows.length > 0) {
-                existingOrder = checkRes.rows[0];
-            }
-        }
-
-        let targetOrderId;
         const addedAmount = parseFloat(total_amount) || 0;
+        const initialStatus = table_no ? 'Customer_Pending' : 'Pending';
 
-        if (existingOrder) {
-            targetOrderId = existingOrder.id;
+        // 🟢 បង្កើត Order ID ថ្មីជានិច្ចរាល់ពេលមានការកុម្ម៉ង់ (មិនបាច់ឆែករក Order ចាស់មក Update ទៀតទេ)
+        const orderQuery = `
+            INSERT INTO orders (cashier_id, table_no, total_amount, payment_method, status, created_at) 
+            VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP) 
+            RETURNING id, total_amount, created_at, status
+        `;
+        const orderResult = await client.query(orderQuery, [
+            cashier_id || null, 
+            table_no || 'Walk-in', 
+            addedAmount, 
+            null, 
+            initialStatus
+        ]);
+        const targetOrderId = orderResult.rows[0].id;
 
-            if (items && items.length > 0) {
-                for (let item of items) {
-                    const checkStock = await client.query('SELECT stock_qty, name FROM products WHERE id = $1', [item.id]);
-                    if (checkStock.rows.length === 0) {
-                        throw new Error(`ទំនិញ ID ${item.id} មិនមានក្នុងប្រព័ន្ធទេ។`);
-                    }
-                    const currentStock = checkStock.rows[0].stock_qty || 0;
-                    if (currentStock < item.quantity) {
-                        throw new Error(`ទំនិញ "${checkStock.rows[0].name}" ក្នុងស្តុកសល់តែ ${currentStock} ប៉ុណ្ណោះ!`);
-                    }
-                    
-                    await client.query(
-                        'UPDATE products SET stock_qty = stock_qty - $1 WHERE id = $2',
-                        [item.quantity, item.id]
-                    );
-
-                    await client.query(
-                        `INSERT INTO order_items (order_id, product_id, quantity, price) VALUES ($1, $2, $3, $4)`,
-                        [targetOrderId, item.id, item.quantity, item.price]
-                    );
+        if (items && items.length > 0) {
+            for (let item of items) {
+                const checkStock = await client.query('SELECT stock_qty, name FROM products WHERE id = $1', [item.id]);
+                if (checkStock.rows.length === 0) {
+                    throw new Error(`ទំនិញ ID ${item.id} មិនមានក្នុងប្រព័ន្ធទេ។`);
                 }
-            }
-
-            await client.query(
-                `UPDATE orders SET total_amount = total_amount + $1, status = 'Customer_Pending' WHERE id = $2`,
-                [addedAmount, targetOrderId]
-            );
-
-        } else {
-            if (items && items.length > 0) {
-                for (let item of items) {
-                    const checkStock = await client.query('SELECT stock_qty, name FROM products WHERE id = $1', [item.id]);
-                    if (checkStock.rows.length === 0) {
-                        throw new Error(`ទំនិញ ID ${item.id} មិនមានក្នុងប្រព័ន្ធទេ។`);
-                    }
-                    const currentStock = checkStock.rows[0].stock_qty || 0;
-                    if (currentStock < item.quantity) {
-                        throw new Error(`ទំនិញ "${checkStock.rows[0].name}" ក្នុងស្តុកសល់តែ ${currentStock} ប៉ុណ្ណោះ!`);
-                    }
-                    await client.query(
-                        'UPDATE products SET stock_qty = stock_qty - $1 WHERE id = $2',
-                        [item.quantity, item.id]
-                    );
+                const currentStock = checkStock.rows[0].stock_qty || 0;
+                if (currentStock < item.quantity) {
+                    throw new Error(`ទំនិញ "${checkStock.rows[0].name}" ក្នុងស្តុកសល់តែ ${currentStock} ប៉ុណ្ណោះ!`);
                 }
-            }
+                
+                // កាត់ស្តុកផលិតផល
+                await client.query(
+                    'UPDATE products SET stock_qty = stock_qty - $1 WHERE id = $2',
+                    [item.quantity, item.id]
+                );
 
-            const initialStatus = table_no ? 'Customer_Pending' : 'Pending';
-
-            const orderQuery = `
-                INSERT INTO orders (cashier_id, table_no, total_amount, payment_method, status, created_at) 
-                VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP) 
-                RETURNING id, total_amount, created_at, status
-            `;
-            const orderResult = await client.query(orderQuery, [
-                cashier_id || null, 
-                table_no || 'Walk-in', 
-                addedAmount, 
-                null, 
-                initialStatus
-            ]);
-            targetOrderId = orderResult.rows[0].id;
-
-            if (items && items.length > 0) {
-                for (let item of items) {
-                    await client.query(
-                        `INSERT INTO order_items (order_id, product_id, quantity, price) VALUES ($1, $2, $3, $4)`,
-                        [targetOrderId, item.id, item.quantity, item.price]
-                    );
-                }
+                // បញ្ចូលមុខទំនិញទៅកាន់ order_items តាម Order ID ថ្មី
+                await client.query(
+                    `INSERT INTO order_items (order_id, product_id, quantity, price) VALUES ($1, $2, $3, $4)`,
+                    [targetOrderId, item.id, item.quantity, item.price]
+                );
             }
         }
 
         await client.query('COMMIT');
         res.status(201).json({ 
             success: true, 
-            message: existingOrder ? 'បានកុម្ម៉ង់បន្ថែមជោគជ័យ!' : 'Order created successfully', 
+            message: 'Order created successfully', 
             order: { id: targetOrderId } 
         });
     } catch (err) {
@@ -552,8 +504,7 @@ app.put('/api/orders/:id/items', async (req, res) => {
     }
 });
 
-// 🍳 API សម្រាប់ផ្ទះបាយ (ទាញយកទំនិញតាមលំដាប់លំដោយ ID របស់ order_items ដើម្បីឱ្យឃើញការកុម្ម៉ង់បន្ថែមដាច់ដោយឡែក)
-// 🍳 API សម្រាប់ផ្ទះបាយ (បូកសរុបចំនួនទំនិញស្វ័យប្រវត្តិ និងបែងចែកដឹងពីចំនួនកុម្ម៉ង់បន្ថែមថ្មី)
+// 🍳 API សម្រាប់ផ្ទះបាយ (ទាញយកទំនិញតាមលំដាប់លំដោយ ID របស់ order_items)
 app.get('/api/orders/kitchen', async (req, res) => {
     try {
         const orderQuery = `
@@ -583,7 +534,6 @@ app.get('/api/orders/kitchen', async (req, res) => {
         const orders = orderResult.rows;
 
         for (let order of orders) {
-            // 🟢 ទាញយកទំនិញទាំងអស់ក្នុង Order នេះ ដោយរៀបលំដាប់តាម id របស់ order_items (កុម្ម៉ង់មុន/ក្រោយ)
             const itemsResult = await pool.query(`
                 SELECT 
                     p.id as product_id,
@@ -607,35 +557,11 @@ app.get('/api/orders/kitchen', async (req, res) => {
                 ORDER BY oi.id ASC
             `, [order.id]);
 
-            // 🧮 ធ្វើការបូកសរុប Quantity សរុប និងរក្សាទុក Quantity នៃការកុម្ម៉ង់លើកដំបូង និងលើកក្រោយ (Add-on)
-            let productMap = {};
-            
-            itemsResult.rows.forEach(item => {
-                if (!productMap[item.product_id]) {
-                    productMap[item.product_id] = {
-                        name: item.name,
-                        total_qty: 0,
-                        first_qty: 0,
-                        later_qty: 0,
-                        entries_count: 0
-                    };
-                }
-                
-                productMap[item.product_id].entries_count += 1;
-                productMap[item.product_id].total_qty += parseInt(item.quantity || 0);
-
-                if (productMap[item.product_id].entries_count === 1) {
-                    productMap[item.product_id].first_qty = parseInt(item.quantity || 0);
-                } else {
-                    productMap[item.product_id].later_qty += parseInt(item.quantity || 0);
-                }
-            });
-
-            // 🔄 បម្លែងទិន្នន័យត្រឡប់ទៅឱ្យ Frontend វិញយ៉ាងស្អាត
-            order.items = Object.values(productMap).map(prod => ({
-                name: prod.name,
-                quantity: prod.total_qty,
-                added_qty: prod.later_qty // ប្រសិនបើមានការកុម្ម៉ង់បន្ថែម វានឹងបង្ហាញចំនួនថ្មីនៅទីនេះ
+            // ដោយសារឥឡូវ Order ត្រូវបានបំបែកជា Order ID ដាច់ដោយឡែកពីគ្នា ផ្ទះបាយនឹងទទួលបានកាត (Cards) ដាច់ៗពីគ្នាស្រាប់
+            order.items = itemsResult.rows.map(item => ({
+                name: item.name,
+                quantity: item.quantity,
+                added_qty: 0
             }));
         }
 
@@ -645,6 +571,7 @@ app.get('/api/orders/kitchen', async (req, res) => {
         res.status(500).json({ success: false, error: 'Database error' });
     }
 });
+
 app.patch('/api/orders/:id/status', async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
