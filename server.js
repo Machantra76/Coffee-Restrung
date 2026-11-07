@@ -520,7 +520,7 @@ app.post('/api/orders/:id/pay', async (req, res) => {
     }
 });
 
-// ✏️ 7. API សម្រាប់កែប្រែមុខទំនិញ និងបញ្ជូនដំណឹងទៅផ្ទះបាយ (PUT Edit Order Items & Update Stock & Kitchen Status)
+// ✏️ 7. API សម្រាប់កែប្រែមុខទំនិញ (PUT Edit Order Items & Update Stock)
 app.put('/api/orders/:id/items', async (req, res) => {
     const { id } = req.params;
     const { items, total_amount } = req.body;
@@ -560,11 +560,11 @@ app.put('/api/orders/:id/items', async (req, res) => {
             }
         }
 
-        // ៤. អាប់ដេតទឹកប្រាក់សរុប (total_amount) និងប្តូរ status មក 'Pending' វិញ ដើម្បីឱ្យផ្ទះបាយមើលឃើញ
-        await client.query('UPDATE orders SET total_amount = $1, status = \'Pending\' WHERE id = $2', [total_amount, id]);
+        // ៤. អាប់ដេតទឹកប្រាក់សរុប (total_amount) ថ្មីក្នុងតារាង orders
+        await client.query('UPDATE orders SET total_amount = $1 WHERE id = $2', [total_amount, id]);
 
         await client.query('COMMIT');
-        res.json({ success: true, message: 'បានកែប្រែវិក្កយបត្រ និងបញ្ជូនទៅផ្ទះបាយជោគជ័យ!' });
+        res.json({ success: true, message: 'បានកែប្រែវិក្កយបត្រជោគជ័យ!' });
     } catch (err) {
         await client.query('ROLLBACK');
         console.error('Update Order Items Error:', err);
