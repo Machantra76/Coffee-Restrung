@@ -423,7 +423,7 @@ app.get('/api/orders/unpaid-by-table', async (req, res) => {
     }
 });
 
-// 3. API សម្រាប់បង់ប្រាក់ Checkout គ្រប់ Orders ទាំងអស់របស់តុក្នុងពេលតែមួយ[cite: 3]
+// 3. API សម្រាប់បង់ប្រាក់ Checkout គ្រប់ Orders ទាំងអស់របស់តុក្នុងពេលតែមួយ
 app.post('/api/orders/pay-by-table', async (req, res) => {
     const { table_no, payment_method, total_amount, cashier_id } = req.body;
     if (!table_no) {
@@ -520,6 +520,60 @@ app.post('/api/orders/:id/pay', async (req, res) => {
     }
 });
 
+// ✏️ 7. API សម្រាប់កែប្រែមុខទំនិញ (PUT Edit Order Items & Update Stock)
+app.put('/api/orders/:id/items', async (req, res) => {
+    const { id } = req.params;
+    const { items, total_amount } = req.body;
+    const client = await pool.connect();
+
+    try {
+        await client.query('BEGIN');
+
+        // ១. ទាញយកទំនិញចាស់មកបូកសងស្តុកដើមវិញសិន
+        const oldItemsRes = await client.query('SELECT product_id, quantity FROM order_items WHERE order_id = $1', [id]);
+        for (let oldItem of oldItemsRes.rows) {
+            if (oldItem.product_id) {
+                await client.query('UPDATE products SET stock_qty = stock_qty + $1 WHERE id = $2', [oldItem.quantity, oldItem.product_id]);
+            }
+        }
+
+        // ២. លុបទំនិញចាស់ចេញពី order_items
+        await client.query('DELETE FROM order_items WHERE order_id = $1', [id]);
+
+        // ៣. ពិនិត្យស្តុកថ្មី កាត់ស្តុក និងបញ្ចូលទំនិញថ្មីចូល order_items វិញ
+        if (items && items.length > 0) {
+            for (let newItem of items) {
+                const checkStock = await client.query('SELECT stock_qty, name FROM products WHERE id = $1', [newItem.id]);
+                if (checkStock.rows.length === 0) {
+                    throw new Error(`ទំនិញ ID ${newItem.id} មិនមានក្នុងប្រព័ន្ធទេ។`);
+                }
+                const currentStock = checkStock.rows[0].stock_qty || 0;
+                if (currentStock < newItem.quantity) {
+                    throw new Error(`ទំនិញ "${checkStock.rows[0].name}" ក្នុងស្តុកសល់តែ ${currentStock} ប៉ុណ្ណោះ!`);
+                }
+
+                await client.query(
+                    'INSERT INTO order_items (order_id, product_id, quantity, price) VALUES ($1, $2, $3, $4)',
+                    [id, newItem.id, newItem.quantity, newItem.price]
+                );
+                await client.query('UPDATE products SET stock_qty = stock_qty - $1 WHERE id = $2', [newItem.quantity, newItem.id]);
+            }
+        }
+
+        // ៤. អាប់ដេតទឹកប្រាក់សរុប (total_amount) ថ្មីក្នុងតារាង orders
+        await client.query('UPDATE orders SET total_amount = $1 WHERE id = $2', [total_amount, id]);
+
+        await client.query('COMMIT');
+        res.json({ success: true, message: 'បានកែប្រែវិក្កយបត្រជោគជ័យ!' });
+    } catch (err) {
+        await client.query('ROLLBACK');
+        console.error('Update Order Items Error:', err);
+        res.status(400).json({ success: false, error: err.message });
+    } finally {
+        client.release();
+    }
+});
+
 // 🍳 API សម្រាប់ផ្ទះបាយ
 app.get('/api/orders/kitchen', async (req, res) => {
     try {
@@ -598,9 +652,8 @@ app.patch('/api/orders/:id/status', async (req, res) => {
     }
 });
 
-// ================= 🟢 ADDED REPORT & CASHIER APIs (សម្រាប់ទំព័រ របាយការណ៍ / orders.html) =================
+// ================= REPORT & CASHIER APIs =================
 
-// 1. API សម្រាប់ទាញយកបញ្ជីឈ្មោះបុគ្គលិក Cashier ទាំងអស់
 app.get('/api/users/cashiers-list', async (req, res) => {
     try {
         const result = await pool.query("SELECT id, username, full_name FROM users WHERE role = 'Cashier' AND is_active = true ORDER BY id DESC");
@@ -611,7 +664,6 @@ app.get('/api/users/cashiers-list', async (req, res) => {
     }
 });
 
-// 2. API សម្រាប់ទាញយកប្រវត្តិការលក់ (Orders History) និងប្រាក់ចំណេញសរុប (Total Profit / Daily Summary)
 app.get('/api/orders/history', async (req, res) => {
     const { fromDate, toDate } = req.query;
     try {
@@ -683,7 +735,6 @@ app.get('/api/orders/history', async (req, res) => {
     }
 });
 
-// 3. API សម្រាប់ទាញយកសកម្មភាពការលក់តាមបុគ្គលិក Cashier ម្នាក់ៗ
 app.get('/api/orders/cashier-activity/:cashierId', async (req, res) => {
     const { cashierId } = req.params;
     try {
@@ -720,7 +771,6 @@ app.get('/api/orders/cashier-activity/:cashierId', async (req, res) => {
     }
 });
 
-// 4. API សម្រាប់ទាញយករបាយការណ៍សង្ខេបការលក់តាមប្រភេទ Category
 app.get('/api/reports/category-summary', async (req, res) => {
     const { fromDate, toDate } = req.query;
     try {
