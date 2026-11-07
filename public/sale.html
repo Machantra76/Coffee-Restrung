@@ -104,7 +104,7 @@
         }
         .cart-items-box { max-height: 220px; overflow-y: auto; }
 
-        /* 🖨️ កែសម្រួលការព្រីនឱ្យឡើងទៅលើផុត និងមិនដាច់ទំព័រ */
+        /* 🖨️ កែសម្រួលទម្រង់ព្រីនសម្រាប់ម៉ាស៊ីន POS (Thermal Printer 80mm) */
         @media print {
             body * { visibility: hidden !important; }
             #printableInvoice, #printableInvoice * { visibility: visible !important; }
@@ -112,14 +112,17 @@
                 position: absolute !important; 
                 left: 0 !important; 
                 top: 0 !important; 
-                width: 100% !important; 
+                width: 80mm !important; 
                 margin: 0 !important;
-                padding: 5mm !important;
-                font-size: 14px !important;
+                padding: 2mm !important;
+                font-size: 12px !important;
             }
             .modal-content { border: none !important; box-shadow: none !important; }
             .no-print { display: none !important; }
-            @page { size: auto; margin: 5mm; }
+            @page { 
+                size: 80mm auto; 
+                margin: 0mm; 
+            }
         }
     </style>
 </head>
@@ -1130,14 +1133,28 @@
             document.getElementById('recChange').innerText = `$${changeUSD.toFixed(2)}`;
             document.getElementById('recChangeRiel').innerText = `(${Math.round(changeUSD * exchangeRate).toLocaleString()} រៀល)`;
 
+            // 1. បង្ហាញ Modal វិក្កយបត្រ
             receiptModalObj.show();
 
+            // 2. 🟢 Auto Print ស្វ័យប្រវត្តិភ្លាមៗពេលបង់ប្រាក់រួច
+            setTimeout(() => {
+                window.print();
+            }, 300);
+
+            // 3. សម្អាតកន្រ្តកត្រៀមវិក្កយបត្របន្ទាប់
             cart = [];
             document.getElementById('amountReceived').value = '';
             document.getElementById('discountPercent').value = '0';
             document.getElementById('vatToggle').checked = false;
             renderCart();
         }
+
+        // 🟢 បិទ Modal ស្វ័យប្រវត្តិក្រោយពេល Print ចប់
+        window.addEventListener('afterprint', () => {
+            if (receiptModalObj) {
+                receiptModalObj.hide();
+            }
+        });
 
         function copyOrderLink() {
             const copyText = document.getElementById("customerOrderLink");
