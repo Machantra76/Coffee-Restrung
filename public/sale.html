@@ -104,21 +104,33 @@
         }
         .cart-items-box { max-height: 220px; overflow-y: auto; }
 
-        /* 🖨️ កែសម្រួលទម្រង់ព្រីនសម្រាប់ម៉ាស៊ីន POS (Thermal Printer 80mm) មិនឱ្យធ្លាក់ទៅ A4 ធំ */
+        /* 🖨️ កែសម្រួលទម្រង់ CSS Print បង្ខំឱ្យអូសឡើងលើផុត និងរត់ទំហំ POS 80mm */
         @media print {
-            body * { visibility: hidden !important; }
-            #printableInvoice, #printableInvoice * { visibility: visible !important; }
+            body * { 
+                visibility: hidden !important; 
+            }
+            #printableInvoice, #printableInvoice * { 
+                visibility: visible !important; 
+            }
             #printableInvoice { 
-                position: absolute !important; 
+                position: fixed !important; 
                 left: 0 !important; 
                 top: 0 !important; 
                 width: 80mm !important; 
+                max-width: 80mm !important;
                 margin: 0 !important;
                 padding: 2mm !important;
                 font-size: 12px !important;
+                background: white !important;
             }
-            .modal-content { border: none !important; box-shadow: none !important; }
-            .no-print { display: none !important; }
+            .modal-content { 
+                border: none !important; 
+                box-shadow: none !important; 
+                background: transparent !important; 
+            }
+            .no-print { 
+                display: none !important; 
+            }
             @page { 
                 size: 80mm auto; 
                 margin: 0mm; 
@@ -493,7 +505,7 @@
             setInterval(checkKitchenOrderStatusUpdates, 3000);
         });
 
-        // 🟢 មុខងារទាញយក Order ទាំងអស់ដែលមិនទាន់បង់ប្រាក់តាមតុមកដាក់បញ្ចូលគ្នាក្នុងកន្ត្រក[cite: 3]
+        // 🟢 មុខងារទាញយក Order ទាំងអស់ដែលមិនទាន់បង់ប្រាក់តាមតុមកដាក់បញ្ចូលគ្នាក្នុងកន្ត្រក
         async function loadUnpaidOrdersForTable() {
             const tableNo = document.getElementById('tableInput').value.trim();
             if (!tableNo) {
@@ -1022,7 +1034,7 @@
             }
         }
 
-        // 🟢 មុខងារ Checkout បង់ប្រាក់រួបរួមតាមតុ[cite: 3]
+        // 🟢 មុខងារ Checkout បង់ប្រាក់រួបរួមតាមតុ
         async function checkout() {
             if (cart.length === 0) {
                 alert('សូមជ្រើសរើសទំនិញយ៉ាងហោចណាស់មួយ! / Please select at least one item!');
@@ -1039,7 +1051,7 @@
             const tableNo = document.getElementById('tableInput').value || 'Walk-in';
 
             try {
-                // ហៅ API បង់ប្រាក់រملកគ្រប់ Orders ទាំងអស់របស់តុនេះក្នុងពេលតែមួយ[cite: 3]
+                // ហៅ API បង់ប្រាក់រួមគ្រប់ Orders ទាំងអស់របស់តុនេះក្នុងពេលតែមួយ
                 const res = await fetch('/api/orders/pay-by-table', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
