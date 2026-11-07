@@ -289,7 +289,7 @@ app.get('/api/inventory', async (req, res) => {
     }
 });
 
-// 🪑 API សម្រាប់ទាញយកតុ Active Tables (ផ្អែកលើการមិនទាន់បង់ប្រាក់ Checkout)
+// 🪑 API សម្រាប់ទាញយកតុ Active Tables (ផ្អែកលើការមិនទាន់បង់ប្រាក់ Checkout)
 app.get('/api/orders/active-tables', async (req, res) => {
     try {
         const query = `
@@ -595,6 +595,168 @@ app.patch('/api/orders/:id/status', async (req, res) => {
         res.json({ success: true, message: 'Updated order status successfully' });
     } catch (err) {
         res.status(500).json({ success: false, error: 'Database error' });
+    }
+});
+
+// ================= 🟢 ADDED REPORT & CASHIER APIs (សម្រាប់ទំព័រ របាយការណ៍ / orders.html) =================
+
+// 1. API សម្រាប់ទាញយកបញ្ជីឈ្មោះបុគ្គលិក Cashier ទាំងអស់
+app.get('/api/users/cashiers-list', async (req, res) => {
+    try {
+        const result = await pool.query("SELECT id, username, full_name FROM users WHERE role = 'Cashier' AND is_active = true ORDER BY id DESC");
+        res.json({ success: true, data: result.rows });
+    } catch (err) {
+        console.error('Get Cashiers List Error:', err);
+        res.status(500).json({ success: false, error: 'Database error: ' + err.message });
+    }
+});
+
+// 2. API សម្រាប់ទាញយកប្រវត្តិការលក់ (Orders History) និងប្រាក់ចំណេញសរុប (Total Profit / Daily Summary)
+app.get('/api/orders/history', async (req, res) => {
+    const { fromDate, toDate } = req.query;
+    try {
+        let whereClauses = [];
+        let params = [];
+
+        if (fromDate) {
+            params.push(`${fromDate} 00:00:00`);
+            whereClauses.push(`o.created_at >= $${params.length}`);
+        }
+        if (toDate) {
+            params.push(`${toDate} 23:59:59`);
+            whereClauses.push(`o.created_at <= $${params.length}`);
+        }
+
+        const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+
+        const query = `
+            SELECT o.id, o.table_no, o.total_amount, o.payment_method, o.status, o.created_at, u.full_name as cashier_name 
+            FROM orders o
+            LEFT JOIN users u ON o.cashier_id = u.id
+            ${whereSql}
+            ORDER BY o.id DESC
+        `;
+        const result = await pool.query(query, params);
+
+        const profitQuery = `
+            SELECT COALESCE(SUM((oi.price - COALESCE(s.cost_price, 0)) * oi.quantity), 0) as total_profit
+            FROM order_items oi
+            JOIN orders o ON oi.order_id = o.id
+            LEFT JOIN (
+                SELECT DISTINCT ON (product_id) product_id, cost_price 
+                FROM stock_in_history 
+                ORDER BY product_id, created_at DESC
+            ) s ON oi.product_id = s.product_id
+            ${whereSql}
+        `;
+        const profitResult = await pool.query(profitQuery, params);
+        const totalProfit = parseFloat(profitResult.rows[0]?.total_profit || 0);
+
+        const dailyQuery = `
+            SELECT 
+                DATE(o.created_at) as sale_date,
+                COUNT(o.id) as total_orders,
+                SUM(o.total_amount) as daily_revenue,
+                COALESCE(SUM((oi.price - COALESCE(s.cost_price, 0)) * oi.quantity), 0) as daily_profit
+            FROM orders o
+            JOIN order_items oi ON o.id = oi.order_id
+            LEFT JOIN (
+                SELECT DISTINCT ON (product_id) product_id, cost_price 
+                FROM stock_in_history 
+                ORDER BY product_id, created_at DESC
+            ) s ON oi.product_id = s.product_id
+            ${whereSql}
+            GROUP BY DATE(o.created_at)
+            ORDER BY sale_date DESC;
+        `;
+        const dailyResult = await pool.query(dailyQuery, params);
+
+        res.json({ 
+            success: true, 
+            data: result.rows,
+            total_profit: totalProfit,
+            daily_summary: dailyResult.rows
+        });
+    } catch (err) {
+        console.error('Get Orders History Error:', err);
+        res.status(500).json({ success: false, error: 'Database error: ' + err.message });
+    }
+});
+
+// 3. API សម្រាប់ទាញយកសកម្មភាពការលក់តាមបុគ្គលិក Cashier ម្នាក់ៗ
+app.get('/api/orders/cashier-activity/:cashierId', async (req, res) => {
+    const { cashierId } = req.params;
+    try {
+        let query = `
+            SELECT o.id, o.table_no, o.total_amount, o.payment_method, o.status, o.created_at, u.full_name as cashier_name 
+            FROM orders o
+            LEFT JOIN users u ON o.cashier_id = u.id
+        `;
+        let queryParams = [];
+
+        if (cashierId && cashierId !== 'all') {
+            query += ` WHERE o.cashier_id = $1`;
+            queryParams.push(cashierId);
+        }
+
+        query += ` ORDER BY o.id DESC`;
+
+        const result = await pool.query(query, queryParams);
+        const orders = result.rows;
+        
+        let grandTotal = 0;
+        orders.forEach(o => grandTotal += Number(o.total_amount || 0));
+
+        res.json({
+            success: true,
+            total_bills: orders.length,
+            grand_total: grandTotal,
+            orders: orders,
+            data: orders
+        });
+    } catch (err) {
+        console.error('Get Cashier Activity Error:', err);
+        res.status(500).json({ success: false, error: 'Database error: ' + err.message });
+    }
+});
+
+// 4. API សម្រាប់ទាញយករបាយការណ៍សង្ខេបការលក់តាមប្រភេទ Category
+app.get('/api/reports/category-summary', async (req, res) => {
+    const { fromDate, toDate } = req.query;
+    try {
+        let whereClauses = [];
+        let params = [];
+
+        if (fromDate) {
+            params.push(`${fromDate} 00:00:00`);
+            whereClauses.push(`o.created_at >= $${params.length}`);
+        }
+        if (toDate) {
+            params.push(`${toDate} 23:59:59`);
+            whereClauses.push(`o.created_at <= $${params.length}`);
+        }
+
+        const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+
+        const query = `
+            SELECT 
+                COALESCE(p.category, 'General') as category_name,
+                p.name as product_name,
+                SUM(oi.quantity) as total_quantity,
+                SUM(oi.quantity * oi.price) as total_sales
+            FROM order_items oi
+            JOIN orders o ON oi.order_id = o.id
+            JOIN products p ON oi.product_id = p.id
+            ${whereSql}
+            GROUP BY p.category, p.name
+            ORDER BY category_name ASC, total_quantity DESC;
+        `;
+
+        const result = await pool.query(query, params);
+        res.json({ success: true, data: result.rows });
+    } catch (err) {
+        console.error('Category Summary Report Error:', err);
+        res.status(500).json({ success: false, error: 'Database error: ' + err.message });
     }
 });
 
