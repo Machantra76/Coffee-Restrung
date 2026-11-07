@@ -289,7 +289,7 @@ app.get('/api/inventory', async (req, res) => {
     }
 });
 
-// 🪑 API សម្រាប់ទាញយកតុ Active Tables (ផ្អែកលើការមិនទាន់បង់ប្រាក់ Checkout)
+// 🪑 API សម្រាប់ទាញយកតុ Active Tables (ផ្អែកលើการមិនទាន់បង់ប្រាក់ Checkout)
 app.get('/api/orders/active-tables', async (req, res) => {
     try {
         const query = `
@@ -326,7 +326,7 @@ app.get('/api/orders/:id/items', async (req, res) => {
 
 // ================= ORDER & QR ORDERING APIs =================
 
-// 1. API សម្រាប់ភ្ញៀវកុម្ម៉ង់ម្ហូប (បង្កើត Order ថ្មីជានិច្ច មិនបាច់ Update ចូល Order ចាស់ទេ)[cite: 3]
+// 1. API សម្រាប់បង្កើត Order ថ្មីជានិច្ច
 app.post('/api/orders', async (req, res) => {
     const { cashier_id, table_no, total_amount, payment_method, items } = req.body;
     
@@ -337,7 +337,6 @@ app.post('/api/orders', async (req, res) => {
         const addedAmount = parseFloat(total_amount) || 0;
         const initialStatus = table_no ? 'Customer_Pending' : 'Pending';
 
-        // 🟢 បង្កើត Order ID ថ្មីជានិច្ចរាល់ពេលមានការកុម្ម៉ង់ (មិនបាច់ឆែករក Order ចាស់មក Update ទៀតទេ)
         const orderQuery = `
             INSERT INTO orders (cashier_id, table_no, total_amount, payment_method, status, created_at) 
             VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP) 
@@ -363,13 +362,11 @@ app.post('/api/orders', async (req, res) => {
                     throw new Error(`ទំនិញ "${checkStock.rows[0].name}" ក្នុងស្តុកសល់តែ ${currentStock} ប៉ុណ្ណោះ!`);
                 }
                 
-                // កាត់ស្តុកផលិតផល
                 await client.query(
                     'UPDATE products SET stock_qty = stock_qty - $1 WHERE id = $2',
                     [item.quantity, item.id]
                 );
 
-                // បញ្ចូលមុខទំនិញទៅកាន់ order_items តាម Order ID ថ្មី
                 await client.query(
                     `INSERT INTO order_items (order_id, product_id, quantity, price) VALUES ($1, $2, $3, $4)`,
                     [targetOrderId, item.id, item.quantity, item.price]
@@ -391,7 +388,76 @@ app.post('/api/orders', async (req, res) => {
     }
 });
 
-// 2. API សម្រាប់ Sales Dashboard
+// 2. API សម្រាប់ទាញយកគ្រប់ Order ទាំងអស់ដែលមិនទាន់បង់ប្រាក់តាមតុ (សម្រាប់ Cashier គិតលុយរួម)
+app.get('/api/orders/unpaid-by-table', async (req, res) => {
+    const { table_no } = req.query;
+    if (!table_no) {
+        return res.status(400).json({ success: false, error: 'Table number is required' });
+    }
+
+    try {
+        const ordersQuery = `
+            SELECT id FROM orders 
+            WHERE table_no = $1 AND (payment_method IS NULL OR payment_method = '')
+            ORDER BY id ASC
+        `;
+        const ordersRes = await pool.query(ordersQuery, [table_no]);
+        const orderIds = ordersRes.rows.map(row => row.id);
+
+        if (orderIds.length === 0) {
+            return res.json({ success: true, order_ids: [], items: [] });
+        }
+
+        const itemsQuery = `
+            SELECT p.id as product_id, p.name, oi.quantity, oi.price
+            FROM order_items oi
+            JOIN products p ON oi.product_id = p.id
+            WHERE oi.order_id = ANY($1::int[])
+        `;
+        const itemsRes = await pool.query(itemsQuery, [orderIds]);
+
+        res.json({ success: true, order_ids: orderIds, items: itemsRes.rows });
+    } catch (err) {
+        console.error('Get Unpaid Orders By Table Error:', err);
+        res.status(500).json({ success: false, error: 'Database error' });
+    }
+});
+
+// 3. API សម្រាប់បង់ប្រាក់ Checkout គ្រប់ Orders ទាំងអស់របស់តុក្នុងពេលតែមួយ[cite: 3]
+app.post('/api/orders/pay-by-table', async (req, res) => {
+    const { table_no, payment_method, total_amount, cashier_id } = req.body;
+    if (!table_no) {
+        return res.status(400).json({ success: false, error: 'Table number is required' });
+    }
+
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+
+        const updateQuery = `
+            UPDATE orders 
+            SET payment_method = $1, status = 'Completed', cashier_id = COALESCE($2, cashier_id)
+            WHERE table_no = $3 AND (payment_method IS NULL OR payment_method = '')
+            RETURNING id
+        `;
+        const updateRes = await client.query(updateQuery, [payment_method || 'Cash', cashier_id || null, table_no]);
+
+        if (updateRes.rowCount === 0) {
+            throw new Error('រកមិនឃើញ Order ដែលត្រូវបង់ប្រាក់សម្រាប់តុនេះទេ។');
+        }
+
+        await client.query('COMMIT');
+        res.json({ success: true, message: 'បានបង់ប្រាក់ និងបញ្ចប់វិក្កយបត្រតុនេះជោគជ័យ!', order_ids: updateRes.rows.map(r => r.id) });
+    } catch (err) {
+        await client.query('ROLLBACK');
+        console.error('Pay By Table Error:', err);
+        res.status(500).json({ success: false, error: err.message });
+    } finally {
+        client.release();
+    }
+});
+
+// 4. API សម្រាប់ Sales Dashboard
 app.get('/api/orders/customer-pending', async (req, res) => {
     try {
         const orderQuery = `
@@ -420,7 +486,7 @@ app.get('/api/orders/customer-pending', async (req, res) => {
     }
 });
 
-// 3. API សម្រាប់ Sales ចុច Accept
+// 5. API សម្រាប់ Sales ចុច Accept
 app.post('/api/orders/:id/accept', async (req, res) => {
     const { id } = req.params;
     try {
@@ -438,7 +504,7 @@ app.post('/api/orders/:id/accept', async (req, res) => {
     }
 });
 
-// 💰 4. API សម្រាប់បង់ប្រាក់ Checkout
+// 💰 6. API សម្រាប់បង់ប្រាក់ Checkout តាម Order ID ធម្មតា
 app.post('/api/orders/:id/pay', async (req, res) => {
     const { id } = req.params;
     const { payment_method, total_amount } = req.body;
@@ -454,57 +520,7 @@ app.post('/api/orders/:id/pay', async (req, res) => {
     }
 });
 
-// ✏️ API សម្រាប់កែប្រែមុខទំនិញ
-app.put('/api/orders/:id/items', async (req, res) => {
-    const { id } = req.params;
-    const { items, total_amount } = req.body;
-    const client = await pool.connect();
-
-    try {
-        await client.query('BEGIN');
-
-        const oldItemsRes = await client.query('SELECT product_id, quantity FROM order_items WHERE order_id = $1', [id]);
-        for (let oldItem of oldItemsRes.rows) {
-            if (oldItem.product_id) {
-                await client.query('UPDATE products SET stock_qty = stock_qty + $1 WHERE id = $2', [oldItem.quantity, oldItem.product_id]);
-            }
-        }
-
-        await client.query('DELETE FROM order_items WHERE order_id = $1', [id]);
-
-        if (items && items.length > 0) {
-            for (let newItem of items) {
-                const checkStock = await client.query('SELECT stock_qty, name FROM products WHERE id = $1', [newItem.id]);
-                if (checkStock.rows.length === 0) {
-                    throw new Error(`ទំនិញ ID ${newItem.id} មិនមានក្នុងប្រព័ន្ធទេ។`);
-                }
-                const currentStock = checkStock.rows[0].stock_qty || 0;
-                if (currentStock < newItem.quantity) {
-                    throw new Error(`ទំនិញ "${checkStock.rows[0].name}" ក្នុងស្តុកសល់តែ ${currentStock} ប៉ុណ្ណោះ!`);
-                }
-
-                await client.query(
-                    'INSERT INTO order_items (order_id, product_id, quantity, price) VALUES ($1, $2, $3, $4)',
-                    [id, newItem.id, newItem.quantity, newItem.price]
-                );
-                await client.query('UPDATE products SET stock_qty = stock_qty - $1 WHERE id = $2', [newItem.quantity, newItem.id]);
-            }
-        }
-
-        await client.query('UPDATE orders SET total_amount = $1 WHERE id = $2', [total_amount, id]);
-
-        await client.query('COMMIT');
-        res.json({ success: true, message: 'បានកែប្រែវិក្កយបត្រជោគជ័យ!' });
-    } catch (err) {
-        await client.query('ROLLBACK');
-        console.error('Update Order Items Error:', err);
-        res.status(400).json({ success: false, error: err.message });
-    } finally {
-        client.release();
-    }
-});
-
-// 🍳 API សម្រាប់ផ្ទះបាយ (ទាញយកទំនិញតាមលំដាប់លំដោយ ID របស់ order_items)
+// 🍳 API សម្រាប់ផ្ទះបាយ
 app.get('/api/orders/kitchen', async (req, res) => {
     try {
         const orderQuery = `
@@ -557,7 +573,6 @@ app.get('/api/orders/kitchen', async (req, res) => {
                 ORDER BY oi.id ASC
             `, [order.id]);
 
-            // ដោយសារឥឡូវ Order ត្រូវបានបំបែកជា Order ID ដាច់ដោយឡែកពីគ្នា ផ្ទះបាយនឹងទទួលបានកាត (Cards) ដាច់ៗពីគ្នាស្រាប់
             order.items = itemsResult.rows.map(item => ({
                 name: item.name,
                 quantity: item.quantity,
@@ -580,163 +595,6 @@ app.patch('/api/orders/:id/status', async (req, res) => {
         res.json({ success: true, message: 'Updated order status successfully' });
     } catch (err) {
         res.status(500).json({ success: false, error: 'Database error' });
-    }
-});
-
-app.get('/api/orders/history', async (req, res) => {
-    const { fromDate, toDate } = req.query;
-    try {
-        let whereClauses = [];
-        let params = [];
-
-        if (fromDate) {
-            params.push(`${fromDate} 00:00:00`);
-            whereClauses.push(`o.created_at >= $${params.length}`);
-        }
-        if (toDate) {
-            params.push(`${toDate} 23:59:59`);
-            whereClauses.push(`o.created_at <= $${params.length}`);
-        }
-
-        const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
-
-        const query = `
-            SELECT o.id, o.table_no, o.total_amount, o.payment_method, o.status, o.created_at, u.full_name as cashier_name 
-            FROM orders o
-            LEFT JOIN users u ON o.cashier_id = u.id
-            ${whereSql}
-            ORDER BY o.id DESC
-        `;
-        const result = await pool.query(query, params);
-
-        const profitQuery = `
-            SELECT COALESCE(SUM((oi.price - COALESCE(s.cost_price, 0)) * oi.quantity), 0) as total_profit
-            FROM order_items oi
-            JOIN orders o ON oi.order_id = o.id
-            LEFT JOIN (
-                SELECT DISTINCT ON (product_id) product_id, cost_price 
-                FROM stock_in_history 
-                ORDER BY product_id, created_at DESC
-            ) s ON oi.product_id = s.product_id
-            ${whereSql}
-        `;
-        const profitResult = await pool.query(profitQuery, params);
-        const totalProfit = parseFloat(profitResult.rows[0]?.total_profit || 0);
-
-        const dailyQuery = `
-            SELECT 
-                DATE(o.created_at) as sale_date,
-                COUNT(o.id) as total_orders,
-                SUM(o.total_amount) as daily_revenue,
-                COALESCE(SUM((oi.price - COALESCE(s.cost_price, 0)) * oi.quantity), 0) as daily_profit
-            FROM orders o
-            JOIN order_items oi ON o.id = oi.order_id
-            LEFT JOIN (
-                SELECT DISTINCT ON (product_id) product_id, cost_price 
-                FROM stock_in_history 
-                ORDER BY product_id, created_at DESC
-            ) s ON oi.product_id = s.product_id
-            ${whereSql}
-            GROUP BY DATE(o.created_at)
-            ORDER BY sale_date DESC;
-        `;
-        const dailyResult = await pool.query(dailyQuery, params);
-
-        res.json({ 
-            success: true, 
-            data: result.rows,
-            total_profit: totalProfit,
-            daily_summary: dailyResult.rows
-        });
-    } catch (err) {
-        console.error('Get Orders History Error:', err);
-        res.status(500).json({ success: false, error: 'Database error: ' + err.message });
-    }
-});
-
-app.get('/api/users/cashiers-list', async (req, res) => {
-    try {
-        const result = await pool.query("SELECT id, username, full_name FROM users WHERE role = 'Cashier' AND is_active = true ORDER BY id DESC");
-        res.json({ success: true, data: result.rows });
-    } catch (err) {
-        console.error('Get Cashiers List Error:', err);
-        res.status(500).json({ success: false, error: 'Database error: ' + err.message });
-    }
-});
-
-app.get('/api/orders/cashier-activity/:cashierId', async (req, res) => {
-    const { cashierId } = req.params;
-    try {
-        let query = `
-            SELECT o.id, o.table_no, o.total_amount, o.payment_method, o.status, o.created_at, u.full_name as cashier_name 
-            FROM orders o
-            LEFT JOIN users u ON o.cashier_id = u.id
-        `;
-        let queryParams = [];
-
-        if (cashierId && cashierId !== 'all') {
-            query += ` WHERE o.cashier_id = $1`;
-            queryParams.push(cashierId);
-        }
-
-        query += ` ORDER BY o.id DESC`;
-
-        const result = await pool.query(query, queryParams);
-        const orders = result.rows;
-        
-        let grandTotal = 0;
-        orders.forEach(o => grandTotal += Number(o.total_amount || 0));
-
-        res.json({
-            success: true,
-            total_bills: orders.length,
-            grand_total: grandTotal,
-            orders: orders,
-            data: orders
-        });
-    } catch (err) {
-        console.error('Get Cashier Activity Error:', err);
-        res.status(500).json({ success: false, error: 'Database error: ' + err.message });
-    }
-});
-
-// 📊 API សម្រាប់ទាញយករបាយការណ៍លម្អិតតាម Category ប្រចាំថ្ងៃ (គ្រប់ Order ទាំងអស់)
-app.get('/api/reports/category-summary', async (req, res) => {
-    const { fromDate, toDate } = req.query;
-    try {
-        let whereClauses = [];
-        let params = [];
-
-        if (fromDate) {
-            params.push(`${fromDate} 00:00:00`);
-            whereClauses.push(`o.created_at >= $${params.length}`);
-        }
-        if (toDate) {
-            params.push(`${toDate} 23:59:59`);
-            whereClauses.push(`o.created_at <= $${params.length}`);
-        }
-
-        const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
-
-        const query = `
-            SELECT 
-                COALESCE(p.category, 'General') as category_name,
-                p.name as product_name,
-                SUM(oi.quantity) as total_quantity,
-                SUM(oi.quantity * oi.price) as total_sales
-            FROM order_items oi
-            JOIN orders o ON oi.order_id = o.id
-            JOIN products p ON oi.product_id = p.id
-            ${whereSql}
-            GROUP BY p.category, p.name
-            ORDER BY category_name ASC, total_quantity DESC;
-        `;
-
-        const result = await pool.query(query, params);
-        res.json({ success: true, data: result.rows });
-    } catch (err) {
-        console.error('Category Summary Report Error:', err);
-        res.status(500).json({ success: false, error: 'Database error: ' + err.message });
     }
 });
 
