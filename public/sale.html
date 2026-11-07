@@ -104,6 +104,7 @@
         }
         .cart-items-box { max-height: 220px; overflow-y: auto; }
 
+        /* 🖨️ កែសម្រួលការព្រីនឱ្យឡើងទៅលើផុត និងមិនដាច់ទំព័រ */
         @media print {
             body * { visibility: hidden !important; }
             #printableInvoice, #printableInvoice * { visibility: visible !important; }
@@ -113,11 +114,12 @@
                 top: 0 !important; 
                 width: 100% !important; 
                 margin: 0 !important;
-                padding: 10mm 15mm !important;
-                font-size: 15px !important;
+                padding: 5mm !important;
+                font-size: 14px !important;
             }
+            .modal-content { border: none !important; box-shadow: none !important; }
             .no-print { display: none !important; }
-            @page { size: A4 portrait; margin: 0; }
+            @page { size: auto; margin: 5mm; }
         }
     </style>
 </head>
@@ -488,7 +490,6 @@
             setInterval(checkKitchenOrderStatusUpdates, 3000);
         });
 
-        // 🟢 មុខងារទាញយក Order ទាំងអស់ដែលមិនទាន់បង់ប្រាក់តាមតុមកដាក់បញ្ចូលគ្នាក្នុងកន្ត្រក[cite: 3]
         async function loadUnpaidOrdersForTable() {
             const tableNo = document.getElementById('tableInput').value.trim();
             if (!tableNo) {
@@ -552,8 +553,6 @@
                 document.getElementById('tableInput').value = decodedTable;
                 renderTableCards();
                 generateDynamicQR(decodedTable);
-
-                // 🟢 ហៅទាញយក Order ទាំងអស់របស់តុនេះស្វ័យប្រវត្តិ
                 loadUnpaidOrdersForTable();
             }
         }
@@ -1017,7 +1016,6 @@
             }
         }
 
-        // 🟢 មុខងារ Checkout បង់ប្រាក់រួបរួមតាមតុ[cite: 3]
         async function checkout() {
             if (cart.length === 0) {
                 alert('សូមជ្រើសរើសទំនិញយ៉ាងហោចណាស់មួយ! / Please select at least one item!');
@@ -1034,7 +1032,6 @@
             const tableNo = document.getElementById('tableInput').value || 'Walk-in';
 
             try {
-                // ហៅ API បង់ប្រាក់រملកគ្រប់ Orders ទាំងអស់របស់តុនេះក្នុងពេលតែមួយ[cite: 3]
                 const res = await fetch('/api/orders/pay-by-table', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -1051,7 +1048,6 @@
                     showReceiptModal(result.order_ids ? result.order_ids.join(', ') : 'សរុប', paymentMethod, receivedUSD);
                     await loadProducts(); 
                 } else {
-                    // ប្រសិនបើគ្មាន Order តាមតុទេ អាចបង្កើតជា Order ធម្មតាជំនួសវិញ
                     const orderData = {
                         cashier_id: currentUser.id,
                         table_no: tableNo,
