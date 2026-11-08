@@ -25,19 +25,33 @@
             font-weight: 600;
         }
 
-        /* 🖨️ Print Styles សម្រាប់ម៉ាស៊ីន POS (80mm) */
+        /* 🖨️ Print Styles សម្រាប់ម៉ាស៊ីន POS (80mm) បង្ខំឱ្យអូសឡើងលើផុត មិនធ្លាក់ទៅ A4 */
         @media print {
-            body * { visibility: hidden; }
-            #printableInvoice, #printableInvoice * { visibility: visible; }
+            body * { 
+                visibility: hidden !important; 
+            }
+            #printableInvoice, #printableInvoice * { 
+                visibility: visible !important; 
+            }
             #printableInvoice { 
-                position: absolute; 
+                position: fixed !important; 
                 left: 0 !important; 
                 top: 0 !important; 
                 width: 80mm !important; 
+                max-width: 80mm !important;
                 margin: 0 !important;
                 padding: 2mm !important;
+                font-size: 12px !important;
+                background: white !important;
             }
-            .no-print { display: none !important; }
+            .modal-content { 
+                border: none !important; 
+                box-shadow: none !important; 
+                background: transparent !important; 
+            }
+            .no-print { 
+                display: none !important; 
+            }
             @page {
                 size: 80mm auto;
                 margin: 0mm;
@@ -331,10 +345,9 @@
                         const status = o.status || 'Completed';
                         const cashier = o.cashier_name || 'បុគ្គលិក';
                         
-                        // 🟢 ពិនិត្យតែលើ payment_method តែប៉ុណ្ណោះ ដើម្បីដឹងថាបានគិតលុយរួចរាល់ឬยัง (មិនពាក់ព័ន្ធនឹង status របស់ផ្ទះបាយទេ)
+                        // 🟢 ពិនិត្យតែលើ payment_method តែប៉ុណ្ណោះ ដើម្បីដឹងថាបានគិតលុយរួចរាល់ឬยัง
                         const isPaid = o.payment_method && o.payment_method.trim() !== '';
 
-                        // 🎨 ប៊ូតុងပြောင်းស្វ័យប្រវត្តិ
                         let actionButtonHtml = '';
                         if (isPaid) {
                             actionButtonHtml = `
