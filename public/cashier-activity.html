@@ -53,16 +53,35 @@
         </div>
     </nav>
 
-    <div class="container py-5">
-        <div class="row mb-4" id="adminSelectContainer" style="display: none;">
-            <div class="col-md-6">
+    <div class="container py-4">
+        <!-- 🟢 ផ្នែកជ្រើសរើស Cashier និង From Date - To Date -->
+        <div class="row g-3 mb-4 align-items-center">
+            <div class="col-md-4" id="adminSelectContainer" style="display: none;">
+                <div class="card p-3 bg-white h-100">
+                    <label class="form-label fw-bold text-primary small mb-1"><i class="fa-solid fa-user-tie me-1"></i> អ្នកគិតលុយ (Cashier):</label>
+                    <select class="form-select form-select-sm" id="cashierSelect" onchange="filterData()"></select>
+                </div>
+            </div>
+
+            <div class="col-md-8">
                 <div class="card p-3 bg-white">
-                    <label class="form-label fw-bold text-primary"><i class="fa-solid fa-user-tie me-1"></i> ជ្រើសរើសអ្នកគិតលុយ (Select Cashier):</label>
-                    <select class="form-select" id="cashierSelect" onchange="onCashierChange()"></select>
+                    <label class="form-label fw-bold text-secondary small mb-1"><i class="fa-solid fa-calendar-days me-1"></i> ត្រងតាមកាលបរិច្ឆេទ (From Date - To Date):</label>
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <input type="date" id="fromDate" class="form-control form-control-sm" style="max-width: 160px;">
+                        <span class="small text-muted fw-bold">ដល់</span>
+                        <input type="date" id="toDate" class="form-control form-control-sm" style="max-width: 160px;">
+                        <button class="btn btn-primary btn-sm fw-bold px-3" onclick="filterData()">
+                            <i class="fa-solid fa-filter me-1"></i> ស្វែងរក (Filter)
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm fw-bold" onclick="resetDateFilter()">
+                            <i class="fa-solid fa-rotate-right"></i> ទាំងអស់
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
 
+        <!-- Metric Summary Cards -->
         <div class="row g-4 mb-4">
             <div class="col-md-6">
                 <div class="card p-4 bg-primary text-white">
@@ -78,6 +97,7 @@
             </div>
         </div>
 
+        <!-- Sales History Table Card -->
         <div class="card p-4 bg-white">
             <h4 class="fw-bold mb-3 text-dark"><i class="fa-solid fa-list-check me-2"></i> ប្រវត្តិវិក្កយបត្រ / Sales History</h4>
             <div class="table-responsive">
@@ -100,7 +120,7 @@
         </div>
     </div>
 
-    <!-- 🖨️ Modal បង្ហាញវិក្កយបត្រសម្រាប់ Print (កែសម្រួលពាក្យ វិក្កយបត្រ ធំជាង INVOICE อยู่ด้านบน) -->
+    <!-- 🖨️ Modal បង្ហាញវិក្កយបត្រសម្រាប់ Print -->
     <div class="modal fade" id="invoiceModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow rounded-4">
@@ -249,13 +269,23 @@
             invoiceModalObj = new bootstrap.Modal(document.getElementById('invoiceModal'));
             editOrderModalObj = new bootstrap.Modal(document.getElementById('editOrderItemsModal'));
 
+            // កំណត់តម្លៃថ្ងៃខែ Default (ឧទាហរណ៍៖ ថ្ងៃនេះ)
+            setDefaultDates();
+
             if (currentUser.role === 'Admin') {
-                document.getElementById('adminSelectContainer').style.display = 'flex';
+                document.getElementById('adminSelectContainer').style.display = 'block';
                 await loadCashiersList();
             } else {
                 loadCashierActivity(currentUser.id);
             }
         });
+
+        function setDefaultDates() {
+            const today = new Date().toISOString().split('T')[0];
+            // បើចង់ឱ្យទាញយកទាំងអស់ដោយមិនកំណត់ថ្ងៃស្វ័យប្រវត្តិ អាចលុប 2 បន្ទាត់នេះចេញបាន
+            // document.getElementById('fromDate').value = today;
+            // document.getElementById('toDate').value = today;
+        }
 
         async function loadCashiersList() {
             try {
@@ -278,8 +308,18 @@
         }
 
         function onCashierChange() {
-            const cashierId = document.getElementById('cashierSelect').value;
+            filterData();
+        }
+
+        function filterData() {
+            const cashierId = document.getElementById('cashierSelect') ? document.getElementById('cashierSelect').value : (currentUser.role === 'Admin' ? 'all' : currentUser.id);
             loadCashierActivity(cashierId);
+        }
+
+        function resetDateFilter() {
+            document.getElementById('fromDate').value = '';
+            document.getElementById('toDate').value = '';
+            filterData();
         }
 
         async function loadCashierActivity(cashierId) {
@@ -293,15 +333,26 @@
                 const result = await res.json();
 
                 if (result.success) {
-                    allOrdersData = result.data || result.orders || [];
-                    const totalBills = result.total_bills !== undefined ? result.total_bills : allOrdersData.length;
+                    let rawData = result.data || result.orders || [];
                     
+                    // 🟢 ត្រងទិន្នន័យតាម From Date និង To Date នៅខាង Frontend
+                    const fromDateVal = document.getElementById('fromDate').value;
+                    const toDateVal = document.getElementById('toDate').value;
+
+                    allOrdersData = rawData.filter(o => {
+                        if (!o.created_at) return true;
+                        // កាត់យកតែ YYYY-MM-DD ពី ISO String (ឧ. 2026-11-07)
+                        const orderDateStr = o.created_at.split('T')[0];
+
+                        if (fromDateVal && orderDateStr < fromDateVal) return false;
+                        if (toDateVal && orderDateStr > toDateVal) return false;
+                        return true;
+                    });
+
+                    // គណនាសរុបថ្មីតាមទិន្នន័យដែលបានត្រង
+                    const totalBills = allOrdersData.length;
                     let grandTotal = 0;
-                    if (result.grand_total !== undefined) {
-                        grandTotal = Number(result.grand_total);
-                    } else {
-                        allOrdersData.forEach(o => grandTotal += Number(o.total_amount || 0));
-                    }
+                    allOrdersData.forEach(o => grandTotal += Number(o.total_amount || 0));
 
                     document.getElementById('totalBills').innerText = totalBills;
                     document.getElementById('grandTotal').innerText = `$${grandTotal.toFixed(2)}`;
@@ -310,7 +361,7 @@
                     tbody.innerHTML = '';
 
                     if (allOrdersData.length === 0) {
-                        tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-3">មិនទាន់មានកំណត់ត្រាការលក់ទេ។</td></tr>`;
+                        tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-3">មិនមានទិន្នន័យការលក់ក្នុងចន្លោះកាលបរិច្ឆេទនេះទេ។</td></tr>`;
                         return;
                     }
 
