@@ -104,14 +104,9 @@
         }
         .cart-items-box { max-height: 220px; overflow-y: auto; }
 
-        /* 🖨️ កែសម្រួលទម្រង់ CSS Print បង្ខំឱ្យអូសឡើងលើផុត និងរត់ទំហំ POS 80mm */
         @media print {
-            body * { 
-                visibility: hidden !important; 
-            }
-            #printableInvoice, #printableInvoice * { 
-                visibility: visible !important; 
-            }
+            body * { visibility: hidden !important; }
+            #printableInvoice, #printableInvoice * { visibility: visible !important; }
             #printableInvoice { 
                 position: fixed !important; 
                 left: 0 !important; 
@@ -123,18 +118,9 @@
                 font-size: 12px !important;
                 background: white !important;
             }
-            .modal-content { 
-                border: none !important; 
-                box-shadow: none !important; 
-                background: transparent !important; 
-            }
-            .no-print { 
-                display: none !important; 
-            }
-            @page { 
-                size: 80mm auto; 
-                margin: 0mm; 
-            }
+            .modal-content { border: none !important; box-shadow: none !important; background: transparent !important; }
+            .no-print { display: none !important; }
+            @page { size: 80mm auto; margin: 0mm; }
         }
     </style>
 </head>
@@ -159,7 +145,6 @@
     <div class="container-fluid py-4 px-2 px-md-3">
         <div class="row g-3">
             
-            <!-- ខាងឆ្វេង៖ បញ្ជីផលិតផល និង Category Filter -->
             <div class="col-12 col-md-7 col-lg-8 products-container">
                 <div class="mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
                     <div>
@@ -177,7 +162,6 @@
                 <div class="row g-2" id="productsGrid"></div>
             </div>
 
-            <!-- ខាងស្តាំ៖ កន្រ្តក និងការគណនាប្រាក់ -->
             <div class="col-12 col-md-5 col-lg-4">
                 <div class="card shadow-sm border-0 rounded-4 p-3 cart-container bg-white d-flex flex-column justify-content-between">
                     <div>
@@ -189,7 +173,6 @@
                             </div>
                         </div>
 
-                        <!-- 🟢 ប៊ូតុងទាញយក Order ទាំងអស់របស់តុនេះមកគិតលុយរួមគ្នា -->
                         <div class="mb-2">
                             <button class="btn btn-outline-primary btn-sm w-100 fw-bold shadow-sm" onclick="loadUnpaidOrdersForTable()">
                                 <i class="fa-solid fa-sync me-1"></i> ទាញយក Order មិនទាន់បង់ប្រាក់របស់តុនេះ
@@ -277,7 +260,7 @@
         </div>
     </div>
 
-    <!-- 🔔 Popup Modal សម្រាប់ QR Order -->
+    <!-- Modals -->
     <div class="modal fade" id="pendingOrderModal" data-bs-backdrop="static" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow-lg rounded-4">
@@ -313,7 +296,6 @@
         </div>
     </div>
 
-    <!-- 🪑 Modal រើសលេខតុ -->
     <div class="modal fade" id="tableModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow rounded-4">
@@ -333,7 +315,6 @@
         </div>
     </div>
 
-    <!-- 📱 Modal QR Code -->
     <div class="modal fade" id="qrModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow rounded-4 text-center p-3">
@@ -364,14 +345,17 @@
         </div>
     </div>
 
-    <!-- 🖨️ Modal វិក្កយបត្រ Print -->
+    <!-- 🖨️ Modal វិក្កយបត្រ Print (កែសម្រួលពាក្យ វិក្កយបត្រ ធំជាង INVOICE อยู่ด้านบน) -->
     <div class="modal fade" id="receiptModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow rounded-4">
                 <div class="modal-body p-4" id="printableInvoice">
                     <div class="text-center mb-3">
-                        <h4 class="fw-bold mb-1">☕ COFFEE & RESTAURANT</h4>
-                        <p class="text-muted small mb-1">វិក្កយបត្រលក់ប្រាក់ / POS INVOICE</p>
+                        <h4 class="fw-bold mb-1" style="white-space: nowrap; font-size: 1.25rem;">☕ COFFEE & RESTAURANT</h4>
+                        <div class="text-muted mb-1" style="line-height: 1.2;">
+                            <span style="font-size: 0.95rem; font-weight: 700; display: block;">វិក្កយបត្រ</span>
+                            <span style="font-size: 0.75rem;">INVOICE</span>
+                        </div>
                         <span id="receiptTableBadge" class="badge bg-dark">តុទី ១</span>
                         <hr class="my-2">
                     </div>
@@ -443,7 +427,6 @@
         </div>
     </div>
 
-    <!-- 🥤 Modal កម្រិតស្ករ -->
     <div class="modal fade" id="sweetnessModal" tabindex="-1" data-bs-backdrop="static">
         <div class="modal-dialog modal-dialog-centered modal-sm">
             <div class="modal-content border-0 shadow-lg rounded-4 text-center p-3">
@@ -505,7 +488,6 @@
             setInterval(checkKitchenOrderStatusUpdates, 3000);
         });
 
-        // 🟢 មុខងារទាញយក Order ទាំងអស់ដែលមិនទាន់បង់ប្រាក់តាមតុមកដាក់បញ្ចូលគ្នាក្នុងកន្ត្រក
         async function loadUnpaidOrdersForTable() {
             const tableNo = document.getElementById('tableInput').value.trim();
             if (!tableNo) {
@@ -569,8 +551,6 @@
                 document.getElementById('tableInput').value = decodedTable;
                 renderTableCards();
                 generateDynamicQR(decodedTable);
-
-                // 🟢 ហៅទាញយក Order ទាំងអស់របស់តុនេះស្វ័យប្រវត្តិ
                 loadUnpaidOrdersForTable();
             }
         }
@@ -1034,7 +1014,6 @@
             }
         }
 
-        // 🟢 មុខងារ Checkout បង់ប្រាក់រួបរួមតាមតុ
         async function checkout() {
             if (cart.length === 0) {
                 alert('សូមជ្រើសរើសទំនិញយ៉ាងហោចណាស់មួយ! / Please select at least one item!');
@@ -1051,7 +1030,6 @@
             const tableNo = document.getElementById('tableInput').value || 'Walk-in';
 
             try {
-                // ហៅ API បង់ប្រាក់រួមគ្រប់ Orders ទាំងអស់របស់តុនេះក្នុងពេលតែមួយ
                 const res = await fetch('/api/orders/pay-by-table', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -1068,7 +1046,6 @@
                     showReceiptModal(result.order_ids ? result.order_ids.join(', ') : 'សរុប', paymentMethod, receivedUSD);
                     await loadProducts(); 
                 } else {
-                    // ប្រសិនបើគ្មាន Order តាមតុទេ អាចបង្កើតជា Order ធម្មតាជំនួសវិញ
                     const orderData = {
                         cashier_id: currentUser.id,
                         table_no: tableNo,
@@ -1151,15 +1128,12 @@
             document.getElementById('recChange').innerText = `$${changeUSD.toFixed(2)}`;
             document.getElementById('recChangeRiel').innerText = `(${Math.round(changeUSD * exchangeRate).toLocaleString()} រៀល)`;
 
-            // 1. បង្ហាញ Modal វិក្កយបត្រ
             receiptModalObj.show();
 
-            // 2. 🟢 Auto Print ស្វ័យប្រវត្តិភ្លាមៗពេលបង់ប្រាក់រួច
             setTimeout(() => {
                 window.print();
             }, 300);
 
-            // 3. សម្អាតកន្រ្តកត្រៀមវិក្កយបត្របន្ទាប់
             cart = [];
             document.getElementById('amountReceived').value = '';
             document.getElementById('discountPercent').value = '0';
@@ -1167,7 +1141,6 @@
             renderCart();
         }
 
-        // 🟢 បិទ Modal ស្វ័យប្រវត្តិក្រោយពេល Print ចប់
         window.addEventListener('afterprint', () => {
             if (receiptModalObj) {
                 receiptModalObj.hide();
