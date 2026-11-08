@@ -345,7 +345,7 @@
         </div>
     </div>
 
-    <!-- 🖨️ Modal វិក្កយបត្រ Print (កែសម្រួលពាក្យ វិក្កយបត្រ ធំជាង INVOICE อยู่ด้านบน) -->
+    <!-- 🖨️ Modal វិក្កយបត្រ Print (បង្ហាញប្រាក់ទទួលបាន និងប្រាក់អាប់ជូនភ្ញៀវ) -->
     <div class="modal fade" id="receiptModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow rounded-4">
@@ -1112,6 +1112,7 @@
 
             let exchangeRate = parseFloat(document.getElementById('exchangeRate').value) || 4100;
             let changeUSD = receivedUSD - finalCalculatedTotal;
+            let changeRiel = Math.round(changeUSD * exchangeRate);
 
             document.getElementById('recSubtotal').innerText = `$${subTotal.toFixed(2)}`;
             document.getElementById('recSubtotalRiel').innerText = `${Math.round(subTotal * exchangeRate).toLocaleString()} រៀល`;
@@ -1122,11 +1123,12 @@
             document.getElementById('recGrandTotal').innerText = `$${finalCalculatedTotal.toFixed(2)}`;
             document.getElementById('recGrandTotalRiel').innerText = `${Math.round(finalCalculatedTotal * exchangeRate).toLocaleString()} រៀល`;
             
+            // 🟢 បញ្ចូលតម្លៃប្រាក់ទទួលបាន និងប្រាក់អាប់ចូលក្នុង Modal វិក្កយបត្រ (Invoice)
             document.getElementById('recReceived').innerText = `$${receivedUSD.toFixed(2)}`;
             document.getElementById('recReceivedRiel').innerText = `${Math.round(receivedUSD * exchangeRate).toLocaleString()} រៀល`;
             
             document.getElementById('recChange').innerText = `$${changeUSD.toFixed(2)}`;
-            document.getElementById('recChangeRiel').innerText = `(${Math.round(changeUSD * exchangeRate).toLocaleString()} រៀល)`;
+            document.getElementById('recChangeRiel').innerText = `(${changeRiel.toLocaleString()} រៀល)`;
 
             receiptModalObj.show();
 
