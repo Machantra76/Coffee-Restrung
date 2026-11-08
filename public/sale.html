@@ -250,6 +250,12 @@
                             </div>
                         </div>
 
+                        <!-- 🟢 ប៊ូតុង Print វិក្កយបត្រជូនភ្ញៀវ (Bill Check) -->
+                        <button class="btn btn-outline-dark w-100 py-2 fw-bold fs-6 shadow-sm rounded-3 mb-2" onclick="printBillCheck()">
+                            <i class="fa-solid fa-print me-1"></i> បោះពុម្ពវិក្កយបត្រជូនភ្ញៀវ (Bill Check)
+                        </button>
+
+                        <!-- ប៊ូតុងបង់ប្រាក់ផ្លូវការ (Checkout) -->
                         <button class="btn btn-success w-100 py-2 fw-bold fs-6 shadow-sm rounded-3" onclick="checkout()">
                             <i class="fa-solid fa-check-circle me-1"></i> បង់ប្រាក់ និងចេញវិក្កយបត្រ / Checkout
                         </button>
@@ -345,7 +351,7 @@
         </div>
     </div>
 
-    <!-- 🖨️ Modal វិក្កយបត្រ Print (បង្ហាញប្រាក់ទទួលបាន និងប្រាក់អាប់ជូនភ្ញៀវ) -->
+    <!-- 🖨️ Modal វិក្កយបត្រ Print -->
     <div class="modal fade" id="receiptModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow rounded-4">
@@ -1014,6 +1020,65 @@
             }
         }
 
+        // 🚀 មុខងារសម្រាប់ Print វិក្កយបត្រជូនភ្ញៀវ (Bill Check) ដោយមិនបាច់វាយបញ្ចូលទឹកប្រាក់ Received
+        function printBillCheck() {
+            if (cart.length === 0) {
+                alert('សូមជ្រើសរើសទំនិញយ៉ាងហោចណាស់មួយក្នុងកន្រ្តក!');
+                return;
+            }
+
+            const customTable = document.getElementById('tableInput').value || 'តុទូទៅ';
+            document.getElementById('recInvoiceNo').innerText = `#BILL-CHECK`;
+            document.getElementById('recDate').innerText = new Date().toLocaleString();
+            document.getElementById('recCashier').innerText = currentUser.full_name;
+            document.getElementById('recPayment').innerText = 'មិនទាន់បង់ (Unpaid)';
+            document.getElementById('receiptTableBadge').innerText = customTable;
+
+            let subTotal = 0;
+            const itemsBody = document.getElementById('recItemsBody');
+            itemsBody.innerHTML = '';
+
+            cart.forEach(item => {
+                let itemTotal = item.price * item.quantity;
+                subTotal += itemTotal;
+                itemsBody.innerHTML += `
+                    <tr>
+                        <td>${item.name}</td>
+                        <td class="text-center">${item.quantity}</td>
+                        <td class="text-end">$${item.price.toFixed(2)}</td>
+                        <td class="text-end">$${itemTotal.toFixed(2)}</td>
+                    </tr>
+                `;
+            });
+
+            let discountPercent = parseFloat(document.getElementById('discountPercent').value) || 0;
+            let discountAmount = (subTotal * discountPercent) / 100;
+            let afterDiscount = subTotal - discountAmount;
+            let isVatChecked = document.getElementById('vatToggle').checked;
+            let vatAmount = isVatChecked ? (afterDiscount * 0.10) : 0;
+            let exchangeRate = parseFloat(document.getElementById('exchangeRate').value) || 4100;
+
+            document.getElementById('recSubtotal').innerText = `$${subTotal.toFixed(2)}`;
+            document.getElementById('recSubtotalRiel').innerText = `${Math.round(subTotal * exchangeRate).toLocaleString()} រៀល`;
+            
+            document.getElementById('recDiscount').innerText = `-$${discountAmount.toFixed(2)} (${discountPercent}%)`;
+            document.getElementById('recVat').innerText = `$${vatAmount.toFixed(2)}`;
+            
+            document.getElementById('recGrandTotal').innerText = `$${finalCalculatedTotal.toFixed(2)}`;
+            document.getElementById('recGrandTotalRiel').innerText = `${Math.round(finalCalculatedTotal * exchangeRate).toLocaleString()} រៀល`;
+            
+            document.getElementById('recReceived').innerText = `$0.00`;
+            document.getElementById('recReceivedRiel').innerText = `0 រៀល`;
+            document.getElementById('recChange').innerText = `$0.00`;
+            document.getElementById('recChangeRiel').innerText = `(0 រៀល)`;
+
+            receiptModalObj.show();
+
+            setTimeout(() => {
+                window.print();
+            }, 300);
+        }
+
         async function checkout() {
             if (cart.length === 0) {
                 alert('សូមជ្រើសរើសទំនិញយ៉ាងហោចណាស់មួយ! / Please select at least one item!');
@@ -1123,7 +1188,6 @@
             document.getElementById('recGrandTotal').innerText = `$${finalCalculatedTotal.toFixed(2)}`;
             document.getElementById('recGrandTotalRiel').innerText = `${Math.round(finalCalculatedTotal * exchangeRate).toLocaleString()} រៀល`;
             
-            // 🟢 បញ្ចូលតម្លៃប្រាក់ទទួលបាន និងប្រាក់អាប់ចូលក្នុង Modal វិក្កយបត្រ (Invoice)
             document.getElementById('recReceived').innerText = `$${receivedUSD.toFixed(2)}`;
             document.getElementById('recReceivedRiel').innerText = `${Math.round(receivedUSD * exchangeRate).toLocaleString()} រៀល`;
             
