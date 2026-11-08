@@ -11,7 +11,6 @@
         body { font-family: 'Kantumruy Pro', sans-serif; background-color: #f1f5f9; }
         .card { border: none; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
         
-        /* 🎨 រៀបចំទំហំកន្លែងប៊ូតុង Action ក្នុងតារាងមិនឱ្យដាច់អក្សរ */
         .action-btns-group {
             display: flex;
             align-items: center;
@@ -25,14 +24,9 @@
             font-weight: 600;
         }
 
-        /* 🖨️ Print Styles សម្រាប់ម៉ាស៊ីន POS (80mm) បង្ខំឱ្យអូសឡើងលើផុត មិនធ្លាក់ទៅ A4 */
         @media print {
-            body * { 
-                visibility: hidden !important; 
-            }
-            #printableInvoice, #printableInvoice * { 
-                visibility: visible !important; 
-            }
+            body * { visibility: hidden !important; }
+            #printableInvoice, #printableInvoice * { visibility: visible !important; }
             #printableInvoice { 
                 position: fixed !important; 
                 left: 0 !important; 
@@ -44,18 +38,9 @@
                 font-size: 12px !important;
                 background: white !important;
             }
-            .modal-content { 
-                border: none !important; 
-                box-shadow: none !important; 
-                background: transparent !important; 
-            }
-            .no-print { 
-                display: none !important; 
-            }
-            @page {
-                size: 80mm auto;
-                margin: 0mm;
-            }
+            .modal-content { border: none !important; box-shadow: none !important; background: transparent !important; }
+            .no-print { display: none !important; }
+            @page { size: 80mm auto; margin: 0mm; }
         }
     </style>
 </head>
@@ -69,19 +54,15 @@
     </nav>
 
     <div class="container py-5">
-        <!-- Admin Selector Form -->
         <div class="row mb-4" id="adminSelectContainer" style="display: none;">
             <div class="col-md-6">
                 <div class="card p-3 bg-white">
                     <label class="form-label fw-bold text-primary"><i class="fa-solid fa-user-tie me-1"></i> ជ្រើសរើសអ្នកគិតលុយ (Select Cashier):</label>
-                    <select class="form-select" id="cashierSelect" onchange="onCashierChange()">
-                        <!-- Load dynamically -->
-                    </select>
+                    <select class="form-select" id="cashierSelect" onchange="onCashierChange()"></select>
                 </div>
             </div>
         </div>
 
-        <!-- Metric Summary Cards -->
         <div class="row g-4 mb-4">
             <div class="col-md-6">
                 <div class="card p-4 bg-primary text-white">
@@ -97,7 +78,6 @@
             </div>
         </div>
 
-        <!-- Sales History Table Card -->
         <div class="card p-4 bg-white">
             <h4 class="fw-bold mb-3 text-dark"><i class="fa-solid fa-list-check me-2"></i> ប្រវត្តិវិក្កយបត្រ / Sales History</h4>
             <div class="table-responsive">
@@ -114,22 +94,23 @@
                             <th class="text-end" style="width: 250px;">សកម្មភាព (Action)</th>
                         </tr>
                     </thead>
-                    <tbody id="activityTableBody">
-                        <!-- Load dynamically -->
-                    </tbody>
+                    <tbody id="activityTableBody"></tbody>
                 </table>
             </div>
         </div>
     </div>
 
-    <!-- 🖨️ Modal បង្ហាញវិក្កយបត្រសម្រាប់ Print (ទំហំ 80mm) -->
+    <!-- 🖨️ Modal បង្ហាញវិក្កយបត្រសម្រាប់ Print (កែសម្រួលពាក្យ វិក្កយបត្រ ធំជាង INVOICE อยู่ด้านบน) -->
     <div class="modal fade" id="invoiceModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow rounded-4">
                 <div class="modal-body p-4" id="printableInvoice">
                     <div class="text-center mb-3">
-                        <h4 class="fw-bold mb-1">☕ COFFEE & RESTAURANT</h4>
-                        <p class="text-muted small mb-1">វិក្កយបត្រលក់ប្រាក់ / POS INVOICE</p>
+                        <h4 class="fw-bold mb-1" style="white-space: nowrap; font-size: 1.25rem;">☕ COFFEE & RESTAURANT</h4>
+                        <div class="text-muted mb-1" style="line-height: 1.2;">
+                            <span style="font-size: 1.1rem; font-weight: 700; display: block;">វិក្កយបត្រ</span>
+                            <span style="font-size: 0.75rem;">INVOICE</span>
+                        </div>
                         <span id="receiptTableBadge" class="badge bg-dark">តុទូទៅ</span>
                         <hr class="my-2">
                     </div>
@@ -151,9 +132,7 @@
                                     <th class="text-end">សរុប</th>
                                 </tr>
                             </thead>
-                            <tbody id="recItemsBody">
-                                <!-- Items -->
-                            </tbody>
+                            <tbody id="recItemsBody"></tbody>
                         </table>
                     </div>
                     <div class="border-top pt-2 small">
@@ -203,7 +182,7 @@
         </div>
     </div>
 
-    <!-- 🛒 Modal សម្រាប់កែប្រែមុខទំនិញក្នុងវិក្កយបត្រ (Edit Order Items) -->
+    <!-- Edit Order Modal -->
     <div class="modal fade" id="editOrderItemsModal" tabindex="-1">
         <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content border-0 shadow rounded-4">
@@ -226,9 +205,7 @@
                                             <th></th>
                                         </tr>
                                     </thead>
-                                    <tbody id="editCartTableBody">
-                                        <!-- Load items -->
-                                    </tbody>
+                                    <tbody id="editCartTableBody"></tbody>
                                 </table>
                             </div>
                             <div class="d-flex justify-content-between fw-bold mt-2">
@@ -239,9 +216,7 @@
 
                         <div class="col-md-5 border-start">
                             <h6 class="fw-bold text-secondary">បន្ថែមទំនិញថ្មី:</h6>
-                            <div style="max-height: 300px; overflow-y: auto;" id="availableProductsList" class="d-flex flex-column gap-2">
-                                <!-- Load products -->
-                            </div>
+                            <div style="max-height: 300px; overflow-y: auto;" id="availableProductsList" class="d-flex flex-column gap-2"></div>
                         </div>
                     </div>
                 </div>
@@ -345,7 +320,6 @@
                         const status = o.status || 'Completed';
                         const cashier = o.cashier_name || 'បុគ្គលិក';
                         
-                        // 🟢 ពិនិត្យតែលើ payment_method តែប៉ុណ្ណោះ ដើម្បីដឹងថាបានគិតលុយរួចរាល់ឬยัง
                         const isPaid = o.payment_method && o.payment_method.trim() !== '';
 
                         let actionButtonHtml = '';
@@ -393,7 +367,6 @@
             }
         }
 
-        // 🚀 មុខងារសម្រាប់បញ្ជូនទិន្នន័យទៅកាន់ sale.html
         function goToSaleCheckout(tableNo, orderId) {
             window.location.href = `sale.html?table=${encodeURIComponent(tableNo)}&order_id=${orderId}`;
         }
