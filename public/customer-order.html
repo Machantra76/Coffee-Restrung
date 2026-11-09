@@ -261,9 +261,24 @@
         document.addEventListener('DOMContentLoaded', async () => {
             const urlParams = new URLSearchParams(window.location.search);
             const tableParam = urlParams.get('table');
+            const tokenParam = urlParams.get('token'); // 🟢 យក Token ពី URL មកពិនិត្យសុពលភាព
             
             if (tableParam) {
                 selectedTable = decodeURIComponent(tableParam);
+            }
+
+            // 🟢 ផ្ទៀងផ្ទាត់ Table Session Token ជាមួយ Backend ភ្លាមៗពេលភ្ញៀវស្កែនចូលមក
+            if (!tokenParam || !(await verifyTableSession(selectedTable, tokenParam))) {
+                document.body.innerHTML = `
+                    <div class="container text-center py-5">
+                        <div class="alert alert-danger p-4 rounded-4 shadow mt-5">
+                            <i class="fa-solid fa-triangle-exclamation fs-1 text-danger mb-3"></i>
+                            <h4 class="fw-bold">QR Code នេះមិនមានសុពលភាព ឬត្រូវបានបិទ!</h4>
+                            <p class="text-muted small mb-0">តុនេះត្រូវបានគិតលុយរួចរាល់ ឬ QR Code នេះមិនត្រឹមត្រូវ (ផុតសុពលភាព)។ សូមស្កែនកូដថ្មីនៅលើតុ ឬហៅបុគ្គលិកជំនួយ។</p>
+                        </div>
+                    </div>
+                `;
+                return; // ឈប់ដំណើរការកូដដទៃទៀត
             }
 
             document.getElementById('tableTitleDisplay').innerText = selectedTable;
@@ -275,6 +290,18 @@
 
             await loadProducts();
         });
+
+        // 🟢 មុខងារផ្ទៀងផ្ទាត់ Session Token ជាមួយ Backend
+        async function verifyTableSession(tableNo, token) {
+            try {
+                const res = await fetch(`/api/verify-table?table_no=${encodeURIComponent(tableNo)}&token=${token}`);
+                const result = await res.json();
+                return result.success;
+            } catch (err) {
+                console.error('Verification failed:', err);
+                return false;
+            }
+        }
 
         async function loadProducts() {
             try {
