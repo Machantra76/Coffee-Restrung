@@ -625,16 +625,37 @@
             setTimeout(() => { toast.remove(); }, 6000);
         }
 
-        function generateDynamicQR(selectedTableName = null) {
+        // 🟢 កែសម្រួលមុខងារ generateDynamicQR ឱ្យហៅ API ពី Server ដើម្បីភ្ជាប់ Session Token សុវត្ថិភាព
+        async function generateDynamicQR(selectedTableName = null) {
             const currentTable = selectedTableName || document.getElementById('tableInput').value.trim() || 'តុទូទៅ';
-            const baseUrl = `${window.location.protocol}//${window.location.host}/customer-order.html`;
-            const fullTableUrl = `${baseUrl}?table=${encodeURIComponent(currentTable)}`;
             
-            const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(fullTableUrl)}`;
+            try {
+                const res = await fetch('/api/tables/refresh-token', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ table_no: currentTable })
+                });
+                const result = await res.json();
 
-            document.getElementById('qrImageDisplay').src = qrApiUrl;
-            document.getElementById('customerOrderLink').value = fullTableUrl;
-            document.getElementById('qrTableTitleBadge').innerText = currentTable;
+                if (result.success && result.qr_link) {
+                    const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(result.qr_link)}`;
+
+                    document.getElementById('qrImageDisplay').src = qrApiUrl;
+                    document.getElementById('customerOrderLink').value = result.qr_link;
+                    document.getElementById('qrTableTitleBadge').innerText = currentTable;
+                } else {
+                    alert('⚠️ មិនអាចបង្កើត QR Code បានទេ: ' + (result.error || 'Unknown error'));
+                }
+            } catch (err) {
+                console.error('Error generating dynamic QR:', err);
+                // Fallback ករណី Server មានបញ្ហា
+                const baseUrl = `${window.location.protocol}//${window.location.host}/customer-order.html`;
+                const fullTableUrl = `${baseUrl}?table=${encodeURIComponent(currentTable)}`;
+                const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(fullTableUrl)}`;
+                document.getElementById('qrImageDisplay').src = qrApiUrl;
+                document.getElementById('customerOrderLink').value = fullTableUrl;
+                document.getElementById('qrTableTitleBadge').innerText = currentTable;
+            }
 
             const selector = document.getElementById('qrTableSelector');
             selector.innerHTML = '';
