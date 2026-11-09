@@ -3,6 +3,7 @@ const cors = require('cors');
 require('dotenv').config();
 const path = require('path');
 const { Pool } = require('pg');
+const crypto = require('crypto'); // 🟢 បន្ថែមសម្រាប់បង្កើត Secure Token
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -71,6 +72,14 @@ async function initDB() {
                 note TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
+
+            -- 🟢 បន្ថែមតារាង tables សម្រាប់គ្រប់គ្រងតុ និង Session Token ការពារ QR Code
+            CREATE TABLE IF NOT EXISTS tables (
+                id SERIAL PRIMARY KEY,
+                table_no VARCHAR(50) UNIQUE NOT NULL,
+                session_token VARCHAR(255),
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
         `);
 
         // 🛠️ បន្ថែមស្វ័យប្រវត្តិ (ALTER TABLE) ករណីតារាងមានស្រាប់តែខ្វះ Column ថ្មី
@@ -79,6 +88,7 @@ async function initDB() {
             ALTER TABLE products ADD COLUMN IF NOT EXISTS unit VARCHAR(50) DEFAULT 'ដប';
             ALTER TABLE orders ADD COLUMN IF NOT EXISTS table_no VARCHAR(50);
             ALTER TABLE orders ALTER COLUMN status SET DEFAULT 'Customer_Pending';
+            ALTER TABLE tables ADD COLUMN IF NOT EXISTS session_token VARCHAR(255);
         `);
 
         console.log('✅ Database tables initialized successfully!');
@@ -326,7 +336,60 @@ app.get('/api/orders/:id/items', async (req, res) => {
 
 // ================= ORDER & QR ORDERING APIs =================
 
-// 1. API សម្រាប់បង្កើត Order ថ្មីជានិច្ច
+// 🟢 1. API សម្រាប់ផ្ទៀងផ្ទាត់ Table Session Token (ការពារ QR Code ថតទុកស្កែនពីក្រៅហាង)
+app.get('/api/verify-table', async (req, res) => {
+    try {
+        const { table_no, token } = req.query;
+        if (!table_no || !token) {
+            return res.status(400).json({ success: false, error: 'Missing parameters' });
+        }
+
+        const result = await pool.query(
+            'SELECT * FROM tables WHERE table_no = $1 AND session_token = $2',
+            [table_no, token]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(403).json({ 
+                success: false, 
+                error: 'QR Code នេះមិនមានសុពលភាព ឬត្រូវបានបិទរួចរាល់ហើយ!' 
+            });
+        }
+
+        res.json({ success: true, message: 'Valid token' });
+    } catch (err) {
+        console.error('Verify Table Error:', err);
+        res.status(500).json({ success: false, error: 'Server error' });
+    }
+});
+
+// 🟢 2. API សម្រាប់បង្កើត ឬប្តូរ Token ថ្មី (Refresh QR Code)
+app.post('/api/tables/refresh-token', async (req, res) => {
+    try {
+        const { table_no } = req.body;
+        if (!table_no) {
+            return res.status(400).json({ success: false, error: 'Table number is required' });
+        }
+
+        const newToken = crypto.randomBytes(32).toString('hex');
+
+        await pool.query(`
+            INSERT INTO tables (table_no, session_token, updated_at) 
+            VALUES ($1, $2, CURRENT_TIMESTAMP)
+            ON CONFLICT (table_no) 
+            DO UPDATE SET session_token = $2, updated_at = CURRENT_TIMESTAMP
+        `, [table_no, newToken]);
+
+        const qrLink = `http://${req.headers.host}/customer-order.html?table=${encodeURIComponent(table_no)}&token=${newToken}`;
+
+        res.json({ success: true, session_token: newToken, qr_link: qrLink });
+    } catch (err) {
+        console.error('Refresh Token Error:', err);
+        res.status(500).json({ success: false, error: 'Server error' });
+    }
+});
+
+// 3. API សម្រាប់បង្កើត Order ថ្មីជានិច្ច
 app.post('/api/orders', async (req, res) => {
     const { cashier_id, table_no, total_amount, payment_method, items } = req.body;
     
@@ -388,7 +451,7 @@ app.post('/api/orders', async (req, res) => {
     }
 });
 
-// 2. API សម្រាប់ទាញយកគ្រប់ Order ទាំងអស់ដែលមិនទាន់បង់ប្រាក់តាមតុ (សម្រាប់ Cashier គិតលុយរួម)
+// 4. API សម្រាប់ទាញយកគ្រប់ Order ទាំងអស់ដែលមិនទាន់បង់ប្រាក់តាមតុ (សម្រាប់ Cashier គិតលុយរួម)
 app.get('/api/orders/unpaid-by-table', async (req, res) => {
     const { table_no } = req.query;
     if (!table_no) {
@@ -423,7 +486,7 @@ app.get('/api/orders/unpaid-by-table', async (req, res) => {
     }
 });
 
-// 3. API សម្រាប់បង់ប្រាក់ Checkout គ្រប់ Orders ទាំងអស់របស់តុក្នុងពេលតែមួយ
+// 5. API សម្រាប់បង់ប្រាក់ Checkout គ្រប់ Orders ទាំងអស់របស់តុក្នុងពេលតែមួយ
 app.post('/api/orders/pay-by-table', async (req, res) => {
     const { table_no, payment_method, total_amount, cashier_id } = req.body;
     if (!table_no) {
@@ -446,6 +509,9 @@ app.post('/api/orders/pay-by-table', async (req, res) => {
             throw new Error('រកមិនឃើញ Order ដែលត្រូវបង់ប្រាក់សម្រាប់តុនេះទេ។');
         }
 
+        // 🟢 បន្ទាប់ពីគិតលុយរួចរាល់ ត្រូវសម្អាត Session Token របស់តុនេះចោល (Invalidate QR Code)
+        await client.query('UPDATE tables SET session_token = NULL WHERE table_no = $1', [table_no]);
+
         await client.query('COMMIT');
         res.json({ success: true, message: 'បានបង់ប្រាក់ និងបញ្ចប់វិក្កយបត្រតុនេះជោគជ័យ!', order_ids: updateRes.rows.map(r => r.id) });
     } catch (err) {
@@ -457,7 +523,7 @@ app.post('/api/orders/pay-by-table', async (req, res) => {
     }
 });
 
-// 4. API សម្រាប់ Sales Dashboard
+// 6. API សម្រាប់ Sales Dashboard
 app.get('/api/orders/customer-pending', async (req, res) => {
     try {
         const orderQuery = `
@@ -486,7 +552,7 @@ app.get('/api/orders/customer-pending', async (req, res) => {
     }
 });
 
-// 5. API សម្រាប់ Sales ចុច Accept
+// 7. API សម្រាប់ Sales ចុច Accept
 app.post('/api/orders/:id/accept', async (req, res) => {
     const { id } = req.params;
     try {
@@ -504,7 +570,7 @@ app.post('/api/orders/:id/accept', async (req, res) => {
     }
 });
 
-// 💰 6. API សម្រាប់បង់ប្រាក់ Checkout តាម Order ID ធម្មតា
+// 💰 8. API សម្រាប់បង់ប្រាក់ Checkout តាម Order ID ធម្មតា
 app.post('/api/orders/:id/pay', async (req, res) => {
     const { id } = req.params;
     const { payment_method, total_amount } = req.body;
@@ -520,7 +586,7 @@ app.post('/api/orders/:id/pay', async (req, res) => {
     }
 });
 
-// ✏️ 7. API សម្រាប់កែប្រែមុខទំនិញ (PUT Edit Order Items & Update Stock)
+// ✏️ 9. API សម្រាប់កែប្រែមុខទំនិញ (PUT Edit Order Items & Update Stock)
 app.put('/api/orders/:id/items', async (req, res) => {
     const { id } = req.params;
     const { items, total_amount } = req.body;
