@@ -104,6 +104,7 @@
         }
         .cart-items-box { max-height: 220px; overflow-y: auto; }
 
+        /* 🟢 Print Styles សម្រាប់ទាំង Invoice និង QR Card ដាក់លើតុ */
         @media print {
             body * { visibility: hidden !important; }
             #printableInvoice, #printableInvoice * { visibility: visible !important; }
@@ -118,9 +119,26 @@
                 font-size: 12px !important;
                 background: white !important;
             }
+
+            #printableQrCard, #printableQrCard * { visibility: visible !important; }
+            #printableQrCard {
+                position: fixed !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 100% !important;
+                height: 100% !important;
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: center !important;
+                justify-content: center !important;
+                background: white !important;
+                margin: 0 !important;
+                padding: 20px !important;
+            }
+
             .modal-content { border: none !important; box-shadow: none !important; background: transparent !important; }
             .no-print { display: none !important; }
-            @page { size: 80mm auto; margin: 0mm; }
+            @page { size: auto; margin: 5mm; }
         }
     </style>
 </head>
@@ -321,6 +339,7 @@
         </div>
     </div>
 
+    <!-- 🟢 QR Modal ដែលបានបន្ថែមប៊ូតុង Print QR ខាងក្រោម -->
     <div class="modal fade" id="qrModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow rounded-4 text-center p-3">
@@ -333,8 +352,13 @@
                 </div>
                 <div class="modal-body">
                     <p class="text-muted small mb-2">ស្កែន QR Code នេះដើម្បីបើកម៉ឺនុយបញ្ជាទិញភ្ជាប់ជាមួយលេខតុនេះស្វ័យប្រវត្តិ៖</p>
-                    <div class="bg-light p-3 d-inline-block rounded-4 shadow-sm mb-3 position-relative">
+                    
+                    <!-- 📦 ផ្ទុករូបភាព QR សម្រាប់បង្ហាញ និងសម្រាប់ Print -->
+                    <div id="printableQrCard" class="bg-light p-3 d-inline-block rounded-4 shadow-sm mb-3 position-relative">
+                        <h5 class="fw-bold text-dark mb-1 d-none d-print-block">☕ COFFEE & RESTAURANT</h5>
+                        <h4 id="printQrTableTitle" class="badge bg-dark mb-2 fs-6">តុទី ១ (Table 1)</h4>
                         <img id="qrImageDisplay" src="" alt="Customer QR" class="img-fluid rounded" style="width: 180px; height: 180px;">
+                        <p class="small text-muted mt-2 mb-0 d-none d-print-block">សូមស្កែនដើម្បីបញ្ជាទិញម្ហូប និងភេសជ្ជៈ</p>
                     </div>
                     
                     <div class="input-group input-group-sm mb-3">
@@ -342,10 +366,15 @@
                         <button class="btn btn-outline-primary fw-bold" onclick="copyOrderLink()"><i class="fa-solid fa-copy me-1"></i> ចម្លងតំណ</button>
                     </div>
 
-                    <div class="border-top pt-2">
+                    <div class="border-top pt-2 mb-3">
                         <label class="form-label small fw-bold text-secondary mb-1">ប្តូរតុដើម្បី Gen QR ផ្សេងទៀត៖</label>
                         <select id="qrTableSelector" class="form-select form-select-sm fw-bold text-center text-primary" onchange="changeQrTableFromModal(this.value)"></select>
                     </div>
+
+                    <!-- 🟢 ប៊ូតុង Print QR Card ដាក់លើតុ -->
+                    <button class="btn btn-warning w-100 fw-bold py-2 shadow-sm" onclick="printQrCard()">
+                        <i class="fa-solid fa-print me-1"></i> បោះពុម្ព QR តុនេះ (Print QR Card)
+                    </button>
                 </div>
             </div>
         </div>
@@ -625,7 +654,6 @@
             setTimeout(() => { toast.remove(); }, 6000);
         }
 
-        // 🟢 កែសម្រួលមុខងារ generateDynamicQR ឱ្យហៅ API ពី Server ដើម្បីភ្ជាប់ Session Token សុវត្ថិភាព
         async function generateDynamicQR(selectedTableName = null) {
             const currentTable = selectedTableName || document.getElementById('tableInput').value.trim() || 'តុទូទៅ';
             
@@ -643,18 +671,19 @@
                     document.getElementById('qrImageDisplay').src = qrApiUrl;
                     document.getElementById('customerOrderLink').value = result.qr_link;
                     document.getElementById('qrTableTitleBadge').innerText = currentTable;
+                    document.getElementById('printQrTableTitle').innerText = currentTable;
                 } else {
                     alert('⚠️ មិនអាចបង្កើត QR Code បានទេ: ' + (result.error || 'Unknown error'));
                 }
             } catch (err) {
                 console.error('Error generating dynamic QR:', err);
-                // Fallback ករណី Server មានបញ្ហា
                 const baseUrl = `${window.location.protocol}//${window.location.host}/customer-order.html`;
                 const fullTableUrl = `${baseUrl}?table=${encodeURIComponent(currentTable)}`;
                 const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(fullTableUrl)}`;
                 document.getElementById('qrImageDisplay').src = qrApiUrl;
                 document.getElementById('customerOrderLink').value = fullTableUrl;
                 document.getElementById('qrTableTitleBadge').innerText = currentTable;
+                document.getElementById('printQrTableTitle').innerText = currentTable;
             }
 
             const selector = document.getElementById('qrTableSelector');
@@ -663,6 +692,23 @@
                 const isSel = t === currentTable ? 'selected' : '';
                 selector.innerHTML += `<option value="${t}" ${isSel}>${t}</option>`;
             });
+        }
+
+        // 🟢 មុខងារសម្រាប់បោះពុម្ព QR Card ដាក់លើតុ
+        function printQrCard() {
+            // ប្តូរ ID នៃ printableInvoice ជាបណ្តោះអាសន្ន ឬបិទមិនឱ្យប៉ះពាល់ការ Print Bill
+            const invoiceEl = document.getElementById('printableInvoice');
+            invoiceEl.id = 'tempHiddenInvoice';
+            const qrCardEl = document.getElementById('printableQrCard');
+            qrCardEl.id = 'printableInvoice'; // ឱ្យ window.print() ចាប់យក QR Card ជំនួស
+
+            window.print();
+
+            // បង្វែរ IDs ដើមមកវិញក្រោយពេល Print រួច
+            setTimeout(() => {
+                qrCardEl.id = 'printableQrCard';
+                invoiceEl.id = 'printableInvoice';
+            }, 500);
         }
 
         function changeQrTableFromModal(tableName) {
@@ -1041,7 +1087,6 @@
             }
         }
 
-        // 🚀 មុខងារសម្រាប់ Print វិក្កយបត្រជូនភ្ញៀវ (Bill Check) ដោយមិនបាច់វាយបញ្ចូលទឹកប្រាក់ Received
         function printBillCheck() {
             if (cart.length === 0) {
                 alert('សូមជ្រើសរើសទំនិញយ៉ាងហោចណាស់មួយក្នុងកន្រ្តក!');
