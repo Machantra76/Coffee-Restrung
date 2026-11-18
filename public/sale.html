@@ -191,10 +191,18 @@
                             </div>
                         </div>
 
-                        <div class="mb-2">
-                            <button class="btn btn-outline-primary btn-sm w-100 fw-bold shadow-sm" onclick="loadUnpaidOrdersForTable()">
-                                <i class="fa-solid fa-sync me-1"></i> ទាញយក Order មិនទាន់បង់ប្រាក់របស់តុនេះ
-                            </button>
+                        <!-- 🟢 ប៊ូតុងផ្ទេរតុ (Transfer Table) និងទាញយក Order -->
+                        <div class="row g-1 mb-2">
+                            <div class="col-7">
+                                <button class="btn btn-outline-primary btn-sm w-100 fw-bold shadow-sm" style="font-size: 0.75rem;" onclick="loadUnpaidOrdersForTable()">
+                                    <i class="fa-solid fa-sync me-1"></i> ទាញយក Order
+                                </button>
+                            </div>
+                            <div class="col-5">
+                                <button class="btn btn-outline-warning btn-sm w-100 fw-bold shadow-sm text-dark" style="font-size: 0.75rem;" data-bs-toggle="modal" data-bs-target="#transferTableModal">
+                                    <i class="fa-solid fa-exchange-alt me-1"></i> ប្តូរតុថ្មី
+                                </button>
+                            </div>
                         </div>
 
                         <h4 class="fw-bold text-dark mb-2 fs-5 fs-md-4"><i class="fa-solid fa-cart-shopping me-2"></i> កន្រ្តកវិក្កយបត្រ / Cart</h4>
@@ -334,6 +342,31 @@
                     </div>
                     <hr>
                     <div class="row g-2" id="tableGrid" style="max-height: 250px; overflow-y: auto;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🟢 Modal សម្រាប់ប្តូរតុថ្មី (Transfer Table Modal) -->
+    <div class="modal fade" id="transferTableModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content border-0 shadow-lg rounded-4 p-3">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold text-dark fs-6"><i class="fa-solid fa-exchange-alt text-primary me-1"></i> ផ្ទេរតុ (Transfer Table)</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted">តុបច្ចុប្បន្ន (From Table):</label>
+                        <input type="text" id="transferFromTable" class="form-control form-control-sm fw-bold bg-light" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-secondary">ប្តូរទៅតុថ្មី (To Table):</label>
+                        <select id="transferToTableSelect" class="form-select form-select-sm fw-bold text-primary"></select>
+                    </div>
+                    <button class="btn btn-primary btn-sm w-100 fw-bold py-2 shadow-sm" onclick="executeTableTransfer()">
+                        <i class="fa-solid fa-check me-1"></i> បញ្ជាក់ការប្តូរតុ
+                    </button>
                 </div>
             </div>
         </div>
@@ -492,6 +525,7 @@
         let finalCalculatedTotal = 0;
         let receiptModalObj = null;
         let pendingOrderModalObj = null;
+        let transferTableModalObj = null;
         let currentPendingOrder = null;
         let soundInterval = null;
         let lastKitchenStatusMap = {};
@@ -512,6 +546,7 @@
             document.getElementById('cashierDisplay').innerText = `Cashier: ${currentUser.full_name}`;
             receiptModalObj = new bootstrap.Modal(document.getElementById('receiptModal'));
             pendingOrderModalObj = new bootstrap.Modal(document.getElementById('pendingOrderModal'));
+            transferTableModalObj = new bootstrap.Modal(document.getElementById('transferTableModal'));
             sweetnessModalObj = new bootstrap.Modal(document.getElementById('sweetnessModal'));
 
             renderTableCards();
@@ -521,7 +556,56 @@
             checkUrlForOrderCheckout();
             setInterval(checkCustomerPendingOrders, 3000);
             setInterval(checkKitchenOrderStatusUpdates, 3000);
+
+            // កំណត់ឈ្មោះតុបច្ចុប្បន្នពេលបើក Modal ផ្ទេរតុ
+            const transferModalEl = document.getElementById('transferTableModal');
+            transferModalEl.addEventListener('show.bs.modal', () => {
+                const currentTable = document.getElementById('tableInput').value.trim();
+                document.getElementById('transferFromTable').value = currentTable;
+                
+                const selectEl = document.getElementById('transferToTableSelect');
+                selectEl.innerHTML = '';
+                customTables.forEach(t => {
+                    if (t !== currentTable) {
+                        selectEl.innerHTML += `<option value="${t}">${t}</option>`;
+                    }
+                });
+            });
         });
+
+        // 🟢 មុខងារប្រតិបត្តិការប្តូរតុថ្មី
+        async function executeTableTransfer() {
+            const oldTable = document.getElementById('transferFromTable').value;
+            const newTable = document.getElementById('transferToTableSelect').value;
+
+            if (!oldTable || !newTable) {
+                alert('សូមជ្រើសរើសតុគោលដៅឱ្យបានត្រឹមត្រូវ!');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/orders/transfer-table', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ old_table_no: oldTable, new_table_no: newTable })
+                });
+                const result = await res.json();
+
+                if (result.success) {
+                    transferTableModalObj.hide();
+                    document.getElementById('tableInput').value = newTable;
+                    renderTableCards();
+                    generateDynamicQR(newTable);
+                    loadUnpaidOrdersForTable();
+                    alert(`🔄 បានប្តូរតុពី "${oldTable}" ទៅ "${newTable}" ជោគជ័យ!`);
+                } else {
+                    alert('⚠️ បរាជ័យក្នុងការប្តូរតុ: ' + (result.error || 'Unknown error'));
+                }
+            } catch (err) {
+                console.error('Error executing table transfer:', err);
+                alert('មានបញ្ហាក្នុងការតភ្ជាប់ទៅកាន់ Server!');
+            }
+        }
 
         async function loadUnpaidOrdersForTable() {
             const tableNo = document.getElementById('tableInput').value.trim();
@@ -696,15 +780,13 @@
 
         // 🟢 មុខងារសម្រាប់បោះពុម្ព QR Card ដាក់លើតុ
         function printQrCard() {
-            // ប្តូរ ID នៃ printableInvoice ជាបណ្តោះអាសន្ន ឬបិទមិនឱ្យប៉ះពាល់ការ Print Bill
             const invoiceEl = document.getElementById('printableInvoice');
             invoiceEl.id = 'tempHiddenInvoice';
             const qrCardEl = document.getElementById('printableQrCard');
-            qrCardEl.id = 'printableInvoice'; // ឱ្យ window.print() ចាប់យក QR Card ជំនួស
+            qrCardEl.id = 'printableInvoice'; 
 
             window.print();
 
-            // បង្វែរ IDs ដើមមកវិញក្រោយពេល Print រួច
             setTimeout(() => {
                 qrCardEl.id = 'printableQrCard';
                 invoiceEl.id = 'printableInvoice';
@@ -1201,7 +1283,7 @@
                         showReceiptModal(fallbackResult.order ? fallbackResult.order.id : '00', paymentMethod, receivedUSD);
                         await loadProducts();
                     } else {
-                        alert('⚠️ មិនអាចលក់បានទេ: ' + (result.error || fallbackResult.error));
+                        alert('⚠️ មិនអាចលក់ได้ទេ: ' + (result.error || fallbackResult.error));
                     }
                 }
             } catch (err) {
