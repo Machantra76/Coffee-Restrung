@@ -315,6 +315,22 @@ app.get('/api/orders/active-tables', async (req, res) => {
         res.status(500).json({ success: false, error: 'Database error' });
     }
 });
+// 🌟 API សម្រាប់ទាញយកបញ្ជីតុទាំងអស់ដែលកំពុងមាន Order មិនទាន់បានបង់ប្រាក់ (Unpaid)
+app.get('/api/orders/unpaid-all-tables', async (req, res) => {
+    try {
+        const query = `
+            SELECT table_no, SUM(total_amount) as total_amount 
+            FROM orders 
+            WHERE (status != 'Paid' AND status != 'Completed') OR status IS NULL
+            GROUP BY table_no
+        `;
+        const result = await pool.query(query);
+        res.json({ success: true, data: result.rows });
+    } catch (err) {
+        console.error('Error fetching unpaid all tables status:', err);
+        res.status(500).json({ success: false, error: 'មិនអាចទាញយកទិន្នន័យស្ថានភាពតុបានទេ' });
+    }
+});
 
 // 📦 API សម្រាប់ទាញយកមុខទំនិញលម្អិតតាម Order ID
 app.get('/api/orders/:id/items', async (req, res) => {
