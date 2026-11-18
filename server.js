@@ -406,14 +406,17 @@ app.post('/api/tables/refresh-token', async (req, res) => {
     }
 });
 
-// API សម្រាប់ប្តូរតុ (Transfer Table Items)
+// API សម្រាប់ប្តូរតុ (Transfer Table Items) 🟢 កែសម្រួលថ្មី
 app.post('/api/orders/transfer-table', async (req, res) => {
     const { old_table_no, new_table_no } = req.body;
+    if (!old_table_no || !new_table_no) {
+        return res.status(400).json({ success: false, error: 'Missing table numbers' });
+    }
     try {
         const query = `
             UPDATE orders 
             SET table_no = $1 
-            WHERE table_no = $2 AND (status != 'Paid' AND status != 'Completed')
+            WHERE table_no = $2 AND status != 'Paid'
         `;
         const result = await pool.query(query, [new_table_no, old_table_no]);
         res.json({ success: true, message: `បានប្តូរតុពី ${old_table_no} ទៅ ${new_table_no} បានជោគជ័យ`, updatedCount: result.rowCount });
@@ -422,7 +425,6 @@ app.post('/api/orders/transfer-table', async (req, res) => {
         res.status(500).json({ success: false, error: 'មិនអាចប្តូរតុបានទេ' });
     }
 });
-
 // 3. API សម្រាប់បង្កើត Order ថ្មីជានិច្ច
 app.post('/api/orders', async (req, res) => {
     const { cashier_id, table_no, total_amount, payment_method, items } = req.body;
