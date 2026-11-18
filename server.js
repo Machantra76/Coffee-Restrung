@@ -528,10 +528,11 @@ app.post('/api/orders/pay-by-table', async (req, res) => {
     try {
         await client.query('BEGIN');
 
+        // 🟢 កែសម្រួលត្រង់នេះ៖ ប្តូរ status ជា 'Paid' និងដកលក្ខខណ្ឌ payment_method ចេញ ដើម្បីឱ្យវា UPDATE គ្រប់ Order របស់តុនេះទាំងអស់
         const updateQuery = `
             UPDATE orders 
-            SET payment_method = $1, status = 'Completed', cashier_id = COALESCE($2, cashier_id)
-            WHERE table_no = $3 AND (payment_method IS NULL OR payment_method = '')
+            SET payment_method = $1, status = 'Paid', cashier_id = COALESCE($2, cashier_id)
+            WHERE table_no = $3 AND status != 'Paid'
             RETURNING id
         `;
         const updateRes = await client.query(updateQuery, [payment_method || 'Cash', cashier_id || null, table_no]);
@@ -539,6 +540,17 @@ app.post('/api/orders/pay-by-table', async (req, res) => {
         if (updateRes.rowCount === 0) {
             throw new Error('រកមិនឃើញ Order ដែលត្រូវបង់ប្រាក់សម្រាប់តុនេះទេ។');
         }
+
+        await client.query('COMMIT');
+        res.json({ success: true, order_ids: updateRes.rows.map(r => r.id) });
+    } catch (err) {
+        await client.query('ROLLBACK');
+        console.error('Error paying by table:', err);
+        res.status(500).json({ success: false, error: err.message || 'មិនអាចធ្វើការបង់ប្រាក់បានទេ' });
+    } finally {
+        client.release();
+    }
+});
 
         // 🟢 បន្ទាប់ពីគិតលុយរួចរាល់ ត្រូវសម្អាត Session Token របស់តុនេះចោល (Invalidate QR Code)
         await client.query('UPDATE tables SET session_token = NULL WHERE table_no = $1', [table_no]);
