@@ -315,6 +315,7 @@ app.get('/api/orders/active-tables', async (req, res) => {
         res.status(500).json({ success: false, error: 'Database error' });
     }
 });
+
 // 🌟 API សម្រាប់ទាញយកបញ្ជីតុទាំងអស់ដែលកំពុងមាន Order មិនទាន់បង់ប្រាក់
 app.get('/api/orders/unpaid-all-tables', async (req, res) => {
     try {
@@ -331,6 +332,7 @@ app.get('/api/orders/unpaid-all-tables', async (req, res) => {
         res.status(500).json({ success: false, error: 'មិនអាចទាញយកទិន្នន័យស្ថានភាពតុបានទេ' });
     }
 });
+
 // 📦 API សម្រាប់ទាញយកមុខទំនិញលម្អិតតាម Order ID
 app.get('/api/orders/:id/items', async (req, res) => {
     const { id } = req.params;
@@ -403,6 +405,7 @@ app.post('/api/tables/refresh-token', async (req, res) => {
         res.status(500).json({ success: false, error: 'Server error' });
     }
 });
+
 // API សម្រាប់ប្តូរតុ (Transfer Table Items)
 app.post('/api/orders/transfer-table', async (req, res) => {
     const { old_table_no, new_table_no } = req.body;
@@ -528,7 +531,7 @@ app.post('/api/orders/pay-by-table', async (req, res) => {
     try {
         await client.query('BEGIN');
 
-        // 🟢 កែសម្រួលត្រង់នេះ៖ ប្តូរ status ជា 'Paid' និងដកលក្ខខណ្ឌ payment_method ចេញ ដើម្បីឱ្យវា UPDATE គ្រប់ Order របស់តុនេះទាំងអស់
+        // អាប់ដេត Order ទាំងអស់របស់តុនេះឱ្យទៅជា 'Paid'
         const updateQuery = `
             UPDATE orders 
             SET payment_method = $1, status = 'Paid', cashier_id = COALESCE($2, cashier_id)
@@ -541,18 +544,7 @@ app.post('/api/orders/pay-by-table', async (req, res) => {
             throw new Error('រកមិនឃើញ Order ដែលត្រូវបង់ប្រាក់សម្រាប់តុនេះទេ។');
         }
 
-        await client.query('COMMIT');
-        res.json({ success: true, order_ids: updateRes.rows.map(r => r.id) });
-    } catch (err) {
-        await client.query('ROLLBACK');
-        console.error('Error paying by table:', err);
-        res.status(500).json({ success: false, error: err.message || 'មិនអាចធ្វើការបង់ប្រាក់បានទេ' });
-    } finally {
-        client.release();
-    }
-});
-
-        // 🟢 បន្ទាប់ពីគិតលុយរួចរាល់ ត្រូវសម្អាត Session Token របស់តុនេះចោល (Invalidate QR Code)
+        // សម្អាត Session Token របស់តុនេះចោល (Invalidate QR Code)
         await client.query('UPDATE tables SET session_token = NULL WHERE table_no = $1', [table_no]);
 
         await client.query('COMMIT');
@@ -566,7 +558,7 @@ app.post('/api/orders/pay-by-table', async (req, res) => {
     }
 });
 
-// 6. API សម្រាប់ Sales Dashboard
+// 6. API សម្រាប់ Sales Dashboard (Customer Pending)
 app.get('/api/orders/customer-pending', async (req, res) => {
     try {
         const orderQuery = `
@@ -638,7 +630,6 @@ app.put('/api/orders/:id/items', async (req, res) => {
     try {
         await client.query('BEGIN');
 
-        // ១. ទាញយកទំនិញចាស់មកបូកសងស្តុកដើមវិញសិន
         const oldItemsRes = await client.query('SELECT product_id, quantity FROM order_items WHERE order_id = $1', [id]);
         for (let oldItem of oldItemsRes.rows) {
             if (oldItem.product_id) {
@@ -646,10 +637,8 @@ app.put('/api/orders/:id/items', async (req, res) => {
             }
         }
 
-        // ២. លុបទំនិញចាស់ចេញពី order_items
         await client.query('DELETE FROM order_items WHERE order_id = $1', [id]);
 
-        // ៣. ពិនិត្យស្តុកថ្មី កាត់ស្តុក និងបញ្ចូលទំនិញថ្មីចូល order_items វិញ
         if (items && items.length > 0) {
             for (let newItem of items) {
                 const checkStock = await client.query('SELECT stock_qty, name FROM products WHERE id = $1', [newItem.id]);
@@ -669,7 +658,6 @@ app.put('/api/orders/:id/items', async (req, res) => {
             }
         }
 
-        // ៤. អាប់ដេតទឹកប្រាក់សរុប (total_amount) ថ្មីក្នុងតារាង orders
         await client.query('UPDATE orders SET total_amount = $1 WHERE id = $2', [total_amount, id]);
 
         await client.query('COMMIT');
