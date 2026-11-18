@@ -87,7 +87,8 @@
             transition: all 0.2s;
             background: #fff;
             text-align: center;
-            padding: 10px;
+            padding: 12px 8px;
+            position: relative;
         }
         .table-card.selected {
             border-color: #0d6efd;
@@ -187,7 +188,7 @@
                             <label for="tableInput" class="fw-bold small text-secondary mb-0"><i class="fa-solid fa-chair me-1"></i> លេខតុ / Table:</label>
                             <div class="d-flex align-items-center gap-1">
                                 <input type="text" id="tableInput" class="form-control form-control-sm fw-bold text-primary text-center" value="តុទី ១ (Table 1)" style="width: 130px;" oninput="onTableInputChange()">
-                                <button class="btn btn-sm btn-outline-primary py-0 px-2" data-bs-toggle="modal" data-bs-target="#tableModal" title="ជ្រើសរើសតុ"><i class="fa-solid fa-list"></i></button>
+                                <button class="btn btn-sm btn-outline-primary py-0 px-2" data-bs-toggle="modal" data-bs-target="#tableModal" title="ជ្រើសរើសតុ" onclick="openTableSelectionModal()"><i class="fa-solid fa-list"></i></button>
                             </div>
                         </div>
 
@@ -372,7 +373,7 @@
         </div>
     </div>
 
-    <!-- 🟢 QR Modal ដែលបានបន្ថែមប៊ូតុង Print QR ខាងក្រោម -->
+    <!-- 🟢 QR Modal -->
     <div class="modal fade" id="qrModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow rounded-4 text-center p-3">
@@ -386,7 +387,6 @@
                 <div class="modal-body">
                     <p class="text-muted small mb-2">ស្កែន QR Code នេះដើម្បីបើកម៉ឺនុយបញ្ជាទិញភ្ជាប់ជាមួយលេខតុនេះស្វ័យប្រវត្តិ៖</p>
                     
-                    <!-- 📦 ផ្ទុករូបភាព QR សម្រាប់បង្ហាញ និងសម្រាប់ Print -->
                     <div id="printableQrCard" class="bg-light p-3 d-inline-block rounded-4 shadow-sm mb-3 position-relative">
                         <h5 class="fw-bold text-dark mb-1 d-none d-print-block">☕ COFFEE & RESTAURANT</h5>
                         <h4 id="printQrTableTitle" class="badge bg-dark mb-2 fs-6">តុទី ១ (Table 1)</h4>
@@ -404,7 +404,6 @@
                         <select id="qrTableSelector" class="form-select form-select-sm fw-bold text-center text-primary" onchange="changeQrTableFromModal(this.value)"></select>
                     </div>
 
-                    <!-- 🟢 ប៊ូតុង Print QR Card ដាក់លើតុ -->
                     <button class="btn btn-warning w-100 fw-bold py-2 shadow-sm" onclick="printQrCard()">
                         <i class="fa-solid fa-print me-1"></i> បោះពុម្ព QR តុនេះ (Print QR Card)
                     </button>
@@ -535,6 +534,7 @@
         let selectedProductForSweetness = null;
 
         let customTables = ['តុទី ១ (Table 1)', 'តុទី ២ (Table 2)', 'តុទី ៣ (Table 3)', 'តុទី ៤ (Table 4)', 'តុទី ៥ (Table 5)', 'តុទី ៦ (Table 6)', 'តុទី ៧ (Table 7)', 'តុទី ៨ (Table 8)'];
+        let tableOccupiedStatusMap = {}; // 🟢 เก็บสถานะโต๊ะว่ามีลูกค้าไหม
 
         document.addEventListener('DOMContentLoaded', async () => {
             currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
@@ -549,6 +549,7 @@
             transferTableModalObj = new bootstrap.Modal(document.getElementById('transferTableModal'));
             sweetnessModalObj = new bootstrap.Modal(document.getElementById('sweetnessModal'));
 
+            await checkAllTablesOccupiedStatus();
             renderTableCards();
             await loadProducts();
             generateDynamicQR();
@@ -557,7 +558,6 @@
             setInterval(checkCustomerPendingOrders, 3000);
             setInterval(checkKitchenOrderStatusUpdates, 3000);
 
-            // កំណត់ឈ្មោះតុបច្ចុប្បន្នពេលបើក Modal ផ្ទេរតុ
             const transferModalEl = document.getElementById('transferTableModal');
             transferModalEl.addEventListener('show.bs.modal', () => {
                 const currentTable = document.getElementById('tableInput').value.trim();
@@ -573,7 +573,31 @@
             });
         });
 
-        // 🟢 មុខងារប្រតិបត្តិការប្តូរតុថ្មី
+        // 🟢 មុខងារឆែកមើលថាតើតុណាមានភ្ញៀវ ឬអត់
+        async function checkAllTablesOccupiedStatus() {
+            try {
+                const res = await fetch('/api/orders/unpaid-all-tables');
+                const result = await res.json();
+                tableOccupiedStatusMap = {};
+
+                if (result.success && result.data) {
+                    result.data.forEach(item => {
+                        tableOccupiedStatusMap[item.table_no] = {
+                            hasCustomer: true,
+                            totalAmount: item.total_amount || 0
+                        };
+                    });
+                }
+            } catch (err) {
+                console.error('Error checking tables status:', err);
+            }
+        }
+
+        async function openTableSelectionModal() {
+            await checkAllTablesOccupiedStatus();
+            renderTableCards();
+        }
+
         async function executeTableTransfer() {
             const oldTable = document.getElementById('transferFromTable').value;
             const newTable = document.getElementById('transferToTableSelect').value;
@@ -594,6 +618,7 @@
                 if (result.success) {
                     transferTableModalObj.hide();
                     document.getElementById('tableInput').value = newTable;
+                    await checkAllTablesOccupiedStatus();
                     renderTableCards();
                     generateDynamicQR(newTable);
                     loadUnpaidOrdersForTable();
@@ -668,6 +693,7 @@
                     customTables.push(decodedTable);
                 }
                 document.getElementById('tableInput').value = decodedTable;
+                await checkAllTablesOccupiedStatus();
                 renderTableCards();
                 generateDynamicQR(decodedTable);
                 loadUnpaidOrdersForTable();
@@ -778,7 +804,6 @@
             });
         }
 
-        // 🟢 មុខងារសម្រាប់បោះពុម្ព QR Card ដាក់លើតុ
         function printQrCard() {
             const invoiceEl = document.getElementById('printableInvoice');
             invoiceEl.id = 'tempHiddenInvoice';
@@ -893,6 +918,7 @@
                     pendingOrderModalObj.hide();
                     
                     document.getElementById('tableInput').value = currentPendingOrder.table_no || 'តុទូទៅ';
+                    await checkAllTablesOccupiedStatus();
                     renderTableCards();
                     generateDynamicQR(currentPendingOrder.table_no);
                     loadUnpaidOrdersForTable();
@@ -906,6 +932,7 @@
             }
         }
 
+        // 🟢 បង្ហាញកាតតុជាមួយសញ្ញាបញ្ជាក់ តុណាមានភ្ញៀវ (ក្រហម) តុណាទំនេរ (បៃតង)
         function renderTableCards() {
             const tableGrid = document.getElementById('tableGrid');
             tableGrid.innerHTML = '';
@@ -913,11 +940,19 @@
 
             customTables.forEach(tableName => {
                 const isSelected = tableName === currentTableVal ? 'selected' : '';
+                const occupiedInfo = tableOccupiedStatusMap[tableName];
+                
+                let statusBadge = `<span class="badge bg-success" style="font-size: 0.65rem;">តុទំនេរ / Available</span>`;
+                if (occupiedInfo && occupiedInfo.hasCustomer) {
+                    statusBadge = `<span class="badge bg-danger" style="font-size: 0.65rem;">មានភ្ញៀវ: $${Number(occupiedInfo.totalAmount).toFixed(2)}</span>`;
+                }
+
                 tableGrid.innerHTML += `
                     <div class="col-4">
                         <div class="table-card ${isSelected}" onclick="selectTable('${tableName}')">
                             <i class="fa-solid fa-chair fs-4 mb-1"></i>
                             <div class="fw-bold small">${tableName}</div>
+                            <div class="mt-1">${statusBadge}</div>
                         </div>
                     </div>
                 `;
@@ -1086,6 +1121,7 @@
             renderCart();
         }
 
+        // 🟢 កែសម្រួលប៊ូតុង (-) ពណ៌ក្រហម និង (+) ពណ៌បៃតង ត្រង់ Qty
         function renderCart() {
             const tbody = document.getElementById('cartTableBody');
             tbody.innerHTML = '';
@@ -1109,9 +1145,9 @@
                     <tr>
                         <td class="small fw-bold">${item.name}</td>
                         <td class="text-center" style="white-space: nowrap;">
-                            <button class="btn btn-sm btn-outline-secondary py-0 px-1" onclick="updateQty(${index}, -1)">-</button>
-                            <span class="mx-1 small">${item.quantity}</span>
-                            <button class="btn btn-sm btn-outline-secondary py-0 px-1" onclick="updateQty(${index}, 1)">+</button>
+                            <button class="btn btn-sm btn-danger py-0 px-2 fw-bold text-white shadow-sm" onclick="updateQty(${index}, -1)">-</button>
+                            <span class="mx-1 small fw-bold">${item.quantity}</span>
+                            <button class="btn btn-sm btn-success py-0 px-2 fw-bold text-white shadow-sm" onclick="updateQty(${index}, 1)">+</button>
                         </td>
                         <td class="text-end small">$${item.price.toFixed(2)}</td>
                         <td class="text-end small fw-bold">$${totalItemPrice.toFixed(2)}</td>
@@ -1257,6 +1293,7 @@
 
                 if (result.success) {
                     showReceiptModal(result.order_ids ? result.order_ids.join(', ') : 'សរុប', paymentMethod, receivedUSD);
+                    await checkAllTablesOccupiedStatus();
                     await loadProducts(); 
                 } else {
                     const orderData = {
@@ -1281,14 +1318,15 @@
 
                     if (fallbackResult.success) {
                         showReceiptModal(fallbackResult.order ? fallbackResult.order.id : '00', paymentMethod, receivedUSD);
+                        await checkAllTablesOccupiedStatus();
                         await loadProducts();
                     } else {
-                        alert('⚠️ មិនអាចលក់ได้ទេ: ' + (result.error || fallbackResult.error));
+                        alert('⚠️ មិនអាចលក់បានទេ: ' + (result.error || fallbackResult.error));
                     }
                 }
             } catch (err) {
                 console.error('Checkout Error:', err);
-                alert('មានបញ្ហាក្នុងការតភ្ជាប់ទៅកាន់ Server!');
+                alert('មានបញ្ហាក្នុងការភ្ជាប់ទៅកាន់ Server!');
             }
         }
 
