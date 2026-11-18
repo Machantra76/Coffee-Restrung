@@ -206,7 +206,7 @@
                             </div>
                         </div>
 
-                        <h4 class="fw-bold text-dark mb-2 fs-5 fs-md-4"><i class="fa-solid fa-cart-shopping me-2"></i> </h4>
+                        <h4 class="fw-bold text-dark mb-2 fs-5 fs-md-4"><i class="fa-solid fa-cart-shopping me-2"></i> កន្រ្តកវិក្កយបត្រ / Cart</h4>
                         
                         <div class="cart-items-box border rounded-3 p-1 mb-2 bg-light">
                             <table class="table table-sm align-middle mb-0" style="font-size: 0.9rem;">
@@ -534,7 +534,7 @@
         let selectedProductForSweetness = null;
 
         let customTables = ['តុទី ១ (Table 1)', 'តុទី ២ (Table 2)', 'តុទី ៣ (Table 3)', 'តុទី ៤ (Table 4)', 'តុទី ៥ (Table 5)', 'តុទី ៦ (Table 6)', 'តុទី ៧ (Table 7)', 'តុទី ៨ (Table 8)'];
-        let tableOccupiedStatusMap = {}; // 🟢 เก็บสถานะโต๊ะว่ามีลูกค้าไหม
+        let tableOccupiedStatusMap = {};
 
         document.addEventListener('DOMContentLoaded', async () => {
             currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
@@ -573,7 +573,6 @@
             });
         });
 
-        // 🟢 មុខងារឆែកមើលថាតើតុណាមានភ្ញៀវ ឬអត់
         async function checkAllTablesOccupiedStatus() {
             try {
                 const res = await fetch('/api/orders/unpaid-all-tables');
@@ -932,7 +931,6 @@
             }
         }
 
-        // 🟢 បង្ហាញកាតតុជាមួយសញ្ញាបញ្ជាក់ តុណាមានភ្ញៀវ (ក្រហម) តុណាទំនេរ (បៃតង)
         function renderTableCards() {
             const tableGrid = document.getElementById('tableGrid');
             tableGrid.innerHTML = '';
@@ -1121,7 +1119,6 @@
             renderCart();
         }
 
-        // 🟢 កែសម្រួលប៊ូតុង (-) ពណ៌ក្រហម និង (+) ពណ៌បៃតង ត្រង់ Qty
         function renderCart() {
             const tbody = document.getElementById('cartTableBody');
             tbody.innerHTML = '';
@@ -1293,7 +1290,10 @@
 
                 if (result.success) {
                     showReceiptModal(result.order_ids ? result.order_ids.join(', ') : 'សរុប', paymentMethod, receivedUSD);
+                    
+                    // 🟢 បច្ចុប្បន្នភាពស្ថានភាពតុភ្លាមៗក្រោយបង់លុយរួច
                     await checkAllTablesOccupiedStatus();
+                    renderTableCards();
                     await loadProducts(); 
                 } else {
                     const orderData = {
@@ -1318,7 +1318,10 @@
 
                     if (fallbackResult.success) {
                         showReceiptModal(fallbackResult.order ? fallbackResult.order.id : '00', paymentMethod, receivedUSD);
+                        
+                        // 🟢 បច្ចុប្បន្នភាពស្ថានភាពតុភ្លាមៗក្រោយបង់លុយរួច (Fallback case)
                         await checkAllTablesOccupiedStatus();
+                        renderTableCards();
                         await loadProducts();
                     } else {
                         alert('⚠️ មិនអាចលក់បានទេ: ' + (result.error || fallbackResult.error));
@@ -1326,7 +1329,7 @@
                 }
             } catch (err) {
                 console.error('Checkout Error:', err);
-                alert('មានបញ្ហាក្នុងការភ្ជាប់ទៅកាន់ Server!');
+                alert('មានបញ្ហាក្នុងការតភ្ជាប់ទៅកាន់ Server!');
             }
         }
 
